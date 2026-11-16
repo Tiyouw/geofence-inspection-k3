@@ -43,6 +43,7 @@ test("keluar mengakhiri sesi", async ({ page }) => {
   await masuk(page, "pemantau");
   await page.getByRole("button", { name: "Keluar" }).first().click();
   await expect(page).toHaveURL(/\/masuk/);
+  await expect(page.getByRole("status").filter({ hasText: "Anda sudah keluar." })).toBeVisible();
   await page.goto("/pemantau");
   await expect(page).toHaveURL(/\/masuk/);
 });

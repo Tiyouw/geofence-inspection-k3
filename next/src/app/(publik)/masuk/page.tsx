@@ -12,7 +12,7 @@ const DEMO_ACCOUNTS = [
 ] as const;
 
 export default async function MasukPage({ searchParams }: PageProps<"/masuk">) {
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, keluar } = await searchParams;
   const demo = process.env.DEMO_MODE === "true";
 
   return (
@@ -53,6 +53,11 @@ export default async function MasukPage({ searchParams }: PageProps<"/masuk">) {
                 ? "Gunakan salah satu akun demo di bawah untuk mencoba."
                 : "Masuk dengan NIP. Anda diarahkan ke halaman sesuai peran Anda."}
             </p>
+            {keluar === "1" && (
+              <p role="status" className="mb-5 rounded-lg border border-[#bcd9ca] bg-success-soft p-3 text-xs">
+                Anda sudah keluar.
+              </p>
+            )}
             <LoginForm callbackUrl={typeof callbackUrl === "string" ? callbackUrl : undefined} demo={demo} />
             {demo ? (
               <aside aria-label="Akun demonstrasi" className="mt-5 rounded-xl border border-[#cbdeda] bg-success-soft p-3.5 text-sm text-[#173f3a]">

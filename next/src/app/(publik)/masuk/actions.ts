@@ -47,5 +47,5 @@ export async function masuk(_prev: MasukState, formData: FormData): Promise<Masu
 
 export async function keluar() {
   const { signOut } = await import("@/lib/auth");
-  await signOut({ redirectTo: "/masuk" });
+  await signOut({ redirectTo: "/masuk?keluar=1" });
 }
