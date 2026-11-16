@@ -260,3 +260,27 @@ describe("pemisahan per akun", () => {
     await setMeta(db, "seq", 100);
   });
 });
+
+import { statusAntrean } from "../status";
+
+describe("label status antrean (SPEC §7.9)", () => {
+  const draf = { inspectionId: "a", status: "antre", pesan: null } as unknown as import("../types").DrafLokal;
+  const op = (p: Partial<import("../types").OutboxOp>) =>
+    ({ opId: "o", kind: "finalize", inspectionId: "a", seq: 1, payload: {}, attempts: 0, nextAttemptAt: 0, status: "pending", lastError: null, errorKode: null, createdAt: 0, ...p }) as import("../types").OutboxOp;
+
+  it("luring: menunggu sinyal", () => {
+    expect(statusAntrean(draf, [op({})], undefined, false).label).toBe("Menunggu sinyal");
+  });
+  it("daring dengan foto tersisa", () => {
+    expect(statusAntrean(draf, [op({ kind: "upload-photo" })], { total: 3, terunggah: 1 }, true).label).toBe("Mengirim foto 2/3");
+  });
+  it("coba ulang terjadwal", () => {
+    expect(statusAntrean(draf, [op({ attempts: 2, nextAttemptAt: 31_000 })], undefined, true, 1_000).label).toBe("Gagal, coba lagi 30 dtk");
+  });
+  it("perlu tindakan dan sesi habis", () => {
+    expect(statusAntrean(draf, [op({ status: "needs_action", lastError: "Stiker tidak dikenali" })], undefined, true).label).toBe(
+      "Perlu tindakan: Stiker tidak dikenali",
+    );
+    expect(statusAntrean(draf, [op({ errorKode: "sesi_habis" })], undefined, true).perluTindakan).toBe(true);
+  });
+});

@@ -19,8 +19,8 @@ export default defineConfig({
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: { baseURL, trace: "retain-on-failure", locale: "id-ID", timezoneId: "Asia/Jakarta" },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /petugas/ },
-    { name: "ponsel", use: { ...devices["Pixel 7"] }, testMatch: /petugas/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /petugas\// },
+    { name: "ponsel", use: { ...devices["Pixel 7"] }, testMatch: /petugas\// },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined

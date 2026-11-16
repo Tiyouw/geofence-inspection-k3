@@ -10,17 +10,31 @@ import { kuras, percobaanBerikutnya, pengirimHttp, type HasilKuras } from "./out
 export const KANAL = "pal-k3-antrean";
 const KUNCI = "pal-k3-outbox";
 
-export async function denganKunci<T>(fn: () => Promise<T>): Promise<T | null> {
+/** Jalankan fn dengan kunci bersama; bila kunci sedang dipakai, tunggu giliran. */
+export async function denganKunci<T>(fn: () => Promise<T>): Promise<T> {
   const locks = (globalThis.navigator as Navigator | undefined)?.locks;
   if (!locks) return fn();
-  return locks.request(KUNCI, { ifAvailable: true }, async (lock) => (lock ? fn() : null));
+  return locks.request(KUNCI, fn);
 }
 
-/** Kuras antrean akun ini sekali, lalu umumkan ke semua tab dan SW. */
-export async function kurasSekarang(userId: number): Promise<HasilKuras | null> {
-  const hasil = await denganKunci(async () => kuras(await bukaDb(userId), pengirimHttp()));
-  umumkan({ jenis: "berubah", hasil });
-  return hasil;
+let giliranBerikut: Promise<HasilKuras> | null = null;
+
+/**
+ * Kuras antrean akun ini, lalu umumkan ke semua tab dan SW. Panggilan saat pengurasan
+ * sedang berjalan digabung menjadi SATU putaran sesudahnya (tidak hilang, tidak menumpuk),
+ * supaya operasi yang baru masuk antrean langsung ikut terkirim.
+ */
+export function kurasSekarang(userId: number): Promise<HasilKuras> {
+  if (giliranBerikut) return giliranBerikut;
+  const p = denganKunci(async () => {
+    giliranBerikut = null; // mulai berjalan: panggilan berikutnya menjadwalkan putaran baru
+    return kuras(await bukaDb(userId), pengirimHttp());
+  }).then((hasil) => {
+    umumkan({ jenis: "berubah", hasil });
+    return hasil;
+  });
+  giliranBerikut = p;
+  return p;
 }
 
 export type PesanKanal = { jenis: "berubah"; hasil?: HasilKuras | null };

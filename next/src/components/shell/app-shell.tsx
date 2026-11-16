@@ -65,8 +65,24 @@ export function DesktopShell({ user, nav, children }: { user: SessionUser; nav: 
   );
 }
 
-/** Kerangka ponsel untuk inspektur: bilah atas ringkas + navigasi bawah. */
-export function MobileShell({ user, nav, children }: { user: SessionUser; nav: NavItem[]; children: ReactNode }) {
+/**
+ * Kerangka ponsel untuk inspektur: bilah atas ringkas + navigasi bawah.
+ * `status` menggantikan nama pengguna di bilah atas (mis. indikator koneksi);
+ * `keluar` menggantikan tombol keluar bawaan (mis. versi yang memperingatkan antrean).
+ */
+export function MobileShell({
+  user,
+  nav,
+  children,
+  status,
+  keluar,
+}: {
+  user: SessionUser;
+  nav: NavItem[];
+  children: ReactNode;
+  status?: ReactNode;
+  keluar?: ReactNode;
+}) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between bg-primary px-4 text-white">
@@ -74,8 +90,8 @@ export function MobileShell({ user, nav, children }: { user: SessionUser; nav: N
           <Brand accentPin compact />
         </Link>
         <div className="flex items-center gap-4">
-          <span className="max-w-40 truncate text-xs text-white/70">{user.name}</span>
-          <SignOutButton className="text-white/80 hover:text-white" />
+          {status ?? <span className="max-w-40 truncate text-xs text-white/70">{user.name}</span>}
+          {keluar ?? <SignOutButton className="text-white/80 hover:text-white" />}
         </div>
       </header>
       <main id="isi" className="mx-auto w-full max-w-xl flex-1 px-4 pt-5 pb-24">
