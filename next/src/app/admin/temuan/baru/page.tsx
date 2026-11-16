@@ -10,17 +10,20 @@ import { hariIniJakarta } from "@/lib/format";
 export const metadata: Metadata = { title: "Catat temuan" };
 
 export default async function TemuanBaru() {
-  await requireRole("admin");
-  const p = await pilihanTemuan();
-  return (
-    <>
-      <PageHeader title="Catat temuan" description="Untuk temuan di luar inspeksi lapangan, mis. laporan langsung dari unit kerja." />
-      <FormTemuan
-        aksi={buatTemuan}
-        aset={p.aset.map((a) => ({ id: a.id, kode: a.kode, lokasi: labelLokasi(a) }))}
-        pic={p.pic}
-        hariIni={hariIniJakarta()}
-      />
-    </>
-  );
+    await requireRole("admin");
+    const p = await pilihanTemuan();
+    return (
+        <>
+            <PageHeader
+                title="Catat temuan"
+                description="Untuk temuan di luar inspeksi lapangan, mis. laporan langsung dari unit kerja."
+            />
+            <FormTemuan
+                aksi={buatTemuan}
+                aset={p.aset.map((a) => ({ id: a.id, kode: a.kode, lokasi: labelLokasi(a) }))}
+                pic={p.pic}
+                hariIni={hariIniJakarta()}
+            />
+        </>
+    );
 }

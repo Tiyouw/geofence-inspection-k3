@@ -11,36 +11,36 @@ export type KelompokCari = { nama: string; hasil: HasilCari[] };
 
 /** `%` dan `_` diketik apa adanya: di-escape dengan `!` (pakai `ESCAPE '!'` di SQL). */
 export function escapeLike(q: string): string {
-  return q.replace(/[!%_]/g, (c) => `!${c}`);
+    return q.replace(/[!%_]/g, (c) => `!${c}`);
 }
 
 /** Pola ILIKE "mengandung". */
 export function polaMengandung(q: string): string {
-  return `%${escapeLike(q.trim())}%`;
+    return `%${escapeLike(q.trim())}%`;
 }
 
 /** Halaman yang boleh dilihat peran itu. */
 export function halamanUntuk(role: Role): HasilCari[] {
-  if (role === "admin") {
-    return [
-      ...NAV_ADMIN.map((n) => ({ judul: n.label, href: n.href })),
-      ...NAV_PEMANTAU.map((n) => ({ judul: n.label, href: n.href })),
-    ];
-  }
-  if (role === "pemantau") return NAV_PEMANTAU.map((n) => ({ judul: n.label, href: n.href }));
-  return [];
+    if (role === "admin") {
+        return [
+            ...NAV_ADMIN.map((n) => ({ judul: n.label, href: n.href })),
+            ...NAV_PEMANTAU.map((n) => ({ judul: n.label, href: n.href })),
+        ];
+    }
+    if (role === "pemantau") return NAV_PEMANTAU.map((n) => ({ judul: n.label, href: n.href }));
+    return [];
 }
 
 /** Tindakan cepat, hanya admin. */
 export function tindakanUntuk(role: Role): HasilCari[] {
-  if (role !== "admin") return [];
-  return [
-    { judul: "Tambah aset", href: "/admin/aset/baru" },
-    { judul: "Cetak lembar stiker QR", href: "/stiker" },
-    { judul: "Tambah petugas", href: "/admin/pengguna/baru" },
-  ];
+    if (role !== "admin") return [];
+    return [
+        { judul: "Tambah aset", href: "/admin/aset/baru" },
+        { judul: "Cetak lembar stiker QR", href: "/stiker" },
+        { judul: "Tambah petugas", href: "/admin/pengguna/baru" },
+    ];
 }
 
 export function cocok(teks: string, q: string): boolean {
-  return teks.toLocaleLowerCase("id-ID").includes(q.trim().toLocaleLowerCase("id-ID"));
+    return teks.toLocaleLowerCase("id-ID").includes(q.trim().toLocaleLowerCase("id-ID"));
 }

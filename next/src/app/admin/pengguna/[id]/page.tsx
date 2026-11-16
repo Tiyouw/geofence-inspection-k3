@@ -12,19 +12,25 @@ import { formatWaktu } from "@/lib/format";
 export const metadata: Metadata = { title: "Ubah pengguna" };
 
 export default async function UbahPengguna({ params }: PageProps<"/admin/pengguna/[id]">) {
-  const saya = await requireRole("admin");
-  const id = Number((await params).id);
-  if (!Number.isInteger(id) || id <= 0) notFound();
-  const [u, divisi] = await Promise.all([ambilPengguna(id), pilihanDivisi()]);
-  if (!u) notFound();
-  return (
-    <>
-      <PageHeader
-        title={u.name}
-        description={`${ROLE_LABEL[u.role]} · ${u.nip} · terakhir masuk ${u.lastLoginAt ? formatWaktu(u.lastLoginAt) : "belum pernah"}`}
-        actions={<TerbitkanSandi id={u.id} nama={u.name} />}
-      />
-      <FormPengguna aksi={ubahPengguna.bind(null, u.id)} nilai={u} divisi={divisi} baru={false} diriSendiri={u.id === saya.id} />
-    </>
-  );
+    const saya = await requireRole("admin");
+    const id = Number((await params).id);
+    if (!Number.isInteger(id) || id <= 0) notFound();
+    const [u, divisi] = await Promise.all([ambilPengguna(id), pilihanDivisi()]);
+    if (!u) notFound();
+    return (
+        <>
+            <PageHeader
+                title={u.name}
+                description={`${ROLE_LABEL[u.role]} · ${u.nip} · terakhir masuk ${u.lastLoginAt ? formatWaktu(u.lastLoginAt) : "belum pernah"}`}
+                actions={<TerbitkanSandi id={u.id} nama={u.name} />}
+            />
+            <FormPengguna
+                aksi={ubahPengguna.bind(null, u.id)}
+                nilai={u}
+                divisi={divisi}
+                baru={false}
+                diriSendiri={u.id === saya.id}
+            />
+        </>
+    );
 }

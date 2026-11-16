@@ -8,12 +8,15 @@ import { requireRole } from "@/lib/auth/guards";
 export const metadata: Metadata = { title: "Tambah petugas" };
 
 export default async function PenggunaBaru() {
-  await requireRole("admin");
-  const divisi = await pilihanDivisi();
-  return (
-    <>
-      <PageHeader title="Tambah petugas" description="Akun baru langsung bisa masuk di /masuk dengan NIP dan sandi ini." />
-      <FormPengguna aksi={buatPengguna} divisi={divisi} baru />
-    </>
-  );
+    await requireRole("admin");
+    const divisi = await pilihanDivisi();
+    return (
+        <>
+            <PageHeader
+                title="Tambah petugas"
+                description="Akun baru langsung bisa masuk di /masuk dengan NIP dan sandi ini."
+            />
+            <FormPengguna aksi={buatPengguna} divisi={divisi} baru />
+        </>
+    );
 }
