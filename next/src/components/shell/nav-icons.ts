@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   MapPin,
   QrCode,
+  ScanSearch,
   ShieldAlert,
   Users,
   type LucideIcon,
@@ -28,6 +29,7 @@ export const NAV_ICONS = {
   beranda: ClipboardCheck,
   pindai: QrCode,
   riwayat: History,
+  tinjauan: ScanSearch,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof NAV_ICONS;

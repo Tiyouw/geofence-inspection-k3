@@ -8,12 +8,16 @@ export type NavItem = { href: string; label: string; icon: NavIcon };
  */
 export const NAV_ADMIN: NavItem[] = [
   { href: "/admin", label: "Ringkasan", icon: "dashboard" },
+  { href: "/admin/tinjauan", label: "Tinjauan", icon: "tinjauan" },
+  { href: "/admin/temuan", label: "Temuan", icon: "temuan" },
   { href: "/admin/aset", label: "Aset & APAR", icon: "apar" },
   { href: "/admin/lokasi", label: "Lokasi", icon: "lokasi" },
-  { href: "/admin/checklist", label: "Checklist", icon: "checklist" },
   { href: "/admin/jadwal", label: "Jadwal", icon: "jadwal" },
-  { href: "/admin/tinjauan", label: "Tinjauan", icon: "temuan" },
+  { href: "/admin/checklist", label: "Checklist", icon: "checklist" },
   { href: "/admin/pengguna", label: "Pengguna", icon: "pengguna" },
+  { href: "/stiker", label: "Lembar stiker QR", icon: "pindai" },
+  { href: "/laporan", label: "Laporan bulanan", icon: "laporan" },
+  { href: "/admin/audit", label: "Jejak audit", icon: "riwayat" },
 ];
 
 export const NAV_PEMANTAU: NavItem[] = [

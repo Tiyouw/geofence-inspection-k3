@@ -92,8 +92,9 @@
   --brand-hover: #e5ac00;
   --success: #1f7a4d;
   --success-soft: #eff8f3;
-  --warning: #9a6200;
-  --warning-soft: #fff6dc;
+  /* Status "perlu ditinjau": oranye, bukan amber. Amber hanya untuk aksi utama (keputusan pemilik). */
+  --warning: #c2410c;
+  --warning-soft: #fff1e8;
   --danger: #b32136;
   --danger-soft: #fdeef0;
   --info: #1d4855;
@@ -140,8 +141,8 @@
   --brand-hover: #ffc626;
   --success: #4cc68a;
   --success-soft: #0f2e22;
-  --warning: #f5b700;
-  --warning-soft: #2e2608;
+  --warning: #fb923c;
+  --warning-soft: #33190a;
   --danger: #ef5b6f;
   --danger-soft: #34121a;
   --info: #7cc0d1;
