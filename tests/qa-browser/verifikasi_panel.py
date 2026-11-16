@@ -103,6 +103,43 @@ def terlihat(pg, selektor, harus=True, batas=4000):
     return False
 
 
+def dropdown_terlihat(pg):
+    return pg.evaluate("""() => { const e = document.querySelector('.fi-global-search-results-ctn');
+      return !!e && getComputedStyle(e).display !== 'none' && e.getClientRects().length > 0 }""")
+
+
+def tunggu_dropdown(pg, harus, batas=3000):
+    waktu = 0
+    while waktu <= batas:
+        if dropdown_terlihat(pg) == harus:
+            return True
+        pg.wait_for_timeout(100)
+        waktu += 100
+    return False
+
+
+def cek_dropdown_tanpa_ketikan(pg, peran):
+    """Keluhan pengguna: Ctrl+K harus langsung memunculkan dropdown, tidak menunggu ketikan."""
+    cek(f"{peran}: dropdown tidak terbuka sendiri saat halaman dimuat", not dropdown_terlihat(pg))
+    pg.keyboard.press("Control+k")
+    cek(f"{peran}: Ctrl+K langsung membuka dropdown tanpa mengetik", tunggu_dropdown(pg, True, 1500))
+    isi = pg.locator(".fi-global-search-results-ctn").inner_text().upper()
+    cek(f"{peran}: dropdown kosong-ketik memuat saran Halaman dan petunjuk", "HALAMAN" in isi and "DASBOR" in isi and "KETIK UNTUK MENCARI" in isi, isi[:120])
+    cek(f"{peran}: kolom cari terfokus", pg.evaluate("() => !!document.activeElement && document.activeElement.type === 'search'"))
+    pg.keyboard.press("Escape")
+    cek(f"{peran}: Esc menutup dropdown", tunggu_dropdown(pg, False, 2500))
+    pg.keyboard.press("Control+k")
+    cek(f"{peran}: Ctrl+K membuka lagi saat kolom masih terfokus", tunggu_dropdown(pg, True, 1500))
+    pg.keyboard.press("Escape"); tunggu_dropdown(pg, False, 2500)
+    # urutan cepat tanpa jeda tidak boleh membuka kembali dropdown yang baru ditutup (balapan $nextTick)
+    pg.keyboard.press("Control+k"); pg.keyboard.press("ArrowDown"); pg.keyboard.press("Escape")
+    cek(f"{peran}: Ctrl+K, panah, Esc tanpa jeda berakhir tertutup", tunggu_dropdown(pg, False, 3000))
+    pg.keyboard.press("Control+k"); tunggu_dropdown(pg, True, 1500)
+    pg.click("main h1")
+    cek(f"{peran}: klik di luar menutup dropdown", tunggu_dropdown(pg, False, 2500))
+    cek(f"{peran}: saran tanpa token QR", "PAL-K3-" not in pg.locator(".fi-global-search").inner_html())
+
+
 def teks_hasil(pg):
     loc = pg.locator(".fi-global-search-results-ctn")
     return loc.inner_text() if loc.count() else ""
@@ -218,9 +255,9 @@ def uji_admin(b):
     pg.click('.k3-sakelar-btn[aria-label="Tampilan titik per area"]')
     cek("sakelar kembali ke titik", terlihat(pg, ".k3-area-grid") and terlihat(pg, ".k3-peta-kanvas", harus=False))
 
-    pg.keyboard.press("Control+k"); pg.wait_for_timeout(300)
-    cek("Ctrl+K memfokuskan kolom cari", pg.evaluate("() => !!document.activeElement && document.activeElement.type === 'search'"))
-    cari(pg, "01D")
+    cek_dropdown_tanpa_ketikan(pg, "admin")
+    pg.keyboard.press("Control+k"); tunggu_dropdown(pg, True, 1500)
+    pg.keyboard.type("01D"); pg.wait_for_timeout(1200)
     t = teks_hasil(pg)
     cek('cari "01D": ada hasil Aset', "ASET" in t.upper() and "01D" in t, t[:160])
     cek("hasil pencarian tidak memuat token QR", "PAL-K3-" not in t)
@@ -236,6 +273,14 @@ def uji_admin(b):
     cari(pg, "stiker")
     t = teks_hasil(pg).upper()
     cek('cari "stiker": ada Halaman dan Tindakan untuk admin', "HALAMAN" in t and "TINDAKAN" in t, t[:160])
+    pg.fill("input[type=search]", "")
+    kembali = False
+    for _ in range(40):
+        if "Ketik untuk mencari" in teks_hasil(pg) and dropdown_terlihat(pg):
+            kembali = True
+            break
+        pg.wait_for_timeout(100)
+    cek("admin: mengosongkan kolom kembali ke saran dan tetap terbuka", kembali)
     cek("admin: tanpa galat JS", not galat, galat)
     pg.keyboard.press("Escape")
 
@@ -269,7 +314,11 @@ def uji_pemantau(b):
     cek("pemantau: tanpa grup Data Induk", "DATA INDUK" not in pg.locator(".fi-sidebar").inner_text().upper())
     cek("pemantau: sidebar ikon pada kunjungan pertama", lebar_sidebar(pg) <= 80)
     tangkap(pg, "pemantau-1440.png", full_page=True)
-    pg.keyboard.press("Control+k"); cari(pg, "stiker")
+    cek_dropdown_tanpa_ketikan(pg, "pemantau")
+    pg.keyboard.press("Control+k"); tunggu_dropdown(pg, True, 1500)
+    saran = teks_hasil(pg).upper()
+    cek("pemantau: saran kolom kosong tanpa Tindakan dan Data Induk", "TINDAKAN" not in saran and "TIPE OBJEK" not in saran and "DIVISI" not in saran, saran[:200])
+    pg.keyboard.type("stiker"); pg.wait_for_timeout(1200)
     t = teks_hasil(pg).upper()
     cek("pemantau: pencarian tanpa Tindakan dan Aset", "TINDAKAN" not in t and "ASET" not in t, t[:160])
     cari(pg, "01D")

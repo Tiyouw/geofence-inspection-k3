@@ -79,8 +79,55 @@ class PencarianPanel implements GlobalSearchProvider
         return mb_stripos($teks, $query) !== false;
     }
 
+    /**
+     * Isi dropdown saat kolom cari masih kosong (atau baru satu huruf): halaman yang boleh dibuka,
+     * tindakan (hanya admin), dan inspeksi terbaru. Tanpa ini Ctrl+K tidak menampilkan apa pun sampai
+     * pengguna mengetik. Hanya membaca; aturan wewenangnya sama dengan pencarian biasa.
+     */
+    public function saran(): GlobalSearchResults
+    {
+        $admin = auth()->user()?->isAdmin() ?? false;
+        $hasil = GlobalSearchResults::make();
+
+        foreach ([
+            'Halaman' => $this->halaman('', 12),
+            'Tindakan' => $admin ? $this->tindakan('') : collect(),
+            'Inspeksi terbaru' => $this->inspeksiTerbaru(),
+        ] as $nama => $isi) {
+            if ($isi->isNotEmpty()) {
+                $hasil->category($nama, $isi->all());
+            }
+        }
+
+        return $hasil;
+    }
+
     /** @return Collection<int, GlobalSearchResult> */
-    private function halaman(string $query): Collection
+    private function inspeksiTerbaru(): Collection
+    {
+        return Inspection::query()
+            ->with(['asset:id,kode,gedung,lantai', 'user:id,name'])
+            ->where('status', 'final')
+            ->orderByDesc('inspected_at')->orderByDesc('id')
+            ->limit(3)->get()
+            ->map(fn (Inspection $i) => $this->hasilInspeksi($i));
+    }
+
+    private function hasilInspeksi(Inspection $i): GlobalSearchResult
+    {
+        return new GlobalSearchResult(
+            title: 'Inspeksi '.($i->asset?->kode ?? '-'),
+            url: InspectionResource::getUrl('view', ['record' => $i]),
+            details: array_filter([
+                'Petugas' => $i->user?->name,
+                'Waktu' => $i->inspected_at?->translatedFormat('d M Y, H.i') ?? 'Draf',
+                'Kesimpulan' => $i->kesimpulan ? Inspection::KESIMPULAN[$i->kesimpulan] ?? null : null,
+            ]),
+        );
+    }
+
+    /** @return Collection<int, GlobalSearchResult> */
+    private function halaman(string $query, int $batas = self::BATAS_PER_KELOMPOK): Collection
     {
         $hasil = collect();
 
@@ -100,7 +147,7 @@ class PencarianPanel implements GlobalSearchProvider
             }
         }
 
-        return $hasil->take(self::BATAS_PER_KELOMPOK)->values();
+        return $hasil->take($batas)->values();
     }
 
     /** @return Collection<int, GlobalSearchResult> */
@@ -163,14 +210,6 @@ class PencarianPanel implements GlobalSearchProvider
             })
             ->orderByRaw('inspected_at is null')->orderByDesc('inspected_at')->orderByDesc('id')
             ->limit(self::BATAS_PER_KELOMPOK)->get()
-            ->map(fn (Inspection $i) => new GlobalSearchResult(
-                title: 'Inspeksi '.($i->asset?->kode ?? '-'),
-                url: InspectionResource::getUrl('view', ['record' => $i]),
-                details: array_filter([
-                    'Petugas' => $i->user?->name,
-                    'Waktu' => $i->inspected_at?->translatedFormat('d M Y, H.i') ?? 'Draf',
-                    'Kesimpulan' => $i->kesimpulan ? Inspection::KESIMPULAN[$i->kesimpulan] ?? null : null,
-                ]),
-            ));
+            ->map(fn (Inspection $i) => $this->hasilInspeksi($i));
     }
 }
