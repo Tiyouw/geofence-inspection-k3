@@ -1,26 +1,176 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-hover: var(--brand-hover);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Token desain PAL-K3. Warna merek dari aplikasi Laravel:
+ *   deep current #031e25 (panel gelap, primer), amber #f5b700 (aksen, tombol utama),
+ *   latar #eef2f3, teks #162b33, garis #cbd7db.
+ * Ubah warna di sini saja; komponen memakai nama semantik (primary, accent, brand, ...).
+ */
+:root {
+  --background: #f4f7f8;
+  --foreground: #162b33;
+  --card: #ffffff;
+  --card-foreground: #162b33;
+  --popover: #ffffff;
+  --popover-foreground: #162b33;
+  --primary: #031e25;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eef0;
+  --secondary-foreground: #1d4855;
+  --muted: #eef2f3;
+  --muted-foreground: #5f727a;
+  --accent: #e8eef0;
+  --accent-foreground: #031e25;
+  --destructive: #b32136;
+  --border: #dbe4e7;
+  --input: #cbd7db;
+  --ring: #c38c00;
+  --radius: 0.625rem;
+
+  /* Merek dan status domain */
+  --brand: #f5b700;
+  --brand-foreground: #031e25;
+  --brand-hover: #e5ac00;
+  --success: #1f7a4d;
+  --success-soft: #eff8f3;
+  --warning: #9a6200;
+  --warning-soft: #fff6dc;
+  --danger: #b32136;
+  --danger-soft: #fdeef0;
+  --info: #1d4855;
+  --info-soft: #e8f1f4;
+
+  --chart-1: #031e25;
+  --chart-2: #f5b700;
+  --chart-3: #2f7f8f;
+  --chart-4: #b32136;
+  --chart-5: #8aa4ab;
+
+  --sidebar: #031e25;
+  --sidebar-foreground: #d8e4e7;
+  --sidebar-primary: #f5b700;
+  --sidebar-primary-foreground: #031e25;
+  --sidebar-accent: #0d2f38;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1b3d46;
+  --sidebar-ring: #f5b700;
+}
+
+.dark {
+  --background: #071419;
+  --foreground: #e3ecee;
+  --card: #0c1f26;
+  --card-foreground: #e3ecee;
+  --popover: #0c1f26;
+  --popover-foreground: #e3ecee;
+  --primary: #f5b700;
+  --primary-foreground: #031e25;
+  --secondary: #143039;
+  --secondary-foreground: #e3ecee;
+  --muted: #11262d;
+  --muted-foreground: #93a9b0;
+  --accent: #143039;
+  --accent-foreground: #ffffff;
+  --destructive: #ef5b6f;
+  --border: #1b3741;
+  --input: #24444f;
+  --ring: #f5b700;
+
+  --brand: #f5b700;
+  --brand-foreground: #031e25;
+  --brand-hover: #ffc626;
+  --success: #4cc68a;
+  --success-soft: #0f2e22;
+  --warning: #f5b700;
+  --warning-soft: #2e2608;
+  --danger: #ef5b6f;
+  --danger-soft: #34121a;
+  --info: #7cc0d1;
+  --info-soft: #0f2a33;
+
+  --sidebar: #031216;
+  --sidebar-foreground: #d8e4e7;
+  --sidebar-primary: #f5b700;
+  --sidebar-primary-foreground: #031e25;
+  --sidebar-accent: #0d2f38;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1b3d46;
+  --sidebar-ring: #f5b700;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
