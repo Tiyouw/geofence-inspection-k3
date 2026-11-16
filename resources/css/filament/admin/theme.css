@@ -56,8 +56,9 @@
 
 /* Pencarian global: dropdown bergaya sama dengan kartu panel. */
 .fi-global-search-field { min-width:min(380px,100%); }
-.fi-global-search-results-ctn { border-radius:14px; box-shadow:0 20px 50px #031e2526; }
+.fi-global-search-results-ctn { border-radius:14px; box-shadow:0 20px 50px #031e2526; max-height:min(34rem,calc(100dvh - 5rem)); }
 @media(min-width:640px) { .fi-global-search-results-ctn { max-width:32rem; } }
+.k3-cari-petunjuk { padding:10px 16px; border-bottom:1px solid #edf0f1; color:#64767e; font-size:12px; }
 .fi-global-search-result-group h3 { font-size:10.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase!important; color:#64767e; }
 
 /* Dasbor */
