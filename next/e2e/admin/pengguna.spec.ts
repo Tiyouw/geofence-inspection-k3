@@ -9,8 +9,11 @@ async function cobaMasuk(browser: Browser, nip: string, sandi: string): Promise<
     await page.getByLabel(/NIP/).fill(nip);
     await page.getByLabel("Kata sandi", { exact: true }).fill(sandi);
     await page.getByRole("button", { name: /^Masuk/ }).click();
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(500);
+    // Berhasil: animasi deteksi peran lalu pindah halaman. Gagal: galat di formulir.
+    await Promise.race([
+        page.waitForURL((u) => !u.pathname.startsWith("/masuk"), { timeout: 15_000 }),
+        page.locator("#galat-masuk").waitFor({ timeout: 15_000 }),
+    ]);
     const url = new URL(page.url()).pathname;
     await ctx.close();
     return url;

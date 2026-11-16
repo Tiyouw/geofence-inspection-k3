@@ -33,7 +33,9 @@ export async function buatInspeksiAntre(gate: "perlu_review" | "jauh" | "gps_lem
     );
     const { id: assetId, kode } = aset.rows[0]!;
     const id = randomUUID();
-    const sekarang = new Date();
+    // Dimundurkan 45 hari: tetap di antrean (antrean tidak dibatasi periode), tetapi tidak menjadi
+    // "inspeksi final terbaru" yang dipakai uji lain (mis. e2e/pemantau) sebagai contoh lengkap.
+    const sekarang = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
     await c.query(
         `insert into inspections (id, asset_id, user_id, status, inspected_at, mulai_pada, durasi_detik, gps_lat, gps_lng, gps_accuracy,
        jarak_m, gate_status, qr_verified, kesimpulan, received_at)
