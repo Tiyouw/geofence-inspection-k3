@@ -90,6 +90,14 @@
   --brand: #f5b700;
   --brand-foreground: #031e25;
   --brand-hover: #e5ac00;
+  /*
+   * Warna status: TETAP di semua peran dan TIDAK PERNAH amber (amber = merek/aksi utama).
+   *   danger  merah   temuan berat, lewat tenggat, perlu tindakan
+   *   warning oranye  perlu ditinjau
+   *   info    biru    info, antrean
+   *   muted   abu     belum diperiksa
+   *   success hijau   layak, sesuai
+   */
   --success: #1f7a4d;
   --success-soft: #eff8f3;
   /* Status "perlu ditinjau": oranye, bukan amber. Amber hanya untuk aksi utama (keputusan pemilik). */
@@ -97,8 +105,8 @@
   --warning-soft: #fff1e8;
   --danger: #b32136;
   --danger-soft: #fdeef0;
-  --info: #1d4855;
-  --info-soft: #e8f1f4;
+  --info: #1d5fa8;
+  --info-soft: #e8f0fb;
 
   --chart-1: #031e25;
   --chart-2: #f5b700;
@@ -145,8 +153,8 @@
   --warning-soft: #33190a;
   --danger: #ef5b6f;
   --danger-soft: #34121a;
-  --info: #7cc0d1;
-  --info-soft: #0f2a33;
+  --info: #7fb2f0;
+  --info-soft: #0f2238;
 
   --sidebar: #031216;
   --sidebar-foreground: #d8e4e7;

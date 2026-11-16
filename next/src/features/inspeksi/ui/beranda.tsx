@@ -132,7 +132,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
                       data-testid="status-antrean"
                       className={cn(
                         "rounded-md px-2 py-1 text-xs",
-                        st.nada === "danger" ? "bg-danger-soft text-danger" : st.nada === "warning" ? "bg-warning-soft text-warning" : "bg-info-soft text-info",
+                        st.nada === "danger" ? "bg-danger-soft text-danger" : "bg-info-soft text-info",
                       )}
                     >
                       {st.label}

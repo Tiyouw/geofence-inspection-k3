@@ -11,10 +11,10 @@ export function IndikatorKoneksi() {
   const antre = data.drafts.filter((d) => d.status !== "draf").length;
   return (
     <span className="flex items-center gap-2 text-xs text-white/85" role="status" aria-live="polite">
-      {daring ? <Wifi className="size-4" aria-hidden /> : <CloudOff className="size-4 text-brand" aria-hidden />}
+      {daring ? <Wifi className="size-4" aria-hidden /> : <CloudOff className="size-4" aria-hidden />}
       <span className="hidden min-[380px]:inline">{daring ? "Daring" : "Luring"}</span>
       {antre > 0 && (
-        <span data-testid="lencana-antrean" className="rounded-full bg-brand px-2 py-0.5 font-semibold text-brand-foreground">
+        <span data-testid="lencana-antrean" className="rounded-full bg-info px-2 py-0.5 font-semibold text-white">
           {daring ? `${antre} dalam antrean` : `${antre} menunggu sinyal`}
         </span>
       )}
