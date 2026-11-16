@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
   },
+  /** Pintu panel lama (Filament) diganti satu pintu /masuk (ARCHITECTURE K-01). Dijalankan sebelum proxy. */
+  async redirects() {
+    return [{ source: "/admin/login", destination: "/masuk", permanent: false }];
+  },
   async headers() {
     return [
       {
