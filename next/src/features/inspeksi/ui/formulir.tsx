@@ -110,10 +110,10 @@ function Terkirim({ id }: { id: string }) {
 function AksiLanjut() {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Button asChild variant="brand" size="lg" className="h-12">
+      <Button asChild variant="brand" size="lg" className="h-14 text-base">
         <a href="/petugas/pindai">Pindai berikutnya</a>
       </Button>
-      <Button asChild variant="outline" size="lg" className="h-12">
+      <Button asChild variant="outline" size="lg" className="h-14 text-base">
         <a href="/petugas">Ke beranda</a>
       </Button>
     </div>
@@ -221,7 +221,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   const st = statusAntrean(draf, data.ops, data.fotoPerInspeksi[draf.inspectionId], daring);
 
   return (
-    <div className={cn("space-y-5", bisaUbah && "pb-20")}>
+    <div className={cn("space-y-5", bisaUbah && "pb-24")}>
       <div>
         <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           {aset.tipe}
@@ -238,7 +238,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
       {draf.status !== "draf" && (
         <div
           data-testid="status-kirim"
-          className={cn("space-y-3 rounded-2xl p-4", st.perluTindakan ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning")}
+          className={cn("space-y-3 rounded-2xl p-4", st.perluTindakan ? "bg-danger-soft text-danger" : "bg-info-soft text-info")}
         >
           <p className="font-semibold">
             {st.perluTindakan ? "Perlu tindakan" : "Masuk antrean, akan dikirim otomatis saat ada sinyal"}
@@ -406,7 +406,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
                 berubah();
               }}
               className={cn(
-                "rounded-xl border p-3 text-left text-sm font-medium",
+                "min-h-14 rounded-xl border p-3 text-left text-base font-medium",
                 draf.kesimpulan === k ? "border-primary bg-primary text-primary-foreground" : "bg-card",
               )}
             >
@@ -459,7 +459,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
             <p className="flex-1 text-sm" data-testid="penghitung">
               Pemeriksaan terisi <b>{terisi}</b> / {items.length}
             </p>
-            <Button variant="brand" size="lg" className="h-11 px-6" onClick={() => void kirim()} disabled={mengirim}>
+            <Button variant="brand" size="lg" className="h-14 px-8 text-base" onClick={() => void kirim()} disabled={mengirim}>
               {mengirim ? "Menyimpan…" : "Kirim"}
             </Button>
           </div>
@@ -503,7 +503,7 @@ function IsianButir({
               disabled={!bisaUbah}
               onClick={() => onJawab({ nilai: p.nilai })}
               className={cn(
-                "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium",
+                "min-h-14 rounded-xl border px-3 py-2 text-base font-medium",
                 aktif ? (p.buruk ? "border-danger bg-danger text-white" : "border-success bg-success text-white") : "bg-card",
               )}
             >

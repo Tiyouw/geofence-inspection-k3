@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 const TONES = {
   default: "",
   success: "border-l-4 border-l-success",
-  warning: "border-l-4 border-l-brand",
+  warning: "border-l-4 border-l-warning",
   danger: "border-l-4 border-l-danger",
 } as const;
 

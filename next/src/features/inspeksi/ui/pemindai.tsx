@@ -122,7 +122,7 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
       </div>
 
       {!aman && (
-        <p role="alert" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
+        <p role="alert" className="rounded-lg bg-info-soft p-3 text-sm text-info">
           Kamera hanya bisa dipakai lewat sambungan aman (HTTPS). Ketik kode cadangan di bawah.
         </p>
       )}
