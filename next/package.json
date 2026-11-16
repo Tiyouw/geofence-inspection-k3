@@ -15,12 +15,14 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed/index.ts",
     "db:studio": "drizzle-kit studio",
+    "migrasi": "tsx scripts/migrate-from-laravel.ts",
     "format": "prettier --write .",
     "build:sw": "node scripts/build-sw.mjs",
     "predev": "node scripts/build-sw.mjs",
     "prebuild": "node scripts/build-sw.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@vercel/blob": "^2.9.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

@@ -28,6 +28,10 @@ describe("canAccessPath", () => {
     expect(canAccessPath("inspektur", "/laporan")).toBe(false);
   });
 
+  it("cron Vercel lolos proxy (Route Handler memeriksa CRON_SECRET sendiri)", () => {
+    expect(isPublicPath("/api/cron/jadwal")).toBe(true);
+  });
+
   it("tidak tertipu awalan yang mirip", () => {
     expect(canAccessPath("inspektur", "/administrasi")).toBe(true);
     expect(canAccessPath("pemantau", "/admin-x")).toBe(true);

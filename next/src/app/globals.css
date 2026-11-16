@@ -183,3 +183,10 @@
     outline-offset: 2px;
   }
 }
+
+/* Area Pemantau (hanya lihat): bilah samping slate gelap, beda dari teal-navy admin. */
+[data-area="pemantau"] {
+  --sidebar: #1e293b;
+  --sidebar-accent: #334155;
+  --sidebar-border: #334155;
+}
