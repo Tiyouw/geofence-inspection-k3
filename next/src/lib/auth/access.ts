@@ -16,7 +16,11 @@ export const AREA_ACCESS: { prefix: string; roles: Role[] }[] = [
 ];
 
 const PUBLIC_PATHS = ["/", "/masuk", "/offline"];
-const PUBLIC_PREFIXES = ["/api/auth", "/_next", "/icons", "/manifest.webmanifest", "/sw.js", "/favicon"];
+/**
+ * /api/* dilewatkan proxy: Route Handler memeriksa sesi sendiri dan membalas 401/403 JSON,
+ * bukan pengalihan HTML ke /masuk (antrean luring perlu membedakan "sesi habis").
+ */
+const PUBLIC_PREFIXES = ["/api/", "/_next", "/icons", "/manifest.webmanifest", "/sw.js", "/favicon"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
