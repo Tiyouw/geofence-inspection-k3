@@ -21,6 +21,7 @@
     "prebuild": "node scripts/build-sw.mjs"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@vercel/blob": "^2.9.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
