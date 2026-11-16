@@ -188,14 +188,21 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 
 ## 8. Lingkungan dan deploy
 
-- Proyek Vercel `pal-k3` (tim `tiyouws-projects`, Hobby), dideploy dari folder `next/`
-  dengan CLI (`vercel deploy`, pratinjau). Belum terhubung ke Git dan belum punya domain
-  produksi; `geofencinspection.tech` tetap di tc-vps sampai cut-over.
-- Variabel lingkungan diatur dengan `vercel env add`, tidak pernah ditulis ke repo:
-  `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (integrasi Neon), `BLOB_READ_WRITE_TOKEN`
-  (store Blob), `AUTH_SECRET`, `AUTH_TRUST_HOST`, `DEMO_MODE`, `DEMO_*_PASSWORD`.
-- Migrasi ke Neon dijalankan dari mesin pengembang: `vercel env pull` ke berkas sementara,
-  lalu `pnpm db:migrate && pnpm db:seed`.
+- Proyek Vercel `pal-k3` (tim `tiyouws-projects`, Hobby) terhubung ke Git (repo
+  `Tiyouw/pal-k3`, Root Directory `next`). Hanya `rewrite/next` yang dibangun, dan cabang itu
+  menjadi cabang produksi untuk `dev.geofencinspection.tech`. **Deploy = push ke `rewrite/next`**
+  (lewat PR). Jangan `vercel deploy` dari `next/`. `geofencinspection.tech` tetap di tc-vps
+  sampai cut-over.
+- Basis data: Neon `pal-k3-db` (region sin1, paket Free) lewat integrasi Marketplace,
+  tersambung ke Preview dan Production (`DATABASE_URL` pooled, `DATABASE_URL_UNPOOLED` langsung,
+  plus variabel `PG*`/`POSTGRES_*` bawaan integrasi).
+- Berkas: Blob store `pal-k3-foto` (privat, sin1) → `BLOB_READ_WRITE_TOKEN`.
+- Lainnya, diatur dengan `vercel env add` (sensitif, tidak pernah ditulis ke repo):
+  `AUTH_SECRET`, `AUTH_TRUST_HOST`, `DEMO_MODE`, opsional `DEMO_*_PASSWORD`.
+- Migrasi dan seed ke Neon dijalankan dari mesin pengembang:
+  `vercel env pull <berkas-sementara> --environment=preview`, muat berkas itu, lalu
+  `pnpm db:migrate && DEMO_MODE=true pnpm db:seed`. Variabel sensitif (mis. `DEMO_MODE`,
+  `AUTH_SECRET`) tertarik kosong, jadi set manual saat seed. Hapus berkas sementara sesudahnya.
 
 ## 9. Keputusan
 
