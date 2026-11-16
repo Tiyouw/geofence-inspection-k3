@@ -8,6 +8,11 @@ import type { AnswerType, GateStatus, IssueStatus, Kesimpulan, Severity } from "
 import { LABEL_KESIMPULAN } from "@/lib/domain/constants";
 import { cn } from "@/lib/utils";
 
+/**
+ * Warna status tetap (keputusan pemilik) dan tidak pernah amber merek:
+ * bahaya merah (temuan berat, lewat tenggat), tinjau oranye (perlu ditinjau),
+ * info biru, netral abu (belum diperiksa), sukses hijau (layak).
+ */
 export type Nada = "netral" | "sukses" | "waspada" | "bahaya" | "info";
 
 const NADA: Record<Nada, string> = {
@@ -38,6 +43,14 @@ export const GERBANG: Record<GateStatus, { label: string; nada: Nada }> = {
 
 export const NADA_KESIMPULAN: Record<Kesimpulan, Nada> = { layak: "sukses", layak_catatan: "waspada", tidak_layak: "bahaya" };
 export const NADA_TINGKAT: Record<Severity, Nada> = { berat: "bahaya", sedang: "waspada", ringan: "info" };
+
+export function LencanaHanyaLihat() {
+  return (
+    <Lencana nada="info" className="gap-1">
+      Hanya lihat
+    </Lencana>
+  );
+}
 export const LABEL_STATUS_TEMUAN: Record<IssueStatus, string> = { terbuka: "Terbuka", proses: "Proses", selesai: "Selesai" };
 export const NADA_STATUS_TEMUAN: Record<IssueStatus, Nada> = { terbuka: "bahaya", proses: "waspada", selesai: "sukses" };
 

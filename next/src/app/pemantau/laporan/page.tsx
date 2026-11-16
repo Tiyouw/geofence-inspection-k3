@@ -110,7 +110,7 @@ export default async function LaporanPage({ searchParams }: PageProps<"/pemantau
               hint="Layak · dengan catatan · tidak layak"
             />
             <StatCard label="Temuan berat terbuka" value={data.ringkas.beratTerbuka} tone="danger" hint={`${data.temuan.length} temuan belum selesai`} />
-            <StatCard label="Perlu tinjauan" value={data.ringkas.perluTinjauan} tone="warning" hint="Catatan posisi belum ditinjau Admin K3" />
+            <StatCard label="Perlu tinjauan" value={data.ringkas.perluTinjauan} hint="Catatan posisi belum ditinjau Admin K3" />
           </div>
 
           <section id="kartu" aria-labelledby="judul-rincian">

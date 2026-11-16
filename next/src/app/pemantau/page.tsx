@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Download, FileText, IdCard } from "lucide-react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,13 +16,39 @@ import { formatTanggal } from "@/lib/format";
 export const metadata: Metadata = { title: "Papan pantau" };
 
 /**
+ * Admin tidak melihat ringkasan manajemen (ACCEPTANCE J1, RedesainPanelTest): antrean
+ * keputusannya ada di /admin. Halaman ini hanya menunjuk ke tampilan baca dan laporan.
+ */
+function PapanAdmin() {
+  return (
+    <>
+      <PageHeader title="Papan pantau" description="Ringkasan manajemen ditujukan untuk Pemantau. Antrean keputusan Admin K3 ada di dasbor admin." />
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["/admin", "Dasbor admin"],
+          ["/pemantau/inspeksi", "Inspeksi dan foto bukti"],
+          ["/pemantau/temuan", "Temuan"],
+          ["/pemantau/laporan", "Laporan bulanan (PDF)"],
+        ].map(([href, label]) => (
+          <li key={href}>
+            <Link href={href!} className="block rounded-lg border bg-card p-4 text-sm font-medium hover:bg-muted">
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/**
  * Ringkasan untuk manajemen (SPEC §5, ACCEPTANCE J1-J4). Hanya baca: tidak ada
  * antrean keputusan dan tidak ada tombol tulis. Admin tidak melihat ringkasan ini
  * (dasbornya sendiri di /admin).
  */
 export default async function PemantauHome() {
   const user = await requireRole("admin", "pemantau");
-  if (user.role === "admin") redirect("/admin");
+  if (user.role === "admin") return <PapanAdmin />;
 
   const now = new Date();
   const p = await ambilPapanPantau(now);
@@ -53,8 +78,8 @@ export default async function PemantauHome() {
   return (
     <>
       <PageHeader
-        title={`Halo, ${user.name}`}
-        description={`${formatTanggal(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Periode ${bulan} ${p.periode.tahun} · Akses hanya baca`}
+        title="Papan pantau"
+        description={`Halo, ${user.name}. ${formatTanggal(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Periode ${bulan} ${p.periode.tahun} · Akses hanya baca`}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -94,7 +119,7 @@ export default async function PemantauHome() {
                             {r.kode} · {labelLokasi(r)}
                           </span>
                           {r.tanda.map((t) => (
-                            <Lencana key={t} nada={t === "Berat" ? "bahaya" : t === "Lewat tenggat" ? "waspada" : "netral"}>
+                            <Lencana key={t} nada={t === "Berat" ? "bahaya" : t === "Lewat tenggat" ? "bahaya" : "waspada"}>
                               {t}
                             </Lencana>
                           ))}
