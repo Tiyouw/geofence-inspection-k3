@@ -83,7 +83,11 @@ test.describe("pemantau", () => {
     await expect(page.getByRole("heading", { name: "Laporan bulanan" })).toBeVisible();
     await expect(page.getByLabel("Tahun")).toHaveValue(tahun);
     const tabel = page.getByRole("table", { name: "Rincian per unit" });
-    await expect(tabel.getByRole("row")).toHaveCount(36); // kepala + 35 APAR contoh
+    // Satu baris per unit (+ kepala), sama dengan angka di judul. Uji lain boleh menambah aset.
+    const judul = await page.getByRole("heading", { name: /Rincian per unit/ }).innerText();
+    const unit = Number(/\((\d+)\)/.exec(judul)![1]);
+    expect(unit).toBeGreaterThanOrEqual(35);
+    await expect(tabel.getByRole("row")).toHaveCount(unit + 1);
     await expect(tabel.getByText("Belum diperiksa").first()).toBeVisible();
 
     const unduhPms = page.getByRole("link", { name: "Lembar PMS (PDF)" });
@@ -120,7 +124,15 @@ test.describe("pemantau", () => {
     await expect(page.getByRole("heading", { name: "Temuan" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Daftar temuan" })).toContainText("Tekanan manometer: Kurang");
     await page.getByRole("link", { name: "Ringan" }).click();
-    await expect(page.getByText("Tidak ada temuan dengan saringan ini.")).toBeVisible();
+    await expect(page).toHaveURL(/tingkat=ringan/);
+    // Hanya temuan ringan yang tampil (uji Admin boleh menambah temuan ringan).
+    const tabel = page.getByRole("table", { name: "Daftar temuan" });
+    if (await tabel.count()) {
+      const tingkat = await tabel.locator("tbody tr td:nth-child(3)").allInnerTexts();
+      expect(tingkat.every((t) => t.trim() === "Ringan")).toBe(true);
+    } else {
+      await expect(page.getByText("Tidak ada temuan dengan saringan ini.")).toBeVisible();
+    }
     await tanpaKendaliTulis(page);
   });
 });
@@ -131,6 +143,10 @@ test("admin tidak melihat ringkasan manajemen tetapi bisa mengunduh laporan (J1)
   await expect(page.getByRole("heading", { name: "Papan pantau" })).toBeVisible();
   await expect(page.getByText("Ringkasan untuk manajemen")).toHaveCount(0);
   await harusPdf(await page.request.get(`/laporan/kartu/${asetId}`), /filename="Kartu-Kontrol-/);
+  // Menu Admin "Laporan bulanan" membuka halaman laporan dengan kerangka admin.
+  await page.goto("/laporan");
+  await expect(page.getByRole("heading", { name: "Laporan bulanan" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Menu utama" }).getByRole("link", { name: /Tinjauan/ })).toBeVisible();
 });
 
 test("inspektur ditolak di laporan dan papan pantau (B2)", async ({ page }) => {

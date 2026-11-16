@@ -3,6 +3,7 @@
  * Diterjemahkan dari app/Models/InspectionAnswer.php dan ChecklistItem.php.
  */
 import type { AnswerType, Severity } from "./constants";
+import { severityJawaban as severityInspeksi } from "./inspeksi";
 
 export type ButirPenilaian = {
   answerType: AnswerType;
@@ -13,28 +14,25 @@ export type ButirPenilaian = {
 
 export type NilaiJawaban = { nilai?: string | null; nilaiAngka?: number | null };
 
-/** ChecklistItem::severityUntukNilai: kunci severity_map, atau "tidak" untuk dua-nilai. */
-function severityUntukNilai(butir: ButirPenilaian, nilai: string | null | undefined): Severity | null {
-  if (nilai == null || nilai === "") return null;
-  const map = butir.severityMap ?? {};
-  if (Object.hasOwn(map, nilai)) return map[nilai]!;
-  if (nilai === "tidak") return butir.severityDefault ?? "sedang";
-  return null;
-}
-
 /**
- * Tingkat temuan, atau null bila jawaban ini bukan temuan (SPEC §3.4):
- * number < jumlah_baku → severity_default; text/date tidak pernah; select hanya
- * pilihan yang terdaftar di severity_map; dua-nilai bila "tidak".
+ * Tingkat temuan, atau null bila jawaban ini bukan temuan (SPEC §3.4). Satu sumber
+ * aturan: diteruskan ke severityJawaban milik lib/domain/inspeksi.ts (sesi Inspektur).
  */
-export function severityJawaban(butir: ButirPenilaian, j: NilaiJawaban): Severity | null {
-  if (butir.answerType === "number") {
-    const baku = butir.jumlahBaku;
-    if (baku != null && j.nilaiAngka != null && j.nilaiAngka < baku) return butir.severityDefault ?? "sedang";
-    return null;
-  }
-  if (butir.answerType === "text" || butir.answerType === "date") return null;
-  return severityUntukNilai(butir, j.nilai);
+export function severityJawaban(butir: ButirPenilaian, j: NilaiJawaban | null | undefined): Severity | null {
+  return severityInspeksi(
+    {
+      id: 0,
+      label: "",
+      options: null,
+      satuan: null,
+      wajib: true,
+      answerType: butir.answerType,
+      severityMap: butir.severityMap ?? null,
+      severityDefault: butir.severityDefault ?? "sedang",
+      jumlahBaku: butir.jumlahBaku ?? null,
+    },
+    j ? { checklistItemId: 0, nilai: j.nilai, nilaiAngka: j.nilaiAngka } : undefined,
+  );
 }
 
 export const SIMBOL = {
@@ -67,9 +65,5 @@ export function simbolJawaban(butir: ButirPenilaian, j: NilaiJawaban | null | un
   }
 }
 
-/** Tindakan baku per tingkat, dicetak bila `tindak_lanjut` kosong (IssueGenerator::TINDAKAN). */
-export const TINDAKAN_BAKU: Record<Severity, string> = {
-  berat: "Tabung diturunkan dari layanan, diganti unit cadangan",
-  sedang: "Dijadwalkan perbaikan dalam tenggat yang ditetapkan",
-  ringan: "Dibenahi pada kunjungan berikutnya",
-};
+/** Tindakan baku per tingkat (IssueGenerator::TINDAKAN), satu sumber di inspeksi.ts. */
+export { TINDAKAN_BAKU } from "./inspeksi";

@@ -6,24 +6,13 @@
  */
 import type { ScheduleStatus } from "./constants";
 
-/** "2026-10-17" → "2026-10-01" */
-export function periodeDari(tanggal: string): string {
-  return `${tanggal.slice(0, 7)}-01`;
-}
+/** periodeDari dan jatuhTempo (min(periode + n − 1, akhir bulan), §9 #19) dari inspeksi.ts. */
+export { jatuhTempo, periodeDari } from "./inspeksi";
 
 /** Jumlah hari dalam bulan periode "YYYY-MM-01". */
 export function hariDalamBulan(periode: string): number {
   const [y, m] = periode.split("-").map(Number) as [number, number];
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
-}
-
-/**
- * jatuh_tempo = periode + (periode_hari − 1) hari, dibatasi akhir bulan
- * (SPEC §9 #19: Februari tidak boleh jatuh di Maret).
- */
-export function jatuhTempo(periode: string, periodeHari: number): string {
-  const hari = Math.max(1, Math.min(periodeHari, hariDalamBulan(periode)));
-  return `${periode.slice(0, 8)}${String(hari).padStart(2, "0")}`;
 }
 
 /**
