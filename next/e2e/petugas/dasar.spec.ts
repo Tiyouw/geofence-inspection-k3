@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { masuk } from "./helpers";
+import { masuk } from "../helpers";
 
 test("inspektur masuk ke beranda petugas di ponsel", async ({ page }) => {
   await masuk(page, "inspektur");

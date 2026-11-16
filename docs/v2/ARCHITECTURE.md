@@ -217,3 +217,33 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 | K-07 | Foto di Blob privat, disajikan rute yang memeriksa sesi | SPEC §3.6, §9 #1-2 |
 | K-08 | Pembatas percobaan masuk memakai `audit_logs` | Tanpa layanan tambahan (Redis) di Hobby |
 | K-09 | Id integer identity (bukan bigserial) untuk tabel non-perangkat | Setara, gaya Postgres modern; tabel perangkat tetap UUID sesuai SPEC |
+
+## 10. PWA Inspektur (luring)
+
+Implementasi SPEC §3 dan §7. Satu jalur kode untuk daring dan luring: semua isian ditulis
+ke IndexedDB dulu, lalu dikirim lewat outbox.
+
+| Bagian | Berkas |
+|---|---|
+| Aturan bersama (klien + peladen) | `src/lib/domain/inspeksi.ts`: validasi jawaban, severity, kalimat temuan, usulan kesimpulan, `periksaKirim`, waktu resmi, jatuh tempo, tenggat temuan, `ambilToken` |
+| IndexedDB per akun `pal-k3:{userId}` | `features/inspeksi/client/db.ts` (store `meta`, `drafts`, `photos`, `outbox`, `sent`); DB global `pal-k3` menyimpan akun aktif untuk service worker |
+| Aksi perangkat | `client/aksi.ts`: pindai (cocok HMAC), jawaban, GPS terbaik, foto, kirim, buang, buka kembali, `sinkronJam`, `segarkanPaket` |
+| Antrean | `client/outbox.ts`: FIFO per inspeksi, paralel 2, `Idempotency-Key = opId`, backoff 2 s → 5 menit + jitter, `Retry-After`, 401 berhenti, 4xx lain "perlu tindakan" |
+| Pemicu | `client/sinkron.ts`: `online`, kembali terlihat, setelah tulis, timer, Background Sync `outbox`; Web Lock `pal-k3-outbox` dibagi dengan SW |
+| Service worker | `features/inspeksi/sw/index.ts` → dibundel ke `public/sw.js` oleh `scripts/build-sw.mjs` (otomatis `predev`/`prebuild`; `public/sw.js` tidak di-commit) |
+| Peladen | `features/inspeksi/server/`: `bundle.ts` (paket kerja, hash HMAC token dengan kunci acak per unduhan), `inspeksi.ts` (start, foto, finalisasi berkunci, buang), `idempotency.ts` (`sync_receipts`), `http.ts` (401/403 JSON) |
+| API | `GET /api/time`, `GET /api/field/bundle`, `POST /api/inspections/start`, `PUT/DELETE /api/inspections/{id}/photos/{photoId}`, `POST /api/inspections/{id}/finalize`, `DELETE /api/inspections/{id}` |
+| Halaman | `/petugas` (beranda), `/petugas/pindai[?token=]`, `/petugas/isi?id=` (satu cangkang untuk semua draf), `/petugas/riwayat`, `/i/{token}` |
+
+Catatan:
+- Draf dibuat di perangkat (UUIDv7). Operasi `start` membuat baris draf di peladen; draf peladen
+  lama milik inspektur yang sama untuk aset yang sama diganti (perangkat sumber kebenaran).
+- Peladen tidak menyimpan jawaban sebelum `finalize`; semua aturan §3.7 dijalankan ulang di sana.
+- Navigasi antarhalaman lapangan memakai `<a>`/`location.assign` (navigasi penuh), supaya
+  service worker bisa melayani salinan halaman saat luring.
+- Uji: `src/features/inspeksi/client/__tests__` (Vitest + fake-indexeddb), `e2e/petugas/`
+  (Playwright, ponsel). Skenario luring butuh service worker, jadi hanya jalan pada build
+  produksi: `pnpm build && pnpm start --port 3200` lalu
+  `E2E_BASE_URL=http://localhost:3200 E2E_SW=1 pnpm test:e2e` (CI otomatis).
+- Belum: kedaluwarsa draf (SPEC §9 #14), penandaan "waktu perlu dicek" dan "aset nonaktif saat
+  diterima" untuk antrean tinjauan (kolomnya ada di sisi Admin), ekspor antrean JSON.

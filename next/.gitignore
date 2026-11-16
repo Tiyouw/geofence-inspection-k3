@@ -49,3 +49,6 @@ next-env.d.ts
 
 # foto lokal (dev/CI tanpa Vercel Blob)
 /.data/
+
+# service worker hasil bundel (scripts/build-sw.mjs)
+/public/sw.js
