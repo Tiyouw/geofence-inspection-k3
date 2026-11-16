@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -50,17 +49,16 @@ export function FormAset({
   terakhirDicekLabel?: string;
 }) {
   const router = useRouter();
-  const { state, onSubmit, menunggu } = useFormAksi(aksi);
+  const { state, onSubmit, menunggu } = useFormAksi(aksi, {
+    setelahBerhasil: (r) => {
+      if (r.ok && r.data && "id" in r.data) router.push(`/admin/aset/${r.data.id}`);
+    },
+  });
   const [lokasiTipe, setLokasiTipe] = useState<LokasiTipe>(nilai.lokasiTipe ?? "dalam_gedung");
   const [lat, setLat] = useState(nilai.lat != null ? String(nilai.lat) : "");
   const [lng, setLng] = useState(nilai.lng != null ? String(nilai.lng) : "");
   const [radius, setRadius] = useState(nilai.radiusM != null ? String(nilai.radiusM) : "");
 
-  useEffect(() => {
-    if (!state?.ok) return;
-    toast.success(state.pesan ?? "Tersimpan.");
-    if (state.data && "id" in state.data) router.push(`/admin/aset/${state.data.id}`);
-  }, [state, router]);
 
   const g = (k: string) => (state && !state.ok ? state.galat?.[k] : undefined);
   const inv = (k: string) => (g(k) ? { "aria-invalid": true, "aria-describedby": `${k}-galat` } : {});

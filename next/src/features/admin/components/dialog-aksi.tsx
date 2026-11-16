@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,16 +45,9 @@ export function DialogAksi({
   children: ReactNode;
 }) {
   const [buka, setBuka] = useState(false);
-  const { state, onSubmit, menunggu } = useFormAksi(aksi);
+  const { state, onSubmit, menunggu } = useFormAksi(aksi, { setelahBerhasil: () => setBuka(false) });
   const idGalat = useId();
 
-  useEffect(() => {
-    if (!state) return;
-    if (state.ok) {
-      toast.success(state.pesan ?? "Tersimpan.");
-      setBuka(false);
-    }
-  }, [state]);
 
   const galat = state && !state.ok ? Object.values(state.galat ?? {}).flat() : [];
 
