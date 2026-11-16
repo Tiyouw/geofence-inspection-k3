@@ -7,6 +7,14 @@ import type { NextConfig } from "next";
  */
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    /*
+     * Cache Turbopack untuk `next build` (dipulihkan Vercel antar-deploy) tidak membatalkan
+     * keluaran @tailwindcss/turbopack saat token di globals.css berubah: dev.geofencinspection.tech
+     * menyajikan --warning lama setelah PR #7. Build dingin sedikit lebih lambat, CSS selalu benar.
+     */
+    turbopackFileSystemCacheForBuild: false,
+  },
   turbopack: {
     rules: {
       "*.css": {
