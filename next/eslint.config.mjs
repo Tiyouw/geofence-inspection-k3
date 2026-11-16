@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Service worker hasil bundel (sumbernya src/features/inspeksi/sw).
+    "public/sw.js",
   ]),
 ]);
 

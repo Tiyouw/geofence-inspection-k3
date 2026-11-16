@@ -15,7 +15,10 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed/index.ts",
     "db:studio": "drizzle-kit studio",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:sw": "node scripts/build-sw.mjs",
+    "predev": "node scripts/build-sw.mjs",
+    "prebuild": "node scripts/build-sw.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^2.9.0",
