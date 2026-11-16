@@ -30,6 +30,7 @@ export type FilterInspeksi = {
   gate?: GateStatus;
   kesimpulan?: Kesimpulan;
   inspektur?: number;
+  aset?: number;
   durasiTakWajar?: boolean;
 };
 
@@ -41,11 +42,13 @@ export function parseFilterInspeksi(sp: Record<string, string | string[] | undef
   const gate = satu(sp.gate);
   const kes = satu(sp.kesimpulan);
   const insp = Number(satu(sp.inspektur));
+  const aset = Number(satu(sp.aset));
   return {
     tab: tab && (TAB_INSPEKSI as readonly string[]).includes(tab) ? (tab as TabInspeksi) : adaAntrean ? "antre" : "semua",
     gate: gate && (GATE_STATUSES as readonly string[]).includes(gate) ? (gate as GateStatus) : undefined,
     kesimpulan: kes && (KESIMPULAN as readonly string[]).includes(kes) ? (kes as Kesimpulan) : undefined,
     inspektur: Number.isInteger(insp) && insp > 0 ? insp : undefined,
+    aset: Number.isInteger(aset) && aset > 0 ? aset : undefined,
     durasiTakWajar: sp.durasi === "1",
   };
 }
@@ -71,6 +74,7 @@ export async function daftarInspeksi(f: FilterInspeksi, halaman = 1) {
     f.gate ? eq(inspections.gateStatus, f.gate) : undefined,
     f.kesimpulan ? eq(inspections.kesimpulan, f.kesimpulan) : undefined,
     f.inspektur ? eq(inspections.userId, f.inspektur) : undefined,
+    f.aset ? eq(inspections.assetId, f.aset) : undefined,
     f.durasiTakWajar ? lt(inspections.durasiDetik, DURASI_WAJAR_DETIK) : undefined,
   );
   const peninjau = alias(users, "peninjau");

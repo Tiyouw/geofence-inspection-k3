@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { HasilAksi } from "../server/aksi";
+import { useFormAksi } from "./use-form-aksi";
 
 type Aksi = (prev: unknown, fd: FormData) => Promise<HasilAksi<unknown>>;
 
@@ -45,7 +46,7 @@ export function DialogAksi({
   children: ReactNode;
 }) {
   const [buka, setBuka] = useState(false);
-  const [state, kirim, menunggu] = useActionState(aksi, null);
+  const { state, onSubmit, menunggu } = useFormAksi(aksi);
   const idGalat = useId();
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function DialogAksi({
         </Button>
       </DialogTrigger>
       <DialogContent showCloseButton={false}>
-        <form action={kirim} className="flex flex-col gap-4" aria-describedby={galat.length ? idGalat : undefined}>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-describedby={galat.length ? idGalat : undefined}>
           <DialogHeader>
             <DialogTitle>{judul}</DialogTitle>
             {deskripsi && <DialogDescription>{deskripsi}</DialogDescription>}
