@@ -5,9 +5,10 @@
  * tercetak, dan supaya tampilannya sama dengan PDF dompdf aplikasi lama (SPEC §4.9).
  */
 import { join } from "node:path";
-import { Font, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Font, StyleSheet, Text, View, type Styles } from "@react-pdf/renderer";
+
+type Style = Styles[string];
 import type { ReactNode } from "react";
-import type { Style } from "@react-pdf/stylesheet";
 
 export const FONT = "DejaVu Sans";
 const DIR = join(process.cwd(), "src", "features", "laporan", "pdf", "fonts");

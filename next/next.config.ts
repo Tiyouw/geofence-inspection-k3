@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
      */
     turbopackFileSystemCacheForBuild: false,
   },
+  // PDF laporan (sesi Laporan): @react-pdf/renderer dijalankan apa adanya di Node, dan
+  // font DejaVu yang dibaca lewat fs ikut dibundel ke fungsi rute /laporan.
+  serverExternalPackages: ["@react-pdf/renderer"],
+  outputFileTracingIncludes: {
+    "/laporan/**": ["./src/features/laporan/pdf/fonts/*.ttf"],
+  },
   turbopack: {
     rules: {
       "*.css": {

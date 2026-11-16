@@ -180,6 +180,7 @@ export function DokumenRekap({
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {daftar.map((f, i) => (
                       <View key={i} style={{ width: "48%" }}>
+                        {/* eslint-disable-next-line jsx-a11y/alt-text -- Image react-pdf tidak punya atribut alt */}
                         <Image src={{ data: f.data, format: f.format }} style={{ height: 150, objectFit: "contain", backgroundColor: "#f5f5f5" }} />
                         <Text style={{ fontSize: 6.5, color: "#555", marginTop: 2 }}>{`Diunggah ${waktuDmyHm(f.diunggah)} WIB`}</Text>
                       </View>

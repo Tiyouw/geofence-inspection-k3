@@ -28,14 +28,13 @@ export const BUTIR: ButirLaporan[] = [
   grupUrut: (g as number) + 1,
   urut: i + 1,
   answerType: answerType as ButirLaporan["answerType"],
-  severityMap:
-    i === 0
+  severityMap: (i === 0
       ? { "Tidak penuh": "berat" }
       : i === 1
         ? { Kurang: "berat", Berlebih: "berat" }
         : i === 3
           ? { "Berkarat ringan": "ringan", "Berkarat berat": "sedang", Penyok: "sedang", "Harus diganti": "berat" }
-          : null,
+          : null) as ButirLaporan["severityMap"],
   severityDefault: (["berat", "berat", "sedang", "sedang", "sedang", "ringan", "berat", "sedang", "ringan", "ringan"] as const)[i]!,
   jumlahBaku: null,
 }));
