@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Ringkasan" };
 
 const WARNA_STATUS: Record<StatusTitik, string> = {
     layak: "success",
-    layak_catatan: "brand",
+    layak_catatan: "warning",
     tidak_layak: "danger",
     tanpa_kesimpulan: "info",
     belum: "muted-foreground",
@@ -107,14 +107,15 @@ export default async function AdminDasbor({ searchParams }: PageProps<"/admin">)
                             href={`/admin${qs({ tab: t === "berat" ? undefined : t })}`}
                             aria-current={t === tab ? "page" : undefined}
                             className={cn(
-                                "flex flex-col justify-between rounded-xl border bg-card p-4 hover:border-ring aria-[current=page]:border-brand aria-[current=page]:ring-2 aria-[current=page]:ring-brand/40",
+                                "flex flex-col justify-between rounded-xl border bg-card p-4 hover:border-ring aria-[current=page]:border-primary aria-[current=page]:ring-2 aria-[current=page]:ring-primary/25",
                             )}
                         >
                             <span className="text-xs font-medium text-muted-foreground">{LABEL_TAB[t]}</span>
                             <span
                                 className={cn(
                                     "mt-2 text-3xl font-semibold tabular-nums",
-                                    r.jumlah[t] > 0 && t !== "belum" && "text-danger",
+                                    r.jumlah[t] > 0 &&
+                                        (t === "posisi" ? "text-warning" : t !== "belum" && "text-danger"),
                                 )}
                             >
                                 {formatAngka(r.jumlah[t])}
@@ -124,7 +125,7 @@ export default async function AdminDasbor({ searchParams }: PageProps<"/admin">)
                 </nav>
             </div>
 
-            <Kartu judul={LABEL_TAB[tab]} className="mt-4">
+            <Kartu judul={`Perlu keputusan Anda · ${LABEL_TAB[tab]}`} className="mt-4">
                 {antrean.baris.length === 0 ? (
                     <Kosong>Tidak ada entri. Antrean ini sudah bersih.</Kosong>
                 ) : (

@@ -58,7 +58,7 @@ export default async function DetailInspeksi({ params }: PageProps<"/admin/tinja
             lng: i.gpsLng,
             judul: "Posisi inspektur",
             rincian: `akurasi ±${i.gpsAccuracy ?? "-"} m`,
-            warna: "brand",
+            warna: "info",
             cincin: true,
         });
 

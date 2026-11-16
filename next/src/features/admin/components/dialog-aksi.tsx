@@ -25,12 +25,12 @@ export function DialogAksi({
     judul,
     deskripsi,
     pemicu,
-    varianPemicu = "outline",
+    varianPemicu = "default",
     ukuranPemicu = "sm",
     aksi,
     tersembunyi,
     labelKirim = "Simpan",
-    varianKirim = "default",
+    varianKirim = "brand",
     children,
 }: {
     judul: string;
