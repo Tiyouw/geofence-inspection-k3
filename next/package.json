@@ -15,6 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed/index.ts",
     "db:studio": "drizzle-kit studio",
+    "migrasi": "tsx scripts/migrate-from-laravel.ts",
     "format": "prettier --write .",
     "build:sw": "node scripts/build-sw.mjs",
     "predev": "node scripts/build-sw.mjs",
