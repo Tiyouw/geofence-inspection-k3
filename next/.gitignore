@@ -46,3 +46,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# foto lokal (dev/CI tanpa Vercel Blob)
+/.data/

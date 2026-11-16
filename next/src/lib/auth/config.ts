@@ -8,7 +8,8 @@ import { canAccessPath, homeFor, isPublicPath } from "./access";
 
 export const authConfig = {
   pages: { signIn: "/masuk", error: "/masuk" },
-  session: { strategy: "jwt", maxAge: 60 * 60 * 12 },
+  // SPEC §6.2: sesi 120 menit; diperbarui saat aktif sehingga yang habis hanya sesi menganggur.
+  session: { strategy: "jwt", maxAge: 120 * 60, updateAge: 5 * 60 },
   trustHost: true,
   providers: [],
   callbacks: {

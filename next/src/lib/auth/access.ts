@@ -10,6 +10,9 @@ export const AREA_ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/pemantau", roles: ["admin", "pemantau"] },
   { prefix: "/petugas", roles: ["inspektur"] },
   { prefix: "/i", roles: ["inspektur"] }, // pintasan stiker QR: /i/{token}
+  // Lembar stiker memuat token QR: hanya admin (SPEC §1.4 / §9 celah #3, menunggu konfirmasi pemilik).
+  { prefix: "/stiker", roles: ["admin"] },
+  { prefix: "/laporan", roles: ["admin", "pemantau"] },
 ];
 
 const PUBLIC_PATHS = ["/", "/masuk", "/offline"];

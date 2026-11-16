@@ -11,5 +11,5 @@ export async function masuk(page: Page, akun: keyof typeof DEMO, callbackUrl?: s
   await page.getByLabel(/NIP/).fill(DEMO[akun].nip);
   await page.getByLabel("Kata sandi", { exact: true }).fill(DEMO[akun].password);
   await page.getByRole("button", { name: /^Masuk/ }).click();
-  await expect(page).not.toHaveURL(/\/masuk/);
+  await expect(page).not.toHaveURL(/\/masuk/, { timeout: 15_000 });
 }

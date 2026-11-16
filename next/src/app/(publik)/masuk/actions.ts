@@ -12,8 +12,8 @@ import { safeRedirect } from "@/lib/auth/access";
 export type MasukState = { error?: string; nip?: string };
 
 const schema = z.object({
-  nip: z.string().trim().min(1, "Isi NIP atau nama pengguna.").max(32),
-  password: z.string().min(1, "Isi kata sandi."),
+  nip: z.string().trim().min(1, "NIP wajib diisi.").max(32),
+  password: z.string().min(1, "Kata sandi wajib diisi."),
   callbackUrl: z.string().optional(),
 });
 
@@ -26,11 +26,12 @@ export async function masuk(_prev: MasukState, formData: FormData): Promise<Masu
     await signIn("credentials", { nip: parsed.data.nip, password: parsed.data.password, redirect: false });
   } catch (e) {
     if (e instanceof AuthError) {
-      const code = (e as AuthError & { code?: string }).code;
-      if (code === "throttled") {
-        return { error: "Terlalu banyak percobaan gagal. Coba lagi dalam 15 menit.", nip };
+      const code = (e as AuthError & { code?: string }).code ?? "";
+      if (code.startsWith("throttled:")) {
+        return { error: `Terlalu banyak percobaan. Coba lagi dalam ${code.slice(10)} detik.`, nip };
       }
-      return { error: "NIP atau kata sandi salah, atau akun tidak aktif.", nip };
+      // Pesan disatukan supaya tidak membocorkan apakah NIP terdaftar (SPEC §1.2).
+      return { error: "NIP atau kata sandi tidak cocok, atau akun sudah tidak aktif.", nip };
     }
     throw e;
   }

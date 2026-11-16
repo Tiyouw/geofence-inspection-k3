@@ -19,7 +19,6 @@ export default async function PetugasHome() {
     .from(schedules)
     .where(
       and(
-        eq(schedules.petugasId, user.id),
         eq(schedules.status, "belum"),
         eq(schedules.periode, sql`date_trunc('month', (now() at time zone 'Asia/Jakarta'))::date`),
       ),

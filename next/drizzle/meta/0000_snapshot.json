@@ -1,5 +1,5 @@
 {
-  "id": "d3c713fd-f507-4247-82ff-7a174f475bba",
+  "id": "619a09c5-2af8-42d1-bd8c-28d1c1cf4d9b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -129,23 +129,37 @@
           "primaryKey": false,
           "notNull": false
         },
-        "location_id": {
-          "name": "location_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "kode": {
           "name": "kode",
           "type": "varchar(32)",
           "primaryKey": false,
           "notNull": true
         },
+        "gedung": {
+          "name": "gedung",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lantai": {
+          "name": "lantai",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "lokasi_teks": {
           "name": "lokasi_teks",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "lokasi_tipe": {
+          "name": "lokasi_tipe",
+          "type": "lokasi_tipe",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'dalam_gedung'"
         },
         "lat": {
           "name": "lat",
@@ -165,12 +179,23 @@
           "primaryKey": false,
           "notNull": false
         },
+        "qr_token": {
+          "name": "qr_token",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qr_token_rotated_at": {
+          "name": "qr_token_rotated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "attributes": {
           "name": "attributes",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
+          "notNull": false
         },
         "tgl_expired": {
           "name": "tgl_expired",
@@ -249,11 +274,11 @@
           "method": "btree",
           "with": {}
         },
-        "assets_location_id_index": {
-          "name": "assets_location_id_index",
+        "assets_gedung_index": {
+          "name": "assets_gedung_index",
           "columns": [
             {
-              "expression": "location_id",
+              "expression": "gedung",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -291,23 +316,18 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
-        },
-        "assets_location_id_locations_id_fk": {
-          "name": "assets_location_id_locations_id_fk",
-          "tableFrom": "assets",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "assets_qrToken_unique": {
+          "name": "assets_qrToken_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "qr_token"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -353,7 +373,7 @@
         },
         "entitas_id": {
           "name": "entitas_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -378,6 +398,27 @@
         }
       },
       "indexes": {
+        "audit_logs_aksi_created_at_index": {
+          "name": "audit_logs_aksi_created_at_index",
+          "columns": [
+            {
+              "expression": "aksi",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "audit_logs_entitas_entitas_id_index": {
           "name": "audit_logs_entitas_entitas_id_index",
           "columns": [
@@ -389,21 +430,6 @@
             },
             {
               "expression": "entitas_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "audit_logs_created_at_index": {
-          "name": "audit_logs_created_at_index",
-          "columns": [
-            {
-              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -576,7 +602,8 @@
         },
         "answer_type": {
           "name": "answer_type",
-          "type": "text",
+          "type": "answer_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'kondisi'"
@@ -586,6 +613,20 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "severity_map": {
+          "name": "severity_map",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "severity_default": {
+          "name": "severity_default",
+          "type": "severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sedang'"
         },
         "jumlah_baku": {
           "name": "jumlah_baku",
@@ -608,19 +649,6 @@
         "keterangan": {
           "name": "keterangan",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "severity_default": {
-          "name": "severity_default",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'sedang'"
-        },
-        "severity_map": {
-          "name": "severity_map",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -677,7 +705,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -694,7 +722,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -733,7 +761,7 @@
         },
         "kode": {
           "name": "kode",
-          "type": "varchar(32)",
+          "type": "varchar(16)",
           "primaryKey": false,
           "notNull": false
         },
@@ -781,24 +809,14 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "inspection_answers_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
+          "default": "gen_random_uuid()"
         },
         "inspection_id": {
           "name": "inspection_id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -810,7 +828,7 @@
         },
         "nilai": {
           "name": "nilai",
-          "type": "varchar(64)",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -823,6 +841,12 @@
         "catatan": {
           "name": "catatan",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answered_at_device": {
+          "name": "answered_at_device",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -904,50 +928,66 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "inspection_photos_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
+          "default": "gen_random_uuid()"
         },
         "inspection_id": {
           "name": "inspection_id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "checklist_item_id": {
-          "name": "checklist_item_id",
+        "storage_key": {
+          "name": "storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_type": {
+          "name": "content_type",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'image/jpeg'"
+        },
+        "bytes": {
+          "name": "bytes",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "url": {
-          "name": "url",
-          "type": "text",
+        "width": {
+          "name": "width",
+          "type": "smallint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "pathname": {
-          "name": "pathname",
-          "type": "text",
+        "height": {
+          "name": "height",
+          "type": "smallint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "taken_at": {
-          "name": "taken_at",
+        "taken_at_device": {
+          "name": "taken_at_device",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         },
         "lat": {
           "name": "lat",
@@ -961,14 +1001,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "bytes": {
-          "name": "bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -1005,23 +1046,18 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "inspection_photos_checklist_item_id_checklist_items_id_fk": {
-          "name": "inspection_photos_checklist_item_id_checklist_items_id_fk",
-          "tableFrom": "inspection_photos",
-          "tableTo": "checklist_items",
-          "columnsFrom": [
-            "checklist_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "inspection_photos_storageKey_unique": {
+          "name": "inspection_photos_storageKey_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "storage_key"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1032,24 +1068,14 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "inspections_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
+          "default": "gen_random_uuid()"
         },
-        "client_id": {
-          "name": "client_id",
-          "type": "uuid",
+        "legacy_id": {
+          "name": "legacy_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -1065,9 +1091,29 @@
           "primaryKey": false,
           "notNull": true
         },
-        "qr_token_id": {
-          "name": "qr_token_id",
-          "type": "integer",
+        "status": {
+          "name": "status",
+          "type": "inspection_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draf'"
+        },
+        "scanned_at_device": {
+          "name": "scanned_at_device",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at_device": {
+          "name": "submitted_at_device",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -1089,11 +1135,18 @@
           "primaryKey": false,
           "notNull": false
         },
-        "device_time": {
-          "name": "device_time",
-          "type": "timestamp with time zone",
+        "clock_skew_s": {
+          "name": "clock_skew_s",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
+        },
+        "offline": {
+          "name": "offline",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "ua": {
           "name": "ua",
@@ -1119,11 +1172,25 @@
           "primaryKey": false,
           "notNull": false
         },
+        "gps_captured_at": {
+          "name": "gps_captured_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "jarak_m": {
           "name": "jarak_m",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
+        },
+        "gate_status": {
+          "name": "gate_status",
+          "type": "gate_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'tanpa_gps'"
         },
         "qr_verified": {
           "name": "qr_verified",
@@ -1132,12 +1199,18 @@
           "notNull": true,
           "default": false
         },
-        "gate_status": {
-          "name": "gate_status",
-          "type": "text",
+        "qr_verification": {
+          "name": "qr_verification",
+          "type": "varchar(16)",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'tanpa_gps'"
+          "notNull": false
+        },
+        "kesimpulan": {
+          "name": "kesimpulan",
+          "type": "kesimpulan",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         },
         "catatan": {
           "name": "catatan",
@@ -1147,19 +1220,6 @@
         },
         "rekomendasi": {
           "name": "rekomendasi",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "kesimpulan": {
-          "name": "kesimpulan",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1260,6 +1320,28 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "inspections_satu_draf": {
+          "name": "inspections_satu_draf",
+          "columns": [
+            {
+              "expression": "asset_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "status = 'draf'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1289,19 +1371,6 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
-        "inspections_qr_token_id_qr_tokens_id_fk": {
-          "name": "inspections_qr_token_id_qr_tokens_id_fk",
-          "tableFrom": "inspections",
-          "tableTo": "qr_tokens",
-          "columnsFrom": [
-            "qr_token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "inspections_ditinjau_oleh_users_id_fk": {
           "name": "inspections_ditinjau_oleh_users_id_fk",
           "tableFrom": "inspections",
@@ -1318,11 +1387,11 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "inspections_clientId_unique": {
-          "name": "inspections_clientId_unique",
+        "inspections_legacyId_unique": {
+          "name": "inspections_legacyId_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "client_id"
+            "legacy_id"
           ]
         }
       },
@@ -1330,8 +1399,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.issue_followups": {
-      "name": "issue_followups",
+    "public.issue_events": {
+      "name": "issue_events",
       "schema": "",
       "columns": {
         "id": {
@@ -1341,7 +1410,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "issue_followups_id_seq",
+            "name": "issue_events_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -1363,21 +1432,21 @@
           "primaryKey": false,
           "notNull": false
         },
-        "status_baru": {
-          "name": "status_baru",
-          "type": "text",
+        "aksi": {
+          "name": "aksi",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dari": {
+          "name": "dari",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
-        "catatan": {
-          "name": "catatan",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "foto_url": {
-          "name": "foto_url",
-          "type": "text",
+        "ke": {
+          "name": "ke",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -1390,8 +1459,8 @@
         }
       },
       "indexes": {
-        "issue_followups_issue_id_created_at_index": {
-          "name": "issue_followups_issue_id_created_at_index",
+        "issue_events_issue_id_created_at_index": {
+          "name": "issue_events_issue_id_created_at_index",
           "columns": [
             {
               "expression": "issue_id",
@@ -1413,9 +1482,9 @@
         }
       },
       "foreignKeys": {
-        "issue_followups_issue_id_issues_id_fk": {
-          "name": "issue_followups_issue_id_issues_id_fk",
-          "tableFrom": "issue_followups",
+        "issue_events_issue_id_issues_id_fk": {
+          "name": "issue_events_issue_id_issues_id_fk",
+          "tableFrom": "issue_events",
           "tableTo": "issues",
           "columnsFrom": [
             "issue_id"
@@ -1426,9 +1495,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "issue_followups_user_id_users_id_fk": {
-          "name": "issue_followups_user_id_users_id_fk",
-          "tableFrom": "issue_followups",
+        "issue_events_user_id_users_id_fk": {
+          "name": "issue_events_user_id_users_id_fk",
+          "tableFrom": "issue_events",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -1475,7 +1544,7 @@
         },
         "inspection_id": {
           "name": "inspection_id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -1493,14 +1562,16 @@
         },
         "severity": {
           "name": "severity",
-          "type": "text",
+          "type": "severity",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'sedang'"
         },
         "status": {
           "name": "status",
-          "type": "text",
+          "type": "issue_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'terbuka'"
@@ -1508,12 +1579,6 @@
         "tindak_lanjut": {
           "name": "tindak_lanjut",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "penanggung_jawab_id": {
-          "name": "penanggung_jawab_id",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -1526,6 +1591,12 @@
         "selesai_pada": {
           "name": "selesai_pada",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pic_user_id": {
+          "name": "pic_user_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -1628,12 +1699,12 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "issues_penanggung_jawab_id_users_id_fk": {
-          "name": "issues_penanggung_jawab_id_users_id_fk",
+        "issues_pic_user_id_users_id_fk": {
+          "name": "issues_pic_user_id_users_id_fk",
           "tableFrom": "issues",
           "tableTo": "users",
           "columnsFrom": [
-            "penanggung_jawab_id"
+            "pic_user_id"
           ],
           "columnsTo": [
             "id"
@@ -1644,204 +1715,6 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.locations": {
-      "name": "locations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "locations_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "gedung": {
-          "name": "gedung",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lantai": {
-          "name": "lantai",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lokasi_tipe": {
-          "name": "lokasi_tipe",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'dalam_gedung'"
-        },
-        "lat": {
-          "name": "lat",
-          "type": "numeric(10, 7)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lng": {
-          "name": "lng",
-          "type": "numeric(10, 7)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_m": {
-          "name": "radius_m",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "aktif": {
-          "name": "aktif",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "locations_gedung_lantai_unique": {
-          "name": "locations_gedung_lantai_unique",
-          "nullsNotDistinct": true,
-          "columns": [
-            "gedung",
-            "lantai"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.qr_tokens": {
-      "name": "qr_tokens",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "qr_tokens_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "asset_id": {
-          "name": "asset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "aktif": {
-          "name": "aktif",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "dicabut_pada": {
-          "name": "dicabut_pada",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "qr_tokens_satu_aktif_per_aset": {
-          "name": "qr_tokens_satu_aktif_per_aset",
-          "columns": [
-            {
-              "expression": "asset_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"qr_tokens\".\"aktif\"",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "qr_tokens_asset_id_assets_id_fk": {
-          "name": "qr_tokens_asset_id_assets_id_fk",
-          "tableFrom": "qr_tokens",
-          "tableTo": "assets",
-          "columnsFrom": [
-            "asset_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "qr_tokens_token_unique": {
-          "name": "qr_tokens_token_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1885,21 +1758,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "petugas_id": {
-          "name": "petugas_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "inspection_id": {
           "name": "inspection_id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
         "status": {
           "name": "status",
-          "type": "text",
+          "type": "schedule_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'belum'"
@@ -1977,19 +1845,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "schedules_petugas_id_users_id_fk": {
-          "name": "schedules_petugas_id_users_id_fk",
-          "tableFrom": "schedules",
-          "tableTo": "users",
-          "columnsFrom": [
-            "petugas_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "schedules_inspection_id_inspections_id_fk": {
           "name": "schedules_inspection_id_inspections_id_fk",
           "tableFrom": "schedules",
@@ -2001,6 +1856,76 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sync_receipts": {
+      "name": "sync_receipts",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "response_body": {
+          "name": "response_body",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sync_receipts_user_id_users_id_fk": {
+          "name": "sync_receipts_user_id_users_id_fk",
+          "tableFrom": "sync_receipts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -2031,15 +1956,15 @@
             "cycle": false
           }
         },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "nip": {
           "name": "nip",
           "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -2057,7 +1982,8 @@
         },
         "role": {
           "name": "role",
-          "type": "text",
+          "type": "role",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'inspektur'"
@@ -2080,6 +2006,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "is_demo": {
+          "name": "is_demo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "last_login_at": {
           "name": "last_login_at",
@@ -2162,7 +2095,96 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.answer_type": {
+      "name": "answer_type",
+      "schema": "public",
+      "values": [
+        "fungsi",
+        "kondisi",
+        "boolean",
+        "select",
+        "number",
+        "date",
+        "text"
+      ]
+    },
+    "public.gate_status": {
+      "name": "gate_status",
+      "schema": "public",
+      "values": [
+        "sesuai",
+        "perlu_review",
+        "jauh",
+        "gps_lemah",
+        "tanpa_gps",
+        "tidak_berlaku"
+      ]
+    },
+    "public.inspection_status": {
+      "name": "inspection_status",
+      "schema": "public",
+      "values": [
+        "draf",
+        "final"
+      ]
+    },
+    "public.issue_status": {
+      "name": "issue_status",
+      "schema": "public",
+      "values": [
+        "terbuka",
+        "proses",
+        "selesai"
+      ]
+    },
+    "public.kesimpulan": {
+      "name": "kesimpulan",
+      "schema": "public",
+      "values": [
+        "layak",
+        "layak_catatan",
+        "tidak_layak"
+      ]
+    },
+    "public.lokasi_tipe": {
+      "name": "lokasi_tipe",
+      "schema": "public",
+      "values": [
+        "dalam_gedung",
+        "bengkel",
+        "area_terbuka",
+        "kendaraan"
+      ]
+    },
+    "public.role": {
+      "name": "role",
+      "schema": "public",
+      "values": [
+        "admin",
+        "pemantau",
+        "inspektur"
+      ]
+    },
+    "public.schedule_status": {
+      "name": "schedule_status",
+      "schema": "public",
+      "values": [
+        "belum",
+        "selesai",
+        "telat"
+      ]
+    },
+    "public.severity": {
+      "name": "severity",
+      "schema": "public",
+      "values": [
+        "ringan",
+        "sedang",
+        "berat"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

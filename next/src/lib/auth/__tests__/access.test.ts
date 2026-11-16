@@ -21,6 +21,13 @@ describe("canAccessPath", () => {
     expect(canAccessPath("admin", "/i/PAL-K3-abc")).toBe(false);
   });
 
+  it("lembar stiker hanya admin; laporan admin dan pemantau", () => {
+    expect(canAccessPath("admin", "/stiker")).toBe(true);
+    expect(canAccessPath("pemantau", "/stiker")).toBe(false);
+    expect(canAccessPath("pemantau", "/laporan/pms")).toBe(true);
+    expect(canAccessPath("inspektur", "/laporan")).toBe(false);
+  });
+
   it("tidak tertipu awalan yang mirip", () => {
     expect(canAccessPath("inspektur", "/administrasi")).toBe(true);
     expect(canAccessPath("pemantau", "/admin-x")).toBe(true);

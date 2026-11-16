@@ -13,7 +13,7 @@ test("sandi salah ditolak dengan pesan", async ({ page }) => {
   await page.getByLabel(/NIP/).fill(`uji-${Date.now()}`);
   await page.getByLabel("Kata sandi", { exact: true }).fill("salah-sekali");
   await page.getByRole("button", { name: /^Masuk/ }).click();
-  await expect(page.locator("#galat-masuk")).toContainText("NIP atau kata sandi salah");
+  await expect(page.locator("#galat-masuk")).toContainText("NIP atau kata sandi tidak cocok");
   await expect(page).toHaveURL(/\/masuk/);
 });
 
@@ -47,7 +47,7 @@ test("keluar mengakhiri sesi", async ({ page }) => {
   await expect(page).toHaveURL(/\/masuk/);
 });
 
-test("lima percobaan gagal mengunci NIP itu sementara", async ({ page }) => {
+test("lima percobaan gagal mengunci NIP itu 60 detik", async ({ page }) => {
   const nip = `kunci-${Date.now()}`;
   await page.goto("/masuk");
   for (let i = 0; i < 6; i++) {
@@ -59,5 +59,5 @@ test("lima percobaan gagal mengunci NIP itu sementara", async ({ page }) => {
     ]);
     await expect(page.locator("#galat-masuk")).toBeVisible();
   }
-  await expect(page.locator("#galat-masuk")).toContainText("Terlalu banyak percobaan");
+  await expect(page.locator("#galat-masuk")).toContainText(/Terlalu banyak percobaan\. Coba lagi dalam \d+ detik\./);
 });

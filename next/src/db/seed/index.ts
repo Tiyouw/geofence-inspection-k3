@@ -17,7 +17,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as s from "../schema";
-import { buatTokenQr, labelLantai, tebakLokasiTipe } from "../../lib/domain/asset";
+import { buatTokenQr, tebakLokasiTipe } from "../../lib/domain/asset";
+import { hariIniJakarta } from "../../lib/format";
+import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
 import type { AnswerType, Role, Severity } from "../../lib/domain/constants";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL });
@@ -213,6 +215,7 @@ async function akunDemo(tx: Tx, div: Record<string, number>) {
       email: `${nip}@demo.pal.test`,
       role,
       jabatan: "Akun demonstrasi",
+      isDemo: true,
       divisionId: div[kodeDivisi],
       aktif: true,
       passwordHash: await hash(password),
@@ -243,32 +246,21 @@ function bacaCsv(teks: string): Record<string, string>[] {
   return isi.map((r) => Object.fromEntries(header!.map((h, i) => [h, r[i] ?? ""])));
 }
 
-/** 35 APAR contoh dari CSV. Token QR TIDAK ada di CSV: diterbitkan acak di sini. */
+/**
+ * 35 APAR contoh dari CSV. Token QR TIDAK ada di CSV: diterbitkan acak saat aset
+ * pertama kali dibuat, dan seed ulang tidak menggantinya (stiker tetap berlaku).
+ */
 async function apar(tx: Tx, aparId: number, divPip: number) {
   const rows = bacaCsv(readFileSync(join(import.meta.dirname, "apar.csv"), "utf8"));
-  const lokasiId = new Map<string, number>();
   for (const row of rows) {
-    const lantai = labelLantai(row.lantai);
-    const kunci = `${row.gedung}|${lantai ?? ""}`;
-    if (!lokasiId.has(kunci)) {
-      const lokasiTipe = tebakLokasiTipe(row.gedung!);
-      const [loc] = await tx
-        .insert(s.locations)
-        .values({ gedung: row.gedung!, lantai, lokasiTipe })
-        .onConflictDoUpdate({ target: [s.locations.gedung, s.locations.lantai], set: { lokasiTipe } })
-        .returning({ id: s.locations.id });
-      lokasiId.set(kunci, loc!.id);
-    }
-  }
-
-  for (const row of rows) {
-    const lantai = labelLantai(row.lantai);
     const values = {
       assetTypeId: aparId,
       divisionId: divPip,
-      locationId: lokasiId.get(`${row.gedung}|${lantai ?? ""}`)!,
       kode: row.kode!,
+      gedung: row.gedung!,
+      lantai: row.lantai!,
       lokasiTeks: row.lokasi_teks!,
+      lokasiTipe: tebakLokasiTipe(row.gedung!),
       lat: Number(row.lat),
       lng: Number(row.lng),
       // radius di CSV sama dengan radius jenis lokasinya: biarkan kosong (ikut kebijakan).
@@ -276,58 +268,72 @@ async function apar(tx: Tx, aparId: number, divPip: number) {
       attributes: { tipe: row.tipe, kapasitas_kg: Number(row.kapasitas_kg!.replace(",", ".")) },
       aktif: true,
     };
-    const [aset] = await tx
+    await tx
       .insert(s.assets)
-      .values(values)
-      .onConflictDoUpdate({ target: [s.assets.assetTypeId, s.assets.kode], set: values })
-      .returning({ id: s.assets.id });
-    await tx.insert(s.qrTokens).values({ assetId: aset!.id, token: buatTokenQr() }).onConflictDoNothing();
+      .values({ ...values, qrToken: buatTokenQr() })
+      .onConflictDoUpdate({ target: [s.assets.assetTypeId, s.assets.kode], set: values });
   }
-  console.log(`APAR contoh: ${rows.length} di ${lokasiId.size} lokasi`);
+  console.log(`APAR contoh: ${rows.length}`);
 }
 
-/** Jadwal bulan berjalan untuk semua APAR, dan beberapa inspeksi contoh oleh akun inspektur. */
+/** jatuh_tempo = min(periode + periode_hari - 1, akhir bulan) (SPEC §9 #19). */
+function jatuhTempo(periode: string, periodeHari: number): string {
+  const [y, m] = periode.split("-").map(Number) as [number, number];
+  const akhir = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${periode.slice(0, 8)}${String(Math.min(periodeHari, akhir)).padStart(2, "0")}`;
+}
+
+/**
+ * Jadwal bulan berjalan untuk semua APAR, dan beberapa inspeksi contoh oleh akun
+ * inspektur demo (atau 2001). Dilewati bila sudah ada inspeksi.
+ */
 async function contohOperasional(tx: Tx) {
   const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(s.inspections);
   if (n > 0) {
     console.log("Inspeksi sudah ada: contoh operasional dilewati.");
     return;
   }
-  const [inspektur] = await tx.select().from(s.users).where(eq(s.users.nip, "inspektur"));
-  const [inspekturContoh] = await tx.select().from(s.users).where(eq(s.users.nip, "2001"));
-  const petugasId = (inspektur ?? inspekturContoh)!.id;
+  const [petugasDemo] = await tx.select().from(s.users).where(eq(s.users.nip, "inspektur"));
+  const [petugasContoh] = await tx.select().from(s.users).where(eq(s.users.nip, "2001"));
+  const userId = (petugasDemo ?? petugasContoh)!.id;
   const semuaAset = await tx.select().from(s.assets).orderBy(s.assets.kode);
   const items = await tx
     .select({ id: s.checklistItems.id, answerType: s.checklistItems.answerType, options: s.checklistItems.options, label: s.checklistItems.label })
     .from(s.checklistItems)
     .orderBy(s.checklistItems.urut);
 
+  const contohFoto = new Uint8Array(readFileSync(join(import.meta.dirname, "../../../public/icons/icon-192.png")));
+  const periode = hariIniJakarta().slice(0, 8) + "01";
+  const tempo = jatuhTempo(periode, 30);
   const now = new Date();
-  const periode = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const akhirBulan = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const jatuhTempo = `${akhirBulan.getFullYear()}-${String(akhirBulan.getMonth() + 1).padStart(2, "0")}-${String(akhirBulan.getDate()).padStart(2, "0")}`;
 
   // Enam aset pertama sudah diperiksa; aset ke-3 punya temuan berat, ke-5 jauh dari titik.
   for (const [i, aset] of semuaAset.slice(0, 6).entries()) {
-    const t = new Date(now.getTime() - (6 - i) * 86400_000);
+    const t = new Date(now.getTime() - (6 - i) * 3600_000);
     const temuan = i === 2;
     const [ins] = await tx
       .insert(s.inspections)
       .values({
         assetId: aset.id,
-        userId: petugasId,
+        userId,
+        status: "final",
+        scannedAtDevice: new Date(t.getTime() - 180_000),
+        submittedAtDevice: t,
+        receivedAt: t,
         inspectedAt: t,
         mulaiPada: new Date(t.getTime() - 180_000),
         durasiDetik: 180,
         gpsLat: aset.lat,
         gpsLng: aset.lng,
         gpsAccuracy: 12,
+        gpsCapturedAt: t,
         jarakM: i === 4 ? 190 : 4,
         qrVerified: true,
+        qrVerification: "online",
         gateStatus: i === 4 ? "jauh" : "sesuai",
-        status: "final",
         kesimpulan: temuan ? "tidak_layak" : "layak",
         catatan: temuan ? "Jarum manometer di zona merah." : null,
+        rekomendasi: temuan ? "Isi ulang tabung, pasang unit cadangan." : null,
       })
       .returning();
     await tx.insert(s.inspectionAnswers).values(
@@ -342,22 +348,52 @@ async function contohOperasional(tx: Tx) {
             : "ok",
       })),
     );
+    // Satu foto contoh per inspeksi (gambar ikon, bukan foto asli), disimpan privat.
+    const fotoId = crypto.randomUUID();
+    const key = kunciFoto(ins!.id, fotoId, "png");
+    await simpanFoto(key, contohFoto, "image/png");
+    await tx.insert(s.inspectionPhotos).values({
+      id: fotoId,
+      inspectionId: ins!.id,
+      storageKey: key,
+      sha256: sha256Hex(contohFoto),
+      contentType: "image/png",
+      bytes: contohFoto.byteLength,
+      width: 192,
+      height: 192,
+      takenAtDevice: t,
+      lat: aset.lat,
+      lng: aset.lng,
+    });
     if (temuan) {
       const item = items.find((it) => it.label === "Tekanan manometer")!;
       const [issue] = await tx
         .insert(s.issues)
-        .values({ assetId: aset.id, inspectionId: ins!.id, checklistItemId: item.id, item: "Tekanan manometer kurang", severity: "berat", status: "proses", targetSelesai: jatuhTempo })
+        .values({
+          assetId: aset.id,
+          inspectionId: ins!.id,
+          checklistItemId: item.id,
+          item: "Tekanan manometer: Kurang",
+          severity: "berat",
+          status: "proses",
+          targetSelesai: hariIniJakarta(new Date(t.getTime() + 3 * 86400_000)),
+        })
         .returning();
-      await tx.insert(s.issueFollowups).values({ issueId: issue!.id, statusBaru: "proses", catatan: "Tabung diturunkan, diajukan isi ulang ke vendor." });
+      await tx.insert(s.issueEvents).values({
+        issueId: issue!.id,
+        aksi: "status",
+        dari: { status: "terbuka" },
+        ke: { status: "proses", catatan: "Tabung diturunkan, diajukan isi ulang ke vendor." },
+      });
     }
-    await tx.update(s.assets).set({ terakhirDicek: t.toISOString().slice(0, 10) }).where(eq(s.assets.id, aset.id));
+    await tx.update(s.assets).set({ terakhirDicek: hariIniJakarta(t) }).where(eq(s.assets.id, aset.id));
     await tx
       .insert(s.schedules)
-      .values({ assetId: aset.id, periode, jatuhTempo, petugasId, inspectionId: ins!.id, status: "selesai" })
+      .values({ assetId: aset.id, periode, jatuhTempo: tempo, inspectionId: ins!.id, status: "selesai" })
       .onConflictDoNothing();
   }
   for (const aset of semuaAset.slice(6)) {
-    await tx.insert(s.schedules).values({ assetId: aset.id, periode, jatuhTempo, petugasId, status: "belum" }).onConflictDoNothing();
+    await tx.insert(s.schedules).values({ assetId: aset.id, periode, jatuhTempo: tempo, status: "belum" }).onConflictDoNothing();
   }
   console.log(`Jadwal ${periode}: ${semuaAset.length}; inspeksi contoh: 6; temuan contoh: 1`);
 }
