@@ -259,6 +259,13 @@ function Legenda() {
             {item("border-info bg-info/15", "Area disetujui")}
             {item("border-dashed border-info", "Draf")}
             {item("border-danger bg-danger/15", "Area terbatas")}
+            <li className="flex items-center gap-1.5" data-testid="legenda-terpilih">
+                <span
+                    className="inline-block size-3 rounded-sm border-[2.5px] border-(--sorot-peta) bg-(--sorot-peta)/35 shadow-[0_0_0_1.5px_#fff,0_0_0_2.5px_rgb(0_0_0/0.25)]"
+                    aria-hidden
+                />
+                Terpilih
+            </li>
             <li className="flex items-center gap-1.5">
                 <span className="inline-block size-2.5 rounded-full bg-chart-3" aria-hidden />
                 Aset berarea
