@@ -34,6 +34,7 @@ export function Lencana({ nada = "netral", children, className }: { nada?: Nada;
 /** Label dan warna status gerbang (SPEC §3.5, Inspection.php:81-103). */
 export const GERBANG: Record<GateStatus, { label: string; nada: Nada }> = {
   sesuai: { label: "Lokasi sesuai", nada: "sukses" },
+  perlu_tinjauan: { label: "Perlu tinjauan", nada: "waspada" },
   perlu_review: { label: "Perlu ditinjau", nada: "waspada" },
   jauh: { label: "Jauh dari aset", nada: "bahaya" },
   gps_lemah: { label: "GPS lemah", nada: "info" },

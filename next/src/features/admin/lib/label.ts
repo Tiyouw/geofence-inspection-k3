@@ -12,6 +12,7 @@ export type Nada = "success" | "warning" | "danger" | "info" | "muted";
 /** Inspection.php:81-103. */
 export const LABEL_GERBANG: Record<GateStatus, { label: string; nada: Nada }> = {
     sesuai: { label: "Lokasi sesuai", nada: "success" },
+    perlu_tinjauan: { label: "Perlu tinjauan", nada: "warning" },
     perlu_review: { label: "Perlu ditinjau", nada: "warning" },
     jauh: { label: "Jauh dari aset", nada: "danger" },
     gps_lemah: { label: "GPS lemah", nada: "info" },

@@ -30,7 +30,7 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
     test("jadwal: label status dan ubah periode tipe", async ({ page }) => {
         await page.goto("/admin/jadwal");
         await expect(page.getByRole("cell", { name: /Terlaksana|Belum|Terlewat/ }).first()).toBeVisible();
-        const hidrant = page.getByRole("listitem").filter({ hasText: "Hydrant" });
+        const hidrant = page.getByRole("listitem").filter({ hasText: "Hydrant Pilar" });
         await hidrant.getByRole("button", { name: "Ubah" }).click();
         await page.getByLabel("Periode (hari)").fill("30");
         await page.getByRole("button", { name: "Simpan" }).click();
