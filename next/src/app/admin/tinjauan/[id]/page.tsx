@@ -12,6 +12,8 @@ import { Kartu, Lencana } from "@/features/admin/components/ui";
 import { LABEL_GERBANG } from "@/features/admin/lib/label";
 import { LABEL_SEVERITY, LABEL_STATUS_TEMUAN } from "@/features/admin/lib/temuan";
 import { detailInspeksi } from "@/features/admin/server/inspeksi";
+import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
+import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { requireRole } from "@/lib/auth/guards";
 import { radiusEfektif } from "@/lib/domain/asset";
 import { DURASI_WAJAR_DETIK, LABEL_KESIMPULAN } from "@/lib/domain/constants";
@@ -43,7 +45,7 @@ export default async function DetailInspeksi({ params }: PageProps<"/admin/tinja
     await requireRole("admin");
     const { id } = await params;
     if (!z.uuid().safeParse(id).success) notFound();
-    const i = await detailInspeksi(id);
+    const [i, perButir] = await Promise.all([detailInspeksi(id), fotoPerButir(id)]);
     if (!i) notFound();
 
     const g = LABEL_GERBANG[i.gateStatus];
@@ -128,6 +130,11 @@ export default async function DetailInspeksi({ params }: PageProps<"/admin/tinja
                             }))}
                         />
                     </Kartu>
+                    {perButir && (
+                        <Kartu judul="Foto per butir">
+                            <FotoPerButir data={perButir} />
+                        </Kartu>
+                    )}
                     {titik.length > 0 && (
                         <Kartu judul="Titik aset dan posisi inspektur">
                             <Peta titik={titik} tinggi={260} label="Peta posisi inspeksi" />

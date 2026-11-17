@@ -48,6 +48,7 @@ async function bacaSemua(db: DbAkun): Promise<DataLokal> {
   ]);
   const fotoPerInspeksi: DataLokal["fotoPerInspeksi"] = {};
   for (const f of fotos) {
+    if (f.sesi) continue; // jepretan kamera yang belum disimpan bukan bagian antrean
     const x = (fotoPerInspeksi[f.inspectionId] ??= { total: 0, terunggah: 0 });
     x.total++;
     if (f.uploaded) x.terunggah++;

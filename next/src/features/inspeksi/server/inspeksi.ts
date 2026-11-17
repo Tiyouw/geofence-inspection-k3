@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  areas,
   assets,
   assetTypes,
   auditLogs,
@@ -20,6 +21,7 @@ import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
 import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
+import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
 import {
   bangunTemuan,
   jatuhTempo,
@@ -34,6 +36,7 @@ import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
 import { GalatApi } from "./http";
+import { langkahTipeAset } from "./langkah";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -121,6 +124,16 @@ export async function mulai(user: SessionUser, input: z.infer<typeof startSchema
 
 /* ---------- foto ---------- */
 
+/** Tipe aset dan tanda area terbatas (`areas.restricted`) sebuah aset. */
+async function asetUntukFoto(q: Tx | typeof db, assetId: number) {
+  const [row] = await q
+    .select({ assetTypeId: assets.assetTypeId, terbatas: areas.restricted })
+    .from(assets)
+    .leftJoin(areas, eq(areas.id, assets.areaId))
+    .where(eq(assets.id, assetId));
+  return { assetTypeId: row!.assetTypeId, terbatas: row!.terbatas === true };
+}
+
 const TIPE_FOTO: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 export async function unggahFoto(
@@ -128,7 +141,17 @@ export async function unggahFoto(
   inspectionId: string,
   photoId: string,
   body: Uint8Array,
-  meta: { contentType: string; sha256: string | null; takenAt: string | null; lat: number | null; lng: number | null; width: number | null; height: number | null },
+  meta: {
+    contentType: string;
+    sha256: string | null;
+    takenAt: string | null;
+    lat: number | null;
+    lng: number | null;
+    akurasi: number | null;
+    langkah: string | null;
+    width: number | null;
+    height: number | null;
+  },
 ) {
   const ext = TIPE_FOTO[meta.contentType];
   if (!ext) {
@@ -150,11 +173,20 @@ export async function unggahFoto(
   }
   if (ins.status === "final") throw SUDAH_DIKIRIM();
 
+  // Kamera terpandu (PRD Aturan bukti 3-4): langkah harus milik tipe aset; area terbatas tanpa foto.
+  const { assetTypeId, terbatas } = await asetUntukFoto(db, ins.assetId);
+  if (terbatas) throw new GalatApi(422, "area_terbatas", "Aset di area terbatas tidak boleh difoto.");
+  const langkah = await langkahTipeAset(db, assetTypeId);
+  const langkahFoto = meta.langkah ? langkah.find((l) => l.kode === meta.langkah) : undefined;
+  if (meta.langkah && !langkahFoto) {
+    throw new GalatApi(422, "langkah_tidak_dikenal", "Langkah foto tidak dikenal. Perbarui data lalu ulangi kamera terpandu.");
+  }
+  const maks = Math.max(MAKS_FOTO, maksFotoInspeksi(langkah));
   const [{ n }] = (await db
     .select({ n: sql<number>`count(*)::int` })
     .from(inspectionPhotos)
     .where(eq(inspectionPhotos.inspectionId, inspectionId))) as [{ n: number }];
-  if (n >= MAKS_FOTO) throw new GalatApi(422, "foto_maks", `Foto paling banyak ${MAKS_FOTO}.`);
+  if (n >= maks) throw new GalatApi(422, "foto_maks", `Foto paling banyak ${maks}.`);
 
   const key = kunciFoto(inspectionId, photoId, ext);
   await simpanFoto(key, body, meta.contentType);
@@ -172,6 +204,8 @@ export async function unggahFoto(
       takenAtDevice: meta.takenAt ? new Date(meta.takenAt) : null,
       lat: meta.lat,
       lng: meta.lng,
+      gpsAccuracy: meta.akurasi === null ? null : Math.min(32767, Math.round(meta.akurasi)),
+      stepId: langkahFoto?.id ?? null,
     })
     .onConflictDoNothing();
   return { photoId, sha256: sha };
@@ -238,7 +272,9 @@ export const finalizeSchema = z.object({
       }),
     )
     .max(200),
-  photoIds: z.array(z.uuid()).max(MAKS_FOTO),
+  photoIds: z.array(z.uuid()).max(200),
+  /** Kamera terpandu: langkah tiap foto. Kiriman lama (sebelum kamera terpandu) tidak membawanya. */
+  photos: z.array(z.object({ id: z.uuid(), langkah: z.string().max(64).nullable() })).max(200).optional(),
   kesimpulan: z.enum(KESIMPULAN),
   catatan: z.string().max(1000).nullish(),
   rekomendasi: z.string().max(1000).nullish(),
@@ -333,15 +369,28 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
     const p3k = konteksP3k(tipe.slug, aset.attributes, hariIniJakarta(new Date(input.submittedAtDevice)));
 
     const fotoAda = await tx
-      .select({ id: inspectionPhotos.id })
+      .select({ id: inspectionPhotos.id, stepId: inspectionPhotos.stepId })
       .from(inspectionPhotos)
       .where(eq(inspectionPhotos.inspectionId, inspectionId));
     const idAda = new Set(fotoAda.map((f) => f.id));
-    if (input.photoIds.some((p) => !idAda.has(p))) {
+    if ([...input.photoIds, ...(input.photos ?? []).map((p) => p.id)].some((p) => !idAda.has(p))) {
       throw new GalatApi(409, "foto_belum_lengkap", "Foto belum semuanya terunggah.");
     }
 
-    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size, p3k }, MAKS_FOTO);
+    // Syarat foto per langkah (PRD Aturan bukti 3-4). Langkah yang tersimpan saat unggah dipakai;
+    // langkah dari kiriman hanya untuk foto yang belum punya. Tautan foto ke butir diturunkan dari langkahnya.
+    const langkah = await langkahTipeAset(tx, tipe.id);
+    const { terbatas: areaTerbatas } = await asetUntukFoto(tx, aset.id);
+    const kodeDariId = new Map(langkah.filter((l) => l.id).map((l) => [l.id!, l.kode]));
+    const kiriman = new Map((input.photos ?? []).map((p) => [p.id, p.langkah]));
+    const galatFoto = input.photos
+      ? periksaFotoLangkah(
+          langkah,
+          fotoAda.map((f) => ({ langkah: (f.stepId && kodeDariId.get(f.stepId)) || kiriman.get(f.id) || "" })),
+          { areaTerbatas },
+        )
+      : undefined;
+    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size, galatFoto, p3k }, Math.max(MAKS_FOTO, maksFotoInspeksi(langkah)));
     if (galat.length) throw new GalatApi(422, "validasi", galat[0]!, galat);
 
     // Bukti QR: token mentah dicocokkan dengan assets.qr_token (SPEC §7.7, §7.8).
@@ -386,6 +435,8 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
         gpsCapturedAt: input.gps?.capturedAt ? new Date(input.gps.capturedAt) : null,
         jarakM: jarak,
         gateStatus,
+        // PRD Aturan bukti 4: area terbatas otomatis ditandai dan masuk antrean tinjauan.
+        restrictedArea: areaTerbatas,
         qrVerified,
         qrVerification: input.qrVerification,
         kesimpulan: input.kesimpulan,

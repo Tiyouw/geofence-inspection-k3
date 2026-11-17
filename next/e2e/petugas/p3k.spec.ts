@@ -1,16 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
 import { DEFINISI_P3K } from "../../src/lib/domain/modul/p3k";
 import { semuaButir } from "../../src/lib/domain/modul/tipe";
 import { aset, q, tutup } from "../db-uji";
+import { fotoSemuaLangkah, KAMERA_PALSU } from "../kamera-uji";
 
 /**
  * PRD Checklist per modul, Kotak P3K: isi kotak dicatat jumlah, kondisi, dan kedaluwarsa terdekat;
  * temuan otomatis dari isi kurang dan kedaluwarsa. Masuk sebagai inspektur Divisi Matra & K3LH (2004).
  */
-const FOTO = { name: "p3k.png", mimeType: "image/png", buffer: readFileSync("public/icons/icon-512.png") };
 const ISI = semuaButir(DEFINISI_P3K).filter((b) => b.baku);
 
+test.use(KAMERA_PALSU);
 test.afterAll(tutup);
 
 async function masukP3k(page: Page) {
@@ -48,7 +48,7 @@ test("kotak P3K tipe C: isi kurang dan kedaluwarsa menjadi temuan, kelengkapan t
   // Tanggal sudah lewat padahal "Aman": peringatan, dan kirim ditolak.
   await page.getByLabel("Kedaluwarsa terdekat Povidon iodin (60 ml)").fill("2026-01-31");
   await expect(page.getByText(/Tanggal sudah lewat/)).toBeVisible();
-  await page.getByTestId("input-foto").setInputFiles(FOTO);
+  await fotoSemuaLangkah(page, DEFINISI_P3K.langkahFoto.map((l) => l.judul));
   await page.getByLabel(/Rekomendasi/).fill("Lengkapi plester dan ganti povidon iodin.");
   await page.getByRole("button", { name: "Kirim", exact: true }).click();
   await expect(page.getByTestId("galat-kirim")).toContainText('Tanggal kedaluwarsa "Povidon iodin (60 ml)" sudah lewat');

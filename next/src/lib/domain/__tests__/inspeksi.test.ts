@@ -109,6 +109,13 @@ describe("periksa kirim (SPEC §3.7)", () => {
   it("maksimum foto", () => {
     expect(periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 7, kesimpulan: "layak" }, 6)).toContain("Foto paling banyak 6.");
   });
+
+  it("kamera terpandu: galat per langkah menggantikan hitungan foto (PRD Aturan bukti 3-4)", () => {
+    // area terbatas: tanpa foto tetap boleh
+    expect(periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 0, galatFoto: [], kesimpulan: "layak" }, 6)).toEqual([]);
+    const g = periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 12, galatFoto: ["Langkah foto yang belum diisi: Manometer"], kesimpulan: "layak" }, 6);
+    expect(g).toEqual(["Langkah foto yang belum diisi: Manometer"]);
+  });
 });
 
 describe("waktu resmi (SPEC §7.6)", () => {

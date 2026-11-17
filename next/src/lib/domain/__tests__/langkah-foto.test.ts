@@ -4,6 +4,7 @@ import {
   fotoPerButir,
   LANGKAH_FOTO_APAR,
   langkahCadangan,
+  lengkapiLangkah,
   MAKS_JEPRETAN_LANGKAH,
   periksaFotoLangkah,
   selesaikanLangkah,
@@ -102,5 +103,15 @@ describe("fotoPerButir: satu foto untuk beberapa butir", () => {
     expect(m.get(11)).toEqual(["p1", "p2"]);
     expect(m.get(14)).toEqual(["p1", "p2"]);
     expect(m.get(12)).toEqual(["p3"]);
+  });
+});
+
+describe("lengkapiLangkah", () => {
+  it("butir yang tidak terpetakan dikumpulkan ke Butir lainnya", () => {
+    expect(lengkapiLangkah(langkah, [11, 12, 13, 14])).toEqual([
+      ...langkah,
+      { kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: [13] },
+    ]);
+    expect(lengkapiLangkah(langkah, [11, 12])).toBe(langkah);
   });
 });

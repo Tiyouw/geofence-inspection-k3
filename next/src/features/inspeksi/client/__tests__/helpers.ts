@@ -19,10 +19,16 @@ export function paketContoh(): PaketKerja {
     hmacKey: key.toString("base64"),
     periode: { mulai: "2026-11-01", hariIni: "2026-11-16", jatuhTempo: { 1: "2026-11-30" } },
     aset: [
-      { id: 10, kode: "01D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, qrTokenHash: h(TOKEN) },
-      { id: 11, kode: "02D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, qrTokenHash: h(TOKEN_LAIN) },
+      { id: 10, kode: "01D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, areaTerbatas: false, qrTokenHash: h(TOKEN) },
+      { id: 11, kode: "02D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, areaTerbatas: true, qrTokenHash: h(TOKEN_LAIN) },
     ],
     checklist: { 1: [{ kode: "A", nama: "Isi", items }] },
+    langkahFoto: {
+      1: [
+        { kode: "tabung", judul: "Tabung utuh", petunjuk: null, itemIds: [1, 2] },
+        { kode: "manometer", judul: "Manometer", petunjuk: null, itemIds: [1] },
+      ],
+    },
     sudahDiperiksa: [],
     terkirim: [],
     unit: "SAT. PK",

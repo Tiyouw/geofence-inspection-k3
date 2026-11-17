@@ -13,8 +13,12 @@ import {
   simpanIsian,
   simpanJawaban,
   sinkronJam,
-  tambahFoto,
   butirUntuk,
+  langkahUntuk,
+  simpanJepretan,
+  simpanSemuaFoto,
+  batalSesiFoto,
+  ulangiLangkah,
 } from "../aksi";
 import { BACKOFF_MAKS_MS, jedaBackoff, klasifikasi, kuras, majukanSemua, opsInspeksi, pengirimHttp } from "../outbox";
 import { fetchPalsu, paketContoh, TOKEN, TOKEN_LAIN, TOKEN_UNIT_LAIN } from "./helpers";
@@ -23,6 +27,27 @@ let db: DbAkun;
 let uid = 1;
 const paket = paketContoh();
 const items = butirUntuk(paket, 1);
+const langkah = langkahUntuk(paket, 1);
+/** 10 = aset biasa, 11 = aset di area terbatas (helpers). */
+const bukti = (areaTerbatas = false) => ({ langkah, areaTerbatas });
+
+function jepret(inspectionId: string, kodeLangkah: string) {
+  return simpanJepretan(db, {
+    photoId: crypto.randomUUID(),
+    inspectionId,
+    langkah: kodeLangkah,
+    blob: new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
+    contentType: "image/jpeg",
+    sha256: "x",
+    bytes: 3,
+    width: 1,
+    height: 1,
+    takenAtDevice: new Date().toISOString(),
+    lat: -8.18,
+    lng: 113.7,
+    akurasi: 12,
+  });
+}
 
 async function siapkanPaket() {
   const { fn } = fetchPalsu(() => ({ status: 200, body: paket }));
@@ -34,19 +59,11 @@ async function drafLengkap(teks = TOKEN, daring = false) {
   if (!r.ok) throw new Error(r.pesan);
   await simpanJawaban(db, r.inspectionId, 1, { nilai: "Penuh" }, items);
   await simpanJawaban(db, r.inspectionId, 2, { nilai: "ok" }, items);
-  await tambahFoto(db, {
-    photoId: crypto.randomUUID(),
-    inspectionId: r.inspectionId,
-    blob: new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }),
-    contentType: "image/jpeg",
-    sha256: "x",
-    bytes: 3,
-    width: 1,
-    height: 1,
-    takenAtDevice: new Date().toISOString(),
-    lat: null,
-    lng: null,
-  });
+  if (teks === TOKEN) {
+    await jepret(r.inspectionId, "tabung");
+    await jepret(r.inspectionId, "manometer");
+    await simpanSemuaFoto(db, r.inspectionId);
+  }
   return r.inspectionId;
 }
 
@@ -124,23 +141,24 @@ describe("isian di perangkat", () => {
   it("kirim menjalankan pemeriksaan lokal dulu", async () => {
     const r = await mulaiDariTeks(db, TOKEN, { daring: false });
     if (!r.ok) throw new Error();
-    const k = await kirimInspeksi(db, r.inspectionId, items);
+    const k = await kirimInspeksi(db, r.inspectionId, items, bukti());
     expect(k.ok).toBe(false);
-    if (!k.ok) expect(k.galat).toContain("Foto wajib diunggah minimal satu sebelum inspeksi dikirim.");
+    if (!k.ok) expect(k.galat).toContain("Langkah foto yang belum diisi: Tabung utuh, Manometer");
   });
 });
 
 describe("antrean dan sinkron (SPEC §7.5)", () => {
   it("urutan per inspeksi: start, foto, finalize; sukses menghapus draf dan foto", async () => {
     const id = await drafLengkap();
-    expect((await kirimInspeksi(db, id, items)).ok).toBe(true);
+    expect((await kirimInspeksi(db, id, items, bukti())).ok).toBe(true);
     expect((await db.get("drafts", id))?.status).toBe("antre");
 
     const { fn, panggilan } = peladenOk();
     const h = await kuras(db, pengirimHttp(fn));
-    expect(h).toMatchObject({ terkirim: 3, gagal: 0, tersisa: 0 });
+    expect(h).toMatchObject({ terkirim: 4, gagal: 0, tersisa: 0 });
     expect(panggilan.map((p) => `${p.method} ${p.url.replace(id, "ID").replace(/photos\/.+$/, "photos/F")}`)).toEqual([
       "POST /api/inspections/start",
+      "PUT /api/inspections/ID/photos/F",
       "PUT /api/inspections/ID/photos/F",
       "POST /api/inspections/ID/finalize",
     ]);
@@ -152,11 +170,11 @@ describe("antrean dan sinkron (SPEC §7.5)", () => {
 
   it("tanpa sinyal: tetap di antrean dengan backoff, kunci idempotensi sama saat diulang", async () => {
     const id = await drafLengkap();
-    await kirimInspeksi(db, id, items);
+    await kirimInspeksi(db, id, items, bukti());
     let t = Date.now() + 1000;
     const luring = fetchPalsu(() => ({ status: 0, body: null }));
     const h1 = await kuras(db, pengirimHttp(luring.fn), { now: () => t, random: () => 0.5 });
-    expect(h1).toMatchObject({ terkirim: 0, gagal: 1, tersisa: 3 });
+    expect(h1).toMatchObject({ terkirim: 0, gagal: 1, tersisa: 4 });
     const [start] = await opsInspeksi(db, id);
     expect(start!.attempts).toBe(1);
     expect(start!.nextAttemptAt).toBe(t + 2000);
@@ -174,17 +192,17 @@ describe("antrean dan sinkron (SPEC §7.5)", () => {
 
   it("401 menghentikan pengurasan dan menyimpan antrean", async () => {
     const id = await drafLengkap();
-    await kirimInspeksi(db, id, items);
+    await kirimInspeksi(db, id, items, bukti());
     const { fn, panggilan } = fetchPalsu(() => ({ status: 401, body: { kode: "sesi_habis", pesan: "Masuk lagi" } }));
     const h = await kuras(db, pengirimHttp(fn));
     expect(h.sesiHabis).toBe(true);
     expect(panggilan).toHaveLength(1);
-    expect(await db.count("outbox")).toBe(3);
+    expect(await db.count("outbox")).toBe(4);
   });
 
   it("422 menandai perlu tindakan; draf bisa dibuka kembali dan dikirim ulang", async () => {
     const id = await drafLengkap();
-    await kirimInspeksi(db, id, items);
+    await kirimInspeksi(db, id, items, bukti());
     const { fn } = fetchPalsu(({ url }) =>
       url.endsWith("/finalize") ? { status: 422, body: { kode: "validasi", pesan: "Butir wajib baru belum diisi" } } : { status: 200, body: {} },
     );
@@ -200,8 +218,8 @@ describe("antrean dan sinkron (SPEC §7.5)", () => {
   it("antrean satu inspeksi yang macet tidak menahan inspeksi lain", async () => {
     const a = await drafLengkap(TOKEN);
     const b = await drafLengkap(TOKEN_LAIN);
-    await kirimInspeksi(db, a, items);
-    await kirimInspeksi(db, b, items);
+    await kirimInspeksi(db, a, items, bukti());
+    await kirimInspeksi(db, b, items, bukti(true));
     const { fn } = fetchPalsu(({ url, body }) => {
       const id = (body as { inspectionId?: string } | undefined)?.inspectionId ?? url.split("/")[3];
       if (id === a) return { status: 503, body: { pesan: "sibuk" }, headers: { "retry-after": "30" } };
@@ -221,7 +239,7 @@ describe("antrean dan sinkron (SPEC §7.5)", () => {
     const id = await drafLengkap();
     const [foto] = await db.getAllFromIndex("photos", "byInspection", id);
     await hapusFotoLokal(db, id, foto!.photoId);
-    expect((await opsInspeksi(db, id)).map((o) => o.kind)).toEqual(["start"]);
+    expect((await opsInspeksi(db, id)).map((o) => o.kind)).toEqual(["start", "upload-photo"]);
     await buangDraf(db, id);
     expect(await db.count("outbox")).toBe(0);
     expect(await db.get("drafts", id)).toBeUndefined();
@@ -233,6 +251,88 @@ describe("antrean dan sinkron (SPEC §7.5)", () => {
     await kuras(db, pengirimHttp(fn));
     await buangDraf(db, id);
     expect((await db.getAll("outbox")).map((o) => o.kind)).toEqual(["discard"]);
+  });
+});
+
+describe("kamera terpandu: kumpulan foto (PRD Aturan bukti 3-4)", () => {
+  async function drafTerjawab(teks = TOKEN) {
+    const r = await mulaiDariTeks(db, teks, { daring: false });
+    if (!r.ok) throw new Error(r.pesan);
+    await simpanJawaban(db, r.inspectionId, 1, { nilai: "Penuh" }, items);
+    await simpanJawaban(db, r.inspectionId, 2, { nilai: "ok" }, items);
+    return r.inspectionId;
+  }
+
+  it("jepretan tersimpan di perangkat tetapi belum masuk antrean sampai Simpan semua", async () => {
+    const id = await drafTerjawab();
+    await jepret(id, "tabung");
+    await jepret(id, "tabung");
+    await jepret(id, "manometer");
+    expect((await opsInspeksi(db, id)).map((o) => o.kind)).toEqual(["start"]);
+    const k = await kirimInspeksi(db, id, items, bukti());
+    expect(k.ok).toBe(false);
+    if (!k.ok) expect(k.galat).toContain("Foto di kamera belum disimpan. Buka kamera terpandu lalu tekan Simpan semua.");
+
+    expect(await simpanSemuaFoto(db, id)).toBe(3);
+    expect((await opsInspeksi(db, id)).map((o) => o.kind)).toEqual(["start", "upload-photo", "upload-photo", "upload-photo"]);
+    expect((await kirimInspeksi(db, id, items, bukti())).ok).toBe(true);
+    const fin = (await opsInspeksi(db, id)).find((o) => o.kind === "finalize")!;
+    expect((fin.payload.photos as { langkah: string }[]).map((p) => p.langkah).sort()).toEqual(["manometer", "tabung", "tabung"]);
+  });
+
+  it("ulangi langkah dan batal hanya membuang jepretan sesi; maksimal 5 per langkah", async () => {
+    const id = await drafTerjawab();
+    await jepret(id, "tabung");
+    await simpanSemuaFoto(db, id);
+    await jepret(id, "tabung");
+    await jepret(id, "manometer");
+    await ulangiLangkah(db, id, "tabung");
+    let fotos = await db.getAllFromIndex("photos", "byInspection", id);
+    expect(fotos.map((f) => [f.langkah, !!f.sesi]).sort()).toEqual([["manometer", true], ["tabung", false]]);
+    await batalSesiFoto(db, id);
+    fotos = await db.getAllFromIndex("photos", "byInspection", id);
+    expect(fotos).toHaveLength(1);
+    for (let i = 0; i < 4; i++) await jepret(id, "tabung");
+    await expect(jepret(id, "tabung")).rejects.toThrow("Paling banyak 5 foto per langkah.");
+  });
+
+  it("area terbatas: dikirim tanpa foto", async () => {
+    const id = await drafTerjawab(TOKEN_LAIN);
+    expect((await kirimInspeksi(db, id, items, bukti(true))).ok).toBe(true);
+  });
+
+  it("unggahan membawa langkah, waktu, posisi, dan akurasi; diulang dengan kunci yang sama", async () => {
+    const id = await drafTerjawab();
+    await jepret(id, "tabung");
+    await jepret(id, "manometer");
+    await simpanSemuaFoto(db, id);
+    await kirimInspeksi(db, id, items, bukti());
+    const header: Headers[] = [];
+    let gagalSekali = true;
+    const { fn, panggilan } = fetchPalsu(({ method, headers, url }) => {
+      if (method === "PUT") {
+        header.push(headers);
+        if (gagalSekali) {
+          gagalSekali = false;
+          return { status: 503, body: { pesan: "sibuk" } };
+        }
+      }
+      if (url.endsWith("/finalize")) {
+        return { status: 200, body: { inspectionId: id, status: "final", kodeAset: "01D", inspectedAt: new Date().toISOString(), offline: false, kesimpulan: "layak", gateStatus: "sesuai", jarakM: 1, qrVerified: true, jumlahFoto: 2, temuan: [] } };
+      }
+      return { status: 200, body: {} };
+    });
+    let t = Date.now();
+    await kuras(db, pengirimHttp(fn), { now: () => t });
+    t += BACKOFF_MAKS_MS;
+    await kuras(db, pengirimHttp(fn), { now: () => t });
+    expect(await db.get("sent", id)).toBeDefined();
+    const puts = panggilan.filter((p) => p.method === "PUT");
+    expect(puts[0]!.key).toBe(puts[1]!.key);
+    expect(new Set(header.map((h) => h.get("x-step")))).toEqual(new Set(["tabung", "manometer"]));
+    expect(header[0]!.get("x-accuracy")).toBe("12");
+    expect(header[0]!.get("x-lat")).toBe("-8.18");
+    expect(header[0]!.get("x-taken-at")).toMatch(/^\d{4}-/);
   });
 });
 

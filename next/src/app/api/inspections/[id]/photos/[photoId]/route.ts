@@ -23,6 +23,8 @@ export function PUT(req: Request, ctx: Ctx) {
         takenAt: h.get("x-taken-at"),
         lat: angka(h.get("x-lat")),
         lng: angka(h.get("x-lng")),
+        akurasi: angka(h.get("x-accuracy")),
+        langkah: h.get("x-step")?.slice(0, 64) || null,
         width: angka(h.get("x-width")),
         height: angka(h.get("x-height")),
       });

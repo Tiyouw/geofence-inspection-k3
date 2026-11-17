@@ -20,6 +20,8 @@ export type DefinisiLangkahFoto = {
 
 /** Langkah yang sudah diselesaikan ke id butir: dipakai klien dan peladen. */
 export type LangkahFoto = {
+  /** `photo_steps.id`; kosong untuk langkah cadangan yang tidak ada di basis data. */
+  id?: number;
   kode: string;
   judul: string;
   petunjuk: string | null;
@@ -126,4 +128,10 @@ export function fotoPerButir(langkah: LangkahFoto[], fotos: { photoId: string; l
     for (const itemId of l.itemIds) out.set(itemId, [...(out.get(itemId) ?? []), ...ids]);
   }
   return out;
+}
+
+/** Tambahkan langkah "Butir lainnya" untuk butir aktif yang belum dibuktikan langkah mana pun. */
+export function lengkapiLangkah(langkah: LangkahFoto[], itemIds: number[]): LangkahFoto[] {
+  const lepas = butirTanpaLangkah(langkah, itemIds);
+  return lepas.length ? [...langkah, { kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: lepas }] : langkah;
 }

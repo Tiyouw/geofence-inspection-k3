@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Check, Crosshair, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { Check, Crosshair } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { evaluasiGerbang, jarakMeter } from "@/lib/domain/asset";
-import { KESIMPULAN, LABEL_KESIMPULAN, MAKS_BYTE_FOTO, MAKS_FOTO } from "@/lib/domain/constants";
+import { KESIMPULAN, LABEL_KESIMPULAN } from "@/lib/domain/constants";
 import { bangunTemuan, isDuaNilai, labelDuaNilai, pesanGerbang, severityJawaban, terjawab, usulanKesimpulan } from "@/lib/domain/inspeksi";
 import { isButirIsi, type KonteksP3k } from "@/lib/domain/modul/p3k";
 import { formatWaktu, hariIniJakarta } from "@/lib/format";
@@ -19,43 +19,20 @@ import {
   buangDraf,
   bukaKembali,
   butirUntuk,
-  hapusFotoLokal,
   kirimInspeksi,
+  langkahUntuk,
   simpanGps,
   simpanIsian,
   simpanJawaban,
-  tambahFoto,
 } from "../client/aksi";
-import { uuidv7 } from "../client/ids";
-import { kompresFoto } from "../client/kompres";
 import { statusAntrean } from "../client/status";
-import type { DrafLokal, FotoLokal } from "../client/types";
+import type { DrafLokal } from "../client/types";
+import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
 
 type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
-
-function useFoto(inspectionId: string, versi: unknown) {
-  const { db } = useInspektur();
-  const [fotos, setFotos] = useState<(FotoLokal & { url: string })[]>([]);
-  useEffect(() => {
-    if (!db) return;
-    let urls: string[] = [];
-    let hidup = true;
-    void db.getAllFromIndex("photos", "byInspection", inspectionId).then((list) => {
-      if (!hidup) return;
-      const x = list.sort((a, b) => a.takenAtDevice.localeCompare(b.takenAtDevice)).map((f) => ({ ...f, url: URL.createObjectURL(f.blob) }));
-      urls = x.map((f) => f.url);
-      setFotos(x);
-    });
-    return () => {
-      hidup = false;
-      urls.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, [db, inspectionId, versi]);
-  return fotos;
-}
 
 export function Formulir({ inspectionId }: { inspectionId: string }) {
   const { db, data, daring, siap, berubah } = useInspektur();
@@ -130,12 +107,11 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   const aset = paket.aset.find((a) => a.id === draf.assetId);
   const grup = useMemo(() => (aset ? (paket.checklist[aset.assetTypeId] ?? []) : []), [paket, aset]);
   const items = useMemo(() => (aset ? butirUntuk(paket, aset.assetTypeId) : []), [paket, aset]);
-  const fotos = useFoto(draf.inspectionId, data.fotoPerInspeksi[draf.inspectionId]?.total);
+  const langkah = useMemo(() => (aset ? langkahUntuk(paket, aset.assetTypeId) : []), [paket, aset]);
+  const labelButir = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i.label])), [items]);
   const [galat, setGalat] = useState<string[]>([]);
   const [statusGps, setStatusGps] = useState<StatusGps>(draf.gps ? "ada" : "mencari");
-  const [memproses, setMemproses] = useState(false);
   const [mengirim, setMengirim] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const bisaUbah = draf.status === "draf";
 
   const jawaban = Object.entries(draf.jawaban).map(([id, j]) => ({ ...j, checklistItemId: Number(id) }));
@@ -180,37 +156,9 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
     berubah();
   };
 
-  const tambah = async (file: File) => {
-    setGalat([]);
-    if (file.size > MAKS_BYTE_FOTO) return setGalat(["Foto lebih dari 12 MB."]);
-    setMemproses(true);
-    try {
-      const k = await kompresFoto(file);
-      await tambahFoto(db!, {
-        photoId: uuidv7(),
-        inspectionId: draf.inspectionId,
-        blob: k.blob,
-        contentType: "image/jpeg",
-        sha256: k.sha256,
-        bytes: k.blob.size,
-        width: k.width,
-        height: k.height,
-        takenAtDevice: new Date().toISOString(),
-        lat: draf.gps?.lat ?? null,
-        lng: draf.gps?.lng ?? null,
-      });
-      void navigator.storage?.persist?.();
-      berubah();
-    } catch (e) {
-      setGalat([(e as Error).message]);
-    } finally {
-      setMemproses(false);
-    }
-  };
-
   const kirim = async () => {
     setMengirim(true);
-    const r = await kirimInspeksi(db!, draf.inspectionId, items, { p3k });
+    const r = await kirimInspeksi(db!, draf.inspectionId, items, { langkah, areaTerbatas: !!aset?.areaTerbatas, p3k });
     setMengirim(false);
     if (!r.ok) {
       setGalat(r.galat);
@@ -346,60 +294,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
         </section>
       ))}
 
-      <section className="space-y-3" aria-label="Foto bukti">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          Foto bukti ({fotos.length}/{MAKS_FOTO})
-        </h2>
-        <div className="grid grid-cols-3 gap-2">
-          {fotos.map((f) => (
-            <figure key={f.photoId} className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element -- blob lokal */}
-              <img src={f.url} alt="Foto bukti" className="size-full object-cover" />
-              {f.uploaded && (
-                <span className="absolute bottom-1 left-1 rounded bg-success px-1 text-[10px] text-white">terkirim</span>
-              )}
-              {bisaUbah && (
-                <button
-                  type="button"
-                  aria-label="Hapus foto"
-                  className="absolute top-1 right-1 rounded-full bg-black/60 p-1.5 text-white"
-                  onClick={async () => {
-                    if (!confirm("Hapus foto ini?")) return;
-                    await hapusFotoLokal(db!, draf.inspectionId, f.photoId);
-                    berubah();
-                  }}
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              )}
-            </figure>
-          ))}
-          {bisaUbah && fotos.length < MAKS_FOTO && (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={memproses}
-              className="grid aspect-square place-items-center rounded-lg border-2 border-dashed text-muted-foreground"
-            >
-              {memproses ? <Loader2 className="size-6 animate-spin" /> : fotos.length ? <ImagePlus className="size-6" /> : <Camera className="size-6" />}
-              <span className="sr-only">Ambil foto</span>
-            </button>
-          )}
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          data-testid="input-foto"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) void tambah(f);
-          }}
-        />
-      </section>
+      <BuktiFoto draf={draf} langkah={langkah} labelButir={labelButir} areaTerbatas={!!aset.areaTerbatas} bisaUbah={bisaUbah} />
 
       <section className="space-y-4" aria-label="Kesimpulan">
         <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Kesimpulan</h2>

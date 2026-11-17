@@ -2,14 +2,16 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
+import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
 import { jatuhTempo, periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
 import type { Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
+import type { LangkahFoto } from "@/lib/domain/langkah-foto";
 import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
+import { langkahPerTipe } from "./langkah";
 
 export type AsetPaket = {
   id: number;
@@ -25,6 +27,8 @@ export type AsetPaket = {
   media: string | null;
   /** Kotak P3K: tipe kotak penentu jumlah baku (bawaan A bila atribut kosong); null untuk modul lain. */
   tipeKotak?: TipeKotakP3k | null;
+  /** Aset di area terbatas: kamera terpandu dilewati, QR + GPS cukup (PRD Aturan bukti 4). */
+  areaTerbatas: boolean;
   /** HMAC-SHA256(kunciPerangkat, token) heksadesimal. Token mentah TIDAK pernah dikirim (SPEC §7.7). */
   qrTokenHash: string;
 };
@@ -49,6 +53,8 @@ export type PaketKerja = {
   periode: { mulai: string; hariIni: string; jatuhTempo: Record<number, string> };
   aset: AsetPaket[];
   checklist: Record<number, GrupPaket[]>;
+  /** Kamera terpandu: urutan langkah foto per tipe aset (PRD Aturan bukti 3). */
+  langkahFoto: Record<number, LangkahFoto[]>;
   /** Aset yang sudah punya inspeksi final bulan ini (oleh siapa pun). */
   sudahDiperiksa: number[];
   /** Inspeksi final milik sendiri, 30 hari terakhir. */
@@ -77,10 +83,11 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
   const awalBulan = new Date(`${mulai}T00:00:00+07:00`);
 
   const semua = await db
-    .select({ a: assets, t: assetTypes, unit: divisions.nama })
+    .select({ a: assets, t: assetTypes, unit: divisions.nama, terbatas: areas.restricted })
     .from(assets)
     .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
     .leftJoin(divisions, eq(divisions.id, assetTypes.ownerDivisionId))
+    .leftJoin(areas, eq(areas.id, assets.areaId))
     .where(and(eq(assets.aktif, true), eq(assetTypes.aktif, true)))
     .orderBy(asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
   // Otorisasi unit (PRD F2): paket hanya memuat aset milik unit inspektur.
@@ -92,7 +99,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     ? await db.select({ nama: divisions.nama }).from(divisions).where(eq(divisions.id, user.divisionId))
     : [];
 
-  const aset: AsetPaket[] = rows.map(({ a, t }) => ({
+  const aset: AsetPaket[] = rows.map(({ a, t, terbatas }) => ({
     id: a.id,
     kode: a.kode,
     assetTypeId: a.assetTypeId,
@@ -105,6 +112,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     radiusM: t.isMobile ? null : radiusEfektif({ radiusAset: a.radiusM, lokasiTipe: a.lokasiTipe }),
     media: labelMedia(a.attributes ?? null),
     tipeKotak: t.slug === "p3k" ? (bacaTipeKotak(a.attributes) ?? "A") : null,
+    areaTerbatas: terbatas === true,
     qrTokenHash: createHmac("sha256", key).update(a.qrToken).digest("hex"),
   }));
 
@@ -142,6 +150,8 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     });
   }
 
+  const langkahFoto: Record<number, LangkahFoto[]> = Object.fromEntries(await langkahPerTipe(db, tipeIds));
+
   const sudah = await db
     .selectDistinct({ assetId: inspections.assetId })
     .from(inspections)
@@ -172,7 +182,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     .limit(100);
 
   const versi = createHmac("sha256", "versi")
-    .update(JSON.stringify({ a: aset.map((x) => [x.id, x.kode, x.radiusM, x.lat, x.lng]), c: butir.map((b) => [b.i.id, b.i.updatedAt]) }))
+    .update(JSON.stringify({ a: aset.map((x) => [x.id, x.kode, x.radiusM, x.lat, x.lng, x.areaTerbatas]), c: butir.map((b) => [b.i.id, b.i.updatedAt]), l: langkahFoto }))
     .digest("hex")
     .slice(0, 12);
 
@@ -183,6 +193,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     periode: { mulai, hariIni, jatuhTempo: jt },
     aset,
     checklist,
+    langkahFoto,
     sudahDiperiksa: sudah.map((s) => s.assetId),
     unit: unitSendiri?.nama ?? null,
     asetUnitLain,
