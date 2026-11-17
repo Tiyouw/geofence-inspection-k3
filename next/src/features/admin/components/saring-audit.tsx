@@ -5,8 +5,8 @@
  * string supaya tautan bisa dibagikan dan tombol Kembali tetap bekerja. Tanpa JS formulir GET
  * biasa dengan tombol di <noscript>.
  *
- * Pilihan memakai <select> asli (Pilihan); komponen Select rancangan sesi A bisa menggantikannya
- * di satu tempat ini tanpa mengubah perilaku.
+ * Jenis kegiatan dan pengguna memakai Pilihan (pengganti <select>); nilainya lewat input
+ * tersembunyi, jadi perubahannya diteruskan lewat onChange-nya, bukan event change formulir.
  */
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,6 +32,13 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
         const s = q.toString();
         mulai(() => router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false }));
     }
+    /** Perubahan Pilihan: saringan saat ini (sama dengan isi formulir) ditambah nilai baru. */
+    const pilihBerubah = (nama: string) => (e: { target: { value: string } }) => {
+        const q = new URLSearchParams();
+        for (const [k, v] of Object.entries({ ...nilai, [nama]: e.target.value })) if (v) q.set(k, v);
+        const s = q.toString();
+        mulai(() => router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false }));
+    };
 
     // Pilihan yang diubah sebelum halaman selesai dimuat (ponsel lambat) tidak memicu onChange:
     // setelah hidrasi, terapkan bila isi formulir berbeda dari URL.
@@ -66,7 +73,7 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
         >
             <label className={label}>
                 Jenis kegiatan
-                <Pilihan name="kategori" defaultValue={nilai.kategori ?? ""}>
+                <Pilihan name="kategori" defaultValue={nilai.kategori ?? ""} onChange={pilihBerubah("kategori")}>
                     <option value="">Semua kegiatan</option>
                     {kategori.map((k) => (
                         <option key={k.nilai} value={k.nilai}>
@@ -77,7 +84,7 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
             </label>
             <label className={label}>
                 Dilakukan oleh
-                <Pilihan name="pengguna" defaultValue={nilai.pengguna ?? ""}>
+                <Pilihan name="pengguna" defaultValue={nilai.pengguna ?? ""} onChange={pilihBerubah("pengguna")}>
                     <option value="">Siapa saja</option>
                     {pengguna.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -106,28 +113,30 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
                     className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
             </label>
-            <div className="flex h-8 items-center gap-3 text-xs">
-                {menunggu && (
-                    <span className="inline-flex items-center gap-1 text-muted-foreground" role="status">
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden /> Memuat…
-                    </span>
-                )}
-                {aktif && !menunggu && (
-                    <Link
-                        href={pathname}
-                        replace
-                        scroll={false}
-                        className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    >
-                        <X className="size-3.5" aria-hidden /> Hapus saringan
-                    </Link>
-                )}
-                <noscript>
-                    <button type="submit" className="rounded-lg border px-3 py-1.5 text-sm">
-                        Terapkan
-                    </button>
-                </noscript>
-            </div>
+            {(menunggu || aktif) && (
+                <div className="flex h-8 items-center gap-3 text-xs">
+                    {menunggu && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground" role="status">
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Memuat…
+                        </span>
+                    )}
+                    {aktif && !menunggu && (
+                        <Link
+                            href={pathname}
+                            replace
+                            scroll={false}
+                            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                        >
+                            <X className="size-3.5" aria-hidden /> Hapus saringan
+                        </Link>
+                    )}
+                </div>
+            )}
+            <noscript>
+                <button type="submit" className="rounded-lg border px-3 py-1.5 text-sm">
+                    Terapkan
+                </button>
+            </noscript>
         </form>
     );
 }

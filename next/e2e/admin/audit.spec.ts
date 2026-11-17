@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { q, tutup } from "../db-uji";
-import { masuk } from "../helpers";
+import { masuk, pilih } from "../helpers";
 
 /**
  * Jejak audit yang ramah orang awam: kalimat, detail tersembunyi, tanpa gulir mendatar,
@@ -119,7 +119,7 @@ test.describe("jejak audit", () => {
         await page.goto("/admin/audit");
         await expect(page.getByRole("button", { name: "Terapkan" })).toHaveCount(0);
 
-        await page.getByLabel("Jenis kegiatan").selectOption({ label: "Pengguna" });
+        await pilih(page.getByRole("combobox", { name: "Jenis kegiatan" }), "Pengguna");
         await expect(page).toHaveURL(/kategori=pengguna/);
         await expect(page.getByTestId("kejadian").first()).toBeVisible();
         for (const a of await page
@@ -138,9 +138,9 @@ test.describe("jejak audit", () => {
 
         await page.getByRole("link", { name: "Hapus saringan" }).click();
         await expect(page).toHaveURL(/\/admin\/audit$/);
-        await expect(page.getByLabel("Jenis kegiatan")).toHaveValue("");
+        await expect(page.getByRole("combobox", { name: "Jenis kegiatan" })).toContainText("Semua kegiatan");
 
-        await page.getByLabel("Dilakukan oleh").selectOption({ label: "Administrator Demo" });
+        await pilih(page.getByRole("combobox", { name: "Dilakukan oleh" }), "Administrator Demo");
         await expect(page).toHaveURL(new RegExp(`pengguna=${adminId}`));
         await expect(page.getByTestId("kejadian").filter({ hasText: `Gedung baru ${tag}` })).toBeVisible();
     });
