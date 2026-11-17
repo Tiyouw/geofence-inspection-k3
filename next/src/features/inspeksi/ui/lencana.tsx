@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 /** Warna lencana gerbang (SPEC §3.5): hijau, kuning, merah, biru, abu. Semua lewat token. */
 const NADA_GERBANG: Record<string, string> = {
   sesuai: "bg-success-soft text-success",
+  perlu_tinjauan: "bg-warning-soft text-warning",
   perlu_review: "bg-warning-soft text-warning",
   jauh: "bg-danger-soft text-danger",
   gps_lemah: "bg-info-soft text-info",

@@ -4,12 +4,15 @@ import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
-import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
+import { labelLantai } from "@/lib/domain/asset";
 import { periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
 import { jatuhTempoUntuk, periodeUntuk, rentangPeriode } from "@/lib/domain/jadwal";
 import type { Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
 import type { LangkahFoto } from "@/lib/domain/langkah-foto";
 import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
+import type { PengaturanGerbang } from "@/lib/geo/akurasi";
+import { dataArea, pengaturanGerbang } from "@/lib/geo/data";
+import type { GeometriArea } from "@/lib/geo/geometri";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { langkahPerTipe } from "./langkah";
@@ -24,9 +27,10 @@ export type AsetPaket = {
   lokasiTeks: string;
   lat: number | null;
   lng: number | null;
-  radiusM: number | null;
-  /** Objek bergerak (mobil pemadam): tanpa gerbang lokasi. Opsional: paket lama di perangkat belum memuatnya. */
-  bergerak?: boolean;
+  /** Area tempat aset terdaftar (poligon ada di `gerbang.area`). */
+  areaId: number | null;
+  /** Objek bergerak (mobil pemadam): tanpa gerbang lokasi. */
+  bergerak: boolean;
   media: string | null;
   /** Kotak P3K: tipe kotak penentu jumlah baku (bawaan A bila atribut kosong); null untuk modul lain. */
   tipeKotak?: TipeKotakP3k | null;
@@ -69,6 +73,16 @@ export type PaketKerja = {
    * menyebut pemilik aset (PRD alur Inspektur langkah 3). Aset ini tidak dapat diinspeksi.
    */
   asetUnitLain: { qrTokenHash: string; unit: string | null }[];
+  /** Data gerbang lokasi untuk pratinjau di perangkat; keputusan resmi tetap di peladen. */
+  gerbang: GerbangPaket;
+};
+
+export type AreaPaket = { nama: string; polygon: GeometriArea | null; restricted: boolean };
+export type GerbangPaket = {
+  pengaturan: PengaturanGerbang;
+  kawasan: { id: number; nama: string; polygon: GeometriArea } | null;
+  /** Area aset (yang dipakai paket ini) dan area lain berpoligon, terindeks id. */
+  area: Record<number, AreaPaket>;
 };
 
 function labelMedia(attr: Record<string, unknown> | null): string | null {
@@ -112,7 +126,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     lokasiTeks: a.lokasiTeks,
     lat: a.lat,
     lng: a.lng,
-    radiusM: t.isMobile ? null : radiusEfektif({ radiusAset: a.radiusM, lokasiTipe: a.lokasiTipe }),
+    areaId: t.isMobile ? null : a.areaId,
     bergerak: t.isMobile,
     media: labelMedia(a.attributes ?? null),
     tipeKotak: t.slug === "p3k" ? (bacaTipeKotak(a.attributes) ?? "A") : null,
@@ -199,12 +213,30 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     .orderBy(desc(inspections.inspectedAt))
     .limit(100);
 
+  const [pengaturan, dataGerbang] = await Promise.all([pengaturanGerbang(), dataArea()]);
+  const areaPaket: Record<number, AreaPaket> = {};
+  for (const [id, x] of dataGerbang.area) areaPaket[id] = { nama: x.nama, polygon: x.polygon, restricted: !!x.restricted };
+  // Area aset tanpa poligon tetap dikirim supaya nama dan tanda terbatasnya tampil.
+  const tanpaPoligon = [...new Set(aset.map((x) => x.areaId).filter((id): id is number => id !== null && !(id in areaPaket)))];
+  if (tanpaPoligon.length) {
+    const rows = await db.select({ id: areas.id, nama: areas.nama, restricted: areas.restricted }).from(areas).where(inArray(areas.id, tanpaPoligon));
+    for (const r of rows) areaPaket[r.id] = { nama: r.nama, polygon: null, restricted: r.restricted };
+  }
+  const gerbang: GerbangPaket = {
+    pengaturan,
+    kawasan: dataGerbang.kawasan?.polygon
+      ? { id: dataGerbang.kawasan.id, nama: dataGerbang.kawasan.nama, polygon: dataGerbang.kawasan.polygon }
+      : null,
+    area: areaPaket,
+  };
+
   const versi = createHmac("sha256", "versi")
-    .update(JSON.stringify({ a: aset.map((x) => [x.id, x.kode, x.radiusM, x.lat, x.lng, x.areaTerbatas]), c: butir.map((b) => [b.i.id, b.i.updatedAt]), l: langkahFoto }))
+    .update(JSON.stringify({ a: aset.map((x) => [x.id, x.kode, x.areaId, x.lat, x.lng, x.areaTerbatas]), c: butir.map((b) => [b.i.id, b.i.updatedAt]), l: langkahFoto, g: gerbang }))
     .digest("hex")
     .slice(0, 12);
 
   return {
+    gerbang,
     versi,
     serverTime: new Date().toISOString(),
     hmacKey: key.toString("base64"),

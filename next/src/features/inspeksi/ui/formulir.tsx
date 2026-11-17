@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Crosshair } from "lucide-react";
+import { Check } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
-import { evaluasiGerbang, jarakMeter } from "@/lib/domain/asset";
 import { KESIMPULAN, LABEL_KESIMPULAN } from "@/lib/domain/constants";
-import { bangunTemuan, isDuaNilai, labelDuaNilai, pesanGerbang, severityJawaban, terjawab, usulanKesimpulan } from "@/lib/domain/inspeksi";
+import { bangunTemuan, isDuaNilai, labelDuaNilai, severityJawaban, terjawab, usulanKesimpulan } from "@/lib/domain/inspeksi";
 import { isButirIsi, type KonteksP3k } from "@/lib/domain/modul/p3k";
+import { pesanSinyalLemah } from "@/lib/geo/gerbang";
 import { formatWaktu, hariIniJakarta } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -21,19 +21,27 @@ import {
   butirUntuk,
   kirimInspeksi,
   langkahUntuk,
-  simpanGps,
   simpanIsian,
   simpanJawaban,
 } from "../client/aksi";
 import { statusAntrean } from "../client/status";
-import type { DrafLokal } from "../client/types";
+import type { AsetPaket, DrafLokal } from "../client/types";
 import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
+import { KartuLokasi, useKeadaanLokasi } from "./kartu-lokasi";
 import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
 import { TemuanDraf } from "./temuan-draf";
-
-type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function Formulir({ inspectionId }: { inspectionId: string }) {
   const { db, data, daring, siap, berubah } = useInspektur();
@@ -102,16 +110,21 @@ function AksiLanjut() {
   );
 }
 
-function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; berubah: () => void }) {
+function IsiDraf(props: { draf: DrafLokal; daring: boolean; berubah: () => void }) {
+  const { data } = useInspektur();
+  const aset = data.paket!.aset.find((a) => a.id === props.draf.assetId);
+  if (!aset) return <p className="text-sm">Aset untuk draf ini tidak ada di data stiker. Segarkan saat daring.</p>;
+  return <IsiDrafAset {...props} aset={aset} />;
+}
+
+function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring: boolean; berubah: () => void; aset: AsetPaket }) {
   const { db, data } = useInspektur();
   const paket = data.paket!;
-  const aset = paket.aset.find((a) => a.id === draf.assetId);
-  const grup = useMemo(() => (aset ? (paket.checklist[aset.assetTypeId] ?? []) : []), [paket, aset]);
-  const items = useMemo(() => (aset ? butirUntuk(paket, aset.assetTypeId) : []), [paket, aset]);
-  const langkah = useMemo(() => (aset ? langkahUntuk(paket, aset.assetTypeId) : []), [paket, aset]);
+  const grup = useMemo(() => paket.checklist[aset.assetTypeId] ?? [], [paket, aset]);
+  const items = useMemo(() => butirUntuk(paket, aset.assetTypeId), [paket, aset]);
+  const langkah = useMemo(() => langkahUntuk(paket, aset.assetTypeId), [paket, aset]);
   const labelButir = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i.label])), [items]);
   const [galat, setGalat] = useState<string[]>([]);
-  const [statusGps, setStatusGps] = useState<StatusGps>(draf.gps ? "ada" : "mencari");
   const [mengirim, setMengirim] = useState(false);
   const bisaUbah = draf.status === "draf";
 
@@ -122,34 +135,9 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   const usulan = usulanKesimpulan(temuan);
   const terisi = items.filter((i) => terjawab(i, jawaban.find((j) => j.checklistItemId === i.id))).length;
 
-  // GPS saat mengisi (SPEC §3.5, §7.3 butir 3): bukti, bukan pemblokir.
-  const ambilPosisi = (paksa = false) => {
-    if (!("geolocation" in navigator)) return setStatusGps("tidak_didukung");
-    if (paksa) setStatusGps("mencari");
-    navigator.geolocation.getCurrentPosition(
-      async (p) => {
-        await simpanGps(db!, draf.inspectionId, {
-          lat: p.coords.latitude,
-          lng: p.coords.longitude,
-          accuracy: Math.round(p.coords.accuracy),
-          capturedAt: new Date(p.timestamp || Date.now()).toISOString(),
-        }, paksa);
-        setStatusGps("ada");
-        berubah();
-      },
-      (e) => setStatusGps(e.code === e.PERMISSION_DENIED ? "ditolak" : "gagal"),
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-    );
-  };
-  useEffect(() => {
-    const t = bisaUbah && !draf.gps ? setTimeout(() => ambilPosisi(), 0) : undefined;
-    return () => clearTimeout(t);
-    // sekali saat formulir dibuka
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const jarak = draf.gps && aset ? jarakMeter(draf.gps, aset) : null;
-  const gerbang = evaluasiGerbang({ radius: aset?.radiusM ?? null, jarak, akurasi: draf.gps?.accuracy ?? null });
+  // Gerbang lokasi (PRD, ADR-7): posisi diikuti, tanpa posisi = Kirim diblokir.
+  const { status: statusGps, keadaan: lokasi } = useKeadaanLokasi(paket, aset, draf, bisaUbah, berubah);
+  const [tanyaLemah, setTanyaLemah] = useState(false);
 
   const jawab = async (itemId: number, isi: IsianJawaban & { catatan?: string | null }) => {
     navigator.vibrate?.(30);
@@ -157,7 +145,13 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
     berubah();
   };
 
-  const kirim = async () => {
+  const kirim = async (abaikanLemah = false) => {
+    if (!lokasi.bolehKirim) {
+      setGalat(["Lokasi belum diperoleh. Nyalakan Lokasi (GPS), lalu tekan Coba lagi."]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (lokasi.lemah && !abaikanLemah) return setTanyaLemah(true);
     setMengirim(true);
     const r = await kirimInspeksi(db!, draf.inspectionId, items, { langkah, areaTerbatas: !!aset?.areaTerbatas, p3k });
     setMengirim(false);
@@ -170,8 +164,6 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
     berubah();
     window.scrollTo({ top: 0 });
   };
-
-  if (!aset) return <p className="text-sm">Aset untuk draf ini tidak ada di data stiker. Segarkan saat daring.</p>;
 
   const st = statusAntrean(draf, data.ops, data.fotoPerInspeksi[draf.inspectionId], daring);
 
@@ -232,37 +224,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
         isiClassName="rounded-lg bg-danger-soft p-3 text-sm text-danger"
       />
 
-      <Card className="gap-0 py-0">
-        <CardContent className="space-y-2 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">Lokasi</p>
-            {aset.bergerak ? <LencanaGerbang status="tidak_berlaku" /> : draf.gps && <LencanaGerbang status={gerbang} />}
-          </div>
-          <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
-            {aset.bergerak
-              ? "Objek bergerak: lokasi tidak diperiksa. Posisi tetap direkam sebagai informasi."
-              : statusGps === "mencari" && !draf.gps
-              ? "Mencari posisi…"
-              : statusGps === "ditolak" && !draf.gps
-                ? "Izin lokasi ditolak. Inspeksi tetap dapat dikirim, namun akan ditandai untuk ditinjau Admin K3."
-                : statusGps === "gagal" && !draf.gps
-                  ? "Posisi tidak diperoleh (sinyal lemah). Inspeksi tetap dapat dikirim."
-                  : statusGps === "tidak_didukung"
-                    ? "Perangkat tidak mendukung lokasi. Inspeksi tetap dapat dikirim."
-                    : pesanGerbang(gerbang, jarak, aset.radiusM)}
-          </p>
-          {draf.gps && (
-            <p className="text-xs text-muted-foreground">
-              Akurasi ±{draf.gps.accuracy} m · {formatWaktu(draf.gps.capturedAt)}
-            </p>
-          )}
-          {bisaUbah && (
-            <Button variant="outline" size="sm" onClick={() => ambilPosisi(true)} disabled={statusGps === "mencari"}>
-              <Crosshair className="size-3.5" aria-hidden /> Ambil ulang posisi
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <KartuLokasi aset={aset} paket={paket} draf={draf} status={statusGps} keadaan={lokasi} bisaUbah={bisaUbah} />
 
       {grup.map((g) => (
         <section key={`${g.kode}-${g.nama}`} className="space-y-3" aria-label={g.nama}>
@@ -381,12 +343,38 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
             <p className="flex-1 text-sm" data-testid="penghitung">
               Pemeriksaan terisi <b>{terisi}</b> / {items.length}
             </p>
-            <Button variant="brand" size="lg" className="h-14 px-8 text-base" onClick={() => void kirim()} disabled={mengirim}>
+            <Button
+              variant="brand"
+              size="lg"
+              className="h-14 px-8 text-base"
+              onClick={() => void kirim()}
+              disabled={mengirim || !lokasi.bolehKirim}
+            >
               {mengirim ? "Menyimpan…" : "Kirim"}
             </Button>
           </div>
         </div>
       )}
+
+      <AlertDialog open={tanyaLemah} onOpenChange={setTanyaLemah}>
+        <AlertDialogContent data-testid="dialog-sinyal-lemah">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sinyal GPS lemah</AlertDialogTitle>
+            <AlertDialogDescription>{pesanSinyalLemah(draf.gps?.accuracy ?? 999)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => lokasi.ambilUlang()}>Tunggu sinyal lebih baik</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setTanyaLemah(false);
+                void kirim(true);
+              }}
+            >
+              Kirim sekarang
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

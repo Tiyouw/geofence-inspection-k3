@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
-import { LABEL_LOKASI, LOKASI_TIPE, RADIUS_PER_LOKASI, type LokasiTipe } from "@/lib/domain/constants";
-import { keteranganJenisLokasi } from "../lib/label";
+import type { GeometriArea } from "@/lib/geo/geometri";
 import type { HasilAksi } from "../server/aksi";
 import { Peta } from "./peta";
 import { Bidang, Pilihan } from "./ui";
@@ -18,13 +17,11 @@ type NilaiAset = {
     kode?: string;
     divisionId?: number | null;
     aktif?: boolean;
-    gedung?: string | null;
+    areaId?: number | null;
     lantai?: string | null;
     lokasiTeks?: string;
-    lokasiTipe?: LokasiTipe;
     lat?: number | null;
     lng?: number | null;
-    radiusM?: number | null;
     tglExpired?: string | null;
     terakhirDicek?: string | null;
     jenis?: string;
@@ -37,7 +34,7 @@ export function FormAset({
     nilai = {},
     tipe,
     divisi,
-    gedung,
+    area,
     labelKirim,
     terakhirDicekLabel,
 }: {
@@ -45,7 +42,7 @@ export function FormAset({
     nilai?: NilaiAset;
     tipe: { id: number; nama: string }[];
     divisi: { id: number; nama: string }[];
-    gedung: string[];
+    area: { id: number; nama: string; polygon: GeometriArea | null; polygonDraf: GeometriArea | null }[];
     labelKirim: string;
     terakhirDicekLabel?: string;
 }) {
@@ -55,10 +52,9 @@ export function FormAset({
             if (r.ok && r.data && "id" in r.data) router.push(`/admin/aset/${r.data.id}`);
         },
     });
-    const [lokasiTipe, setLokasiTipe] = useState<LokasiTipe>(nilai.lokasiTipe ?? "dalam_gedung");
+    const [areaId, setAreaId] = useState(nilai.areaId != null ? String(nilai.areaId) : "");
     const [lat, setLat] = useState(nilai.lat != null ? String(nilai.lat) : "");
     const [lng, setLng] = useState(nilai.lng != null ? String(nilai.lng) : "");
-    const [radius, setRadius] = useState(nilai.radiusM != null ? String(nilai.radiusM) : "");
 
     const g = (k: string) => (state && !state.ok ? state.galat?.[k] : undefined);
     const inv = (k: string) => (g(k) ? { "aria-invalid": true, "aria-describedby": `${k}-galat` } : {});
@@ -66,7 +62,7 @@ export function FormAset({
         Number.isFinite(parseFloat(lat.replace(",", "."))) && Number.isFinite(parseFloat(lng.replace(",", ".")))
             ? { lat: parseFloat(lat.replace(",", ".")), lng: parseFloat(lng.replace(",", ".")) }
             : null;
-    const radiusTampil = Number(radius) || RADIUS_PER_LOKASI[lokasiTipe];
+    const areaPilih = area.find((x) => String(x.id) === areaId) ?? null;
 
     return (
         <form onSubmit={onSubmit} className="grid gap-6" noValidate>
@@ -117,20 +113,24 @@ export function FormAset({
 
             <fieldset className="grid gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2">
                 <legend className="px-1 text-sm font-semibold">Penempatan</legend>
-                <Bidang label="Gedung" htmlFor="gedung" galat={g("gedung")}>
-                    <Input
-                        id="gedung"
-                        name="gedung"
-                        list="daftar-gedung"
-                        defaultValue={nilai.gedung ?? ""}
-                        maxLength={64}
-                        {...inv("gedung")}
-                    />
-                    <datalist id="daftar-gedung">
-                        {gedung.map((x) => (
-                            <option key={x} value={x} />
+                <Bidang
+                    label="Area"
+                    htmlFor="areaId"
+                    galat={g("areaId")}
+                    bantuan={
+                        areaPilih && !areaPilih.polygon
+                            ? "Poligon area ini belum disetujui: inspeksi akan ditandai perlu tinjauan."
+                            : "Gedung, bengkel, dok, atau dermaga. Gerbang lokasi memakai poligonnya."
+                    }
+                >
+                    <Pilihan id="areaId" name="areaId" value={areaId} onChange={(e) => setAreaId(e.target.value)} {...inv("areaId")}>
+                        <option value="">Belum dipasangkan</option>
+                        {area.map((x) => (
+                            <option key={x.id} value={x.id}>
+                                {x.nama}
+                            </option>
                         ))}
-                    </datalist>
+                    </Pilihan>
                 </Bidang>
                 <Bidang
                     label="Lantai"
@@ -156,33 +156,13 @@ export function FormAset({
                         {...inv("lokasiTeks")}
                     />
                 </Bidang>
-                <Bidang
-                    label="Jenis lokasi"
-                    htmlFor="lokasiTipe"
-                    galat={g("lokasiTipe")}
-                    bantuan={keteranganJenisLokasi(lokasiTipe)}
-                    className="sm:col-span-2"
-                >
-                    <Pilihan
-                        id="lokasiTipe"
-                        name="lokasiTipe"
-                        value={lokasiTipe}
-                        onChange={(e) => setLokasiTipe(e.target.value as LokasiTipe)}
-                    >
-                        {LOKASI_TIPE.map((l) => (
-                            <option key={l} value={l}>
-                                {LABEL_LOKASI[l]}
-                            </option>
-                        ))}
-                    </Pilihan>
-                </Bidang>
             </fieldset>
 
             <fieldset className="grid gap-4 rounded-xl border bg-card p-5 sm:grid-cols-3">
                 <legend className="px-1 text-sm font-semibold">Titik koordinat</legend>
                 <p className="text-sm text-muted-foreground sm:col-span-3">
-                    Klik peta untuk menempatkan titik, atau ketik koordinat. Kosong berarti gerbang GPS dilewati (tanpa
-                    GPS).
+                    Klik peta untuk menempatkan titik, atau ketik koordinat. Titik membantu petugas menemukan aset;
+                    gerbang lokasi memakai poligon area.
                 </p>
                 <Bidang label="Lintang" htmlFor="lat" galat={g("lat")}>
                     <Input
@@ -204,26 +184,15 @@ export function FormAset({
                         {...inv("lng")}
                     />
                 </Bidang>
-                <Bidang
-                    label="Radius khusus (m)"
-                    htmlFor="radiusM"
-                    galat={g("radiusM")}
-                    bantuan="5–500 m. Kosong = ikut jenis lokasi."
-                >
-                    <Input
-                        id="radiusM"
-                        name="radiusM"
-                        inputMode="numeric"
-                        value={radius}
-                        onChange={(e) => setRadius(e.target.value)}
-                        {...inv("radiusM")}
-                    />
-                </Bidang>
                 <div className="sm:col-span-3">
                     <Peta
                         titik={[]}
                         pilih={titik}
-                        radius={radiusTampil}
+                        poligon={
+                            (areaPilih?.polygon ?? areaPilih?.polygonDraf)
+                                ? [{ geojson: (areaPilih.polygon ?? areaPilih.polygonDraf)!, judul: areaPilih.nama, warna: "info" }]
+                                : []
+                        }
                         onPilih={(p) => {
                             setLat(String(p.lat));
                             setLng(String(p.lng));

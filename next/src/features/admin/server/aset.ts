@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, count, eq, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, divisions } from "@/db/schema";
+import { areas, assets, assetTypes, divisions } from "@/db/schema";
 import { LOKASI_TIPE, type LokasiTipe } from "@/lib/domain/constants";
 import { hariIniJakarta } from "@/lib/format";
 import { polaMengandung } from "../lib/pencarian";
@@ -74,8 +74,7 @@ export async function daftarAset(f: FilterAset, halaman = 1) {
             gedung: assets.gedung,
             lantai: assets.lantai,
             lokasiTeks: assets.lokasiTeks,
-            lokasiTipe: assets.lokasiTipe,
-            radiusM: assets.radiusM,
+            area: areas.nama,
             lat: assets.lat,
             lng: assets.lng,
             divisi: divisions.nama,
@@ -86,6 +85,7 @@ export async function daftarAset(f: FilterAset, halaman = 1) {
         .from(assets)
         .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
         .leftJoin(divisions, eq(divisions.id, assets.divisionId))
+        .leftJoin(areas, eq(areas.id, assets.areaId))
         .where(syarat);
     const [rows, [jumlah]] = await Promise.all([
         dasar
@@ -112,10 +112,9 @@ export async function ambilAset(id: number) {
             gedung: assets.gedung,
             lantai: assets.lantai,
             lokasiTeks: assets.lokasiTeks,
-            lokasiTipe: assets.lokasiTipe,
+            areaId: assets.areaId,
             lat: assets.lat,
             lng: assets.lng,
-            radiusM: assets.radiusM,
             attributes: assets.attributes,
             tglExpired: assets.tglExpired,
             terakhirDicek: assets.terakhirDicek,
@@ -129,7 +128,7 @@ export async function ambilAset(id: number) {
 }
 
 export async function pilihanAset() {
-    const [tipe, divisi, gedung] = await Promise.all([
+    const [tipe, divisi, gedung, area] = await Promise.all([
         db
             .select({ id: assetTypes.id, slug: assetTypes.slug, nama: assetTypes.nama, isMobile: assetTypes.isMobile })
             .from(assetTypes)
@@ -140,8 +139,13 @@ export async function pilihanAset() {
             .where(eq(divisions.aktif, true))
             .orderBy(asc(divisions.nama)),
         daftarGedung(),
+        db
+            .select({ id: areas.id, nama: areas.nama, jenis: areas.jenis, polygon: areas.polygon, polygonDraf: areas.polygonDraf })
+            .from(areas)
+            .where(and(eq(areas.aktif, true), ne(areas.jenis, "kawasan")))
+            .orderBy(asc(areas.nama)),
     ]);
-    return { tipe, divisi, gedung };
+    return { tipe, divisi, gedung, area };
 }
 
 export async function daftarGedung(): Promise<string[]> {
@@ -151,28 +155,4 @@ export async function daftarGedung(): Promise<string[]> {
         .where(sql`${assets.gedung} is not null and ${assets.gedung} <> ''`)
         .orderBy(asc(assets.gedung));
     return rows.map((r) => r.g!);
-}
-
-/** Semua aset bertitik untuk peta lokasi (tanpa token). */
-export async function asetUntukPeta(f: { gedung?: string; tipe?: string }) {
-    return db
-        .select({
-            id: assets.id,
-            kode: assets.kode,
-            gedung: assets.gedung,
-            lantai: assets.lantai,
-            lokasiTeks: assets.lokasiTeks,
-            lokasiTipe: assets.lokasiTipe,
-            radiusM: assets.radiusM,
-            lat: assets.lat,
-            lng: assets.lng,
-            aktif: assets.aktif,
-            tipe: assetTypes.nama,
-        })
-        .from(assets)
-        .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
-        .where(
-            and(f.gedung ? eq(assets.gedung, f.gedung) : undefined, f.tipe ? eq(assetTypes.slug, f.tipe) : undefined),
-        )
-        .orderBy(asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
 }

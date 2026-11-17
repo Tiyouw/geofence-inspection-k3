@@ -12,14 +12,12 @@
  *                                                          → diterima, perlu_tinjauan (di_luar_gedung)
  *  5  selain itu                                          → ditolak
  */
+import { LABEL_GATE_ALASAN, type GateAlasan, type GateStatusV2 } from "@/lib/domain/constants";
 import { type PengaturanGerbang, labelAkurasi, labelJarak, toleransiGedungEfektif } from "./akurasi";
 import { type GeometriArea, type Titik, jarakKeAreaM, luasM2, titikDalamPoligon } from "./geometri";
 
-export const STATUS_GERBANG = ["sesuai", "perlu_tinjauan", "tidak_berlaku"] as const;
-export type StatusGerbang = (typeof STATUS_GERBANG)[number];
-
-export const ALASAN_GERBANG = ["di_luar_gedung", "gps_lemah"] as const;
-export type AlasanGerbang = (typeof ALASAN_GERBANG)[number];
+export type StatusGerbang = GateStatusV2;
+export type AlasanGerbang = GateAlasan;
 
 export type HasilGerbangJenis = "diterima" | "ditolak" | "diblokir";
 
@@ -161,7 +159,4 @@ export const LABEL_STATUS_GERBANG: Record<StatusGerbang, string> = {
   tidak_berlaku: "Tidak berlaku (objek bergerak)",
 };
 
-export const LABEL_ALASAN_GERBANG: Record<AlasanGerbang, string> = {
-  di_luar_gedung: "Di luar gedung aset",
-  gps_lemah: "GPS lemah",
-};
+export const LABEL_ALASAN_GERBANG = LABEL_GATE_ALASAN;

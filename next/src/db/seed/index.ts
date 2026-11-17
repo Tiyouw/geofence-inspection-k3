@@ -500,6 +500,48 @@ export async function seedLangkahFoto(tx: Tx, assetTypeId: number, def: Definisi
     .where(and(eq(s.photoSteps.assetTypeId, assetTypeId), sql`${s.photoSteps.urut} < 0`));
 }
 
+/**
+ * DEMO saja: poligon SINTETIS berupa kotak di sekitar titik contoh aset, supaya gerbang lokasi
+ * dapat dicoba sebelum denah asli diimpor. Bukan denah perusahaan (denah asli rahasia, ADR-10).
+ * Hanya mengisi area yang belum punya poligon maupun draf; poligon asli tidak pernah ditimpa.
+ */
+async function poligonContoh(tx: Tx) {
+  if (process.env.DEMO_MODE !== "true") return;
+  const M = 111_195;
+  const kotak = (titik: { lat: number; lng: number }[], margin: number): s.GeoJsonPolygon => {
+    const lat0 = Math.min(...titik.map((t) => t.lat));
+    const lat1 = Math.max(...titik.map((t) => t.lat));
+    const lng0 = Math.min(...titik.map((t) => t.lng));
+    const lng1 = Math.max(...titik.map((t) => t.lng));
+    const dLat = margin / M;
+    const dLng = margin / (M * Math.cos((((lat0 + lat1) / 2) * Math.PI) / 180));
+    const r = (n: number) => Math.round(n * 1e7) / 1e7;
+    const [s0, n0, w0, e0] = [r(lat0 - dLat), r(lat1 + dLat), r(lng0 - dLng), r(lng1 + dLng)];
+    return { type: "Polygon", coordinates: [[[w0, s0], [e0, s0], [e0, n0], [w0, n0], [w0, s0]]] };
+  };
+  const titik = await tx
+    .select({ areaId: s.assets.areaId, lat: s.assets.lat, lng: s.assets.lng })
+    .from(s.assets)
+    .where(and(isNotNull(s.assets.lat), isNotNull(s.assets.lng)));
+  const semua = titik.map((t) => ({ areaId: t.areaId, lat: Number(t.lat), lng: Number(t.lng) }));
+  if (!semua.length) return;
+  const kosong = await tx
+    .select({ id: s.areas.id, jenis: s.areas.jenis })
+    .from(s.areas)
+    .where(and(eq(s.areas.aktif, true), isNull(s.areas.polygon), isNull(s.areas.polygonDraf)));
+  let n = 0;
+  for (const a of kosong) {
+    const milik = a.jenis === "kawasan" ? semua : semua.filter((t) => t.areaId === a.id);
+    if (!milik.length) continue;
+    await tx
+      .update(s.areas)
+      .set({ polygon: kotak(milik, a.jenis === "kawasan" ? 300 : 15), poligonDisetujuiPada: new Date() })
+      .where(eq(s.areas.id, a.id));
+    n++;
+  }
+  console.log(`Poligon contoh (sintetis): ${n}`);
+}
+
 async function main() {
   await db.transaction(async (tx) => {
     const div = await divisi(tx);
@@ -513,6 +555,7 @@ async function main() {
     await seedDamkar(tx, div[DIVISI.satPk] ?? null);
     const [damkar] = await tx.select({ id: s.assetTypes.id }).from(s.assetTypes).where(eq(s.assetTypes.slug, SLUG_DAMKAR));
     if (damkar) await seedLangkahFoto(tx, damkar.id, LANGKAH_FOTO_DAMKAR);
+    await poligonContoh(tx);
     await contohOperasional(tx);
     // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
     await seedP3kHydrant(tx);

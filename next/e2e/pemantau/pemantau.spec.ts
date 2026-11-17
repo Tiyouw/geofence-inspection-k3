@@ -45,7 +45,8 @@ async function harusPdf(res: APIResponse, nama: RegExp) {
 async function tanpaKendaliTulis(page: Page) {
   // Formulir "Keluar" di bilah samping bukan bagian halaman.
   await expect(page.locator('main form[method="post" i]')).toHaveCount(0);
-  const tombol = await page.locator("main button, main [role=button]").allInnerTexts();
+  // Kendali zoom peta Leaflet (+/−) bukan kendali tulis.
+  const tombol = await page.locator("main button:not(.leaflet-control *), main [role=button]:not(.leaflet-control *)").allInnerTexts();
   expect(tombol.filter((t) => !/Tampilkan|Terapkan/.test(t))).toEqual([]);
 }
 

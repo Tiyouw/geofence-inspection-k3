@@ -2,6 +2,7 @@
  * Penanganan akurasi GPS (ADR-7). `accuracy` dari Geolocation API adalah jari-jari
  * ketidakpastian dalam meter (keyakinan ~68%).
  */
+import { SETTING_GERBANG, SETTING_GERBANG_BAWAAN } from "@/lib/domain/constants";
 
 export type PengaturanGerbang = {
   /** Toleransi dari tepi poligon gedung/area aset (m). */
@@ -14,17 +15,13 @@ export type PengaturanGerbang = {
 
 /** Nilai yang disetujui pemilik 17 Nov 2026; nilai resmi dibaca dari tabel `settings`. */
 export const PENGATURAN_GERBANG_BAWAAN: PengaturanGerbang = {
-  toleransiGedungM: 30,
-  toleransiKawasanM: 50,
-  akurasiLemahM: 100,
+  toleransiGedungM: SETTING_GERBANG_BAWAAN[SETTING_GERBANG.toleransiGedungM],
+  toleransiKawasanM: SETTING_GERBANG_BAWAAN[SETTING_GERBANG.toleransiKawasanM],
+  akurasiLemahM: SETTING_GERBANG_BAWAAN[SETTING_GERBANG.akurasiLemahM],
 };
 
 /** Kunci di tabel `settings` (Tech Spec, migrasi 2). */
-export const KUNCI_PENGATURAN_GERBANG = {
-  toleransiGedungM: "gerbang.toleransi_gedung_m",
-  toleransiKawasanM: "gerbang.toleransi_kawasan_m",
-  akurasiLemahM: "gerbang.akurasi_lemah_m",
-} as const satisfies Record<keyof PengaturanGerbang, string>;
+export const KUNCI_PENGATURAN_GERBANG = SETTING_GERBANG satisfies Record<keyof PengaturanGerbang, string>;
 
 /** Menyusun pengaturan dari baris kunci-nilai; nilai rusak atau hilang memakai bawaan. */
 export function bacaPengaturanGerbang(nilai: Record<string, unknown>): PengaturanGerbang {

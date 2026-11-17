@@ -1,11 +1,5 @@
 /** Label dan nada lencana untuk nilai domain di panel admin. */
-import {
-    LABEL_LOKASI,
-    RADIUS_PER_LOKASI,
-    type GateStatus,
-    type LokasiTipe,
-    type ScheduleStatus,
-} from "@/lib/domain/constants";
+import type { GateStatus, ScheduleStatus } from "@/lib/domain/constants";
 
 export type Nada = "success" | "warning" | "danger" | "info" | "muted";
 
@@ -21,24 +15,6 @@ export const LABEL_GERBANG: Record<GateStatus, { label: string; nada: Nada }> = 
 };
 
 /** "75 m (bawaan)" / "40 m (khusus)" / "tanpa gerbang" (H3). */
-export function labelRadius(radiusM: number | null, lokasiTipe: LokasiTipe): string {
-    if (radiusM) return `${radiusM} m (khusus)`;
-    const bawaan = RADIUS_PER_LOKASI[lokasiTipe];
-    return bawaan === null ? "tanpa gerbang" : `${bawaan} m (bawaan)`;
-}
-
-/** Keterangan di formulir aset yang berubah mengikuti jenis lokasi (H2). */
-export function keteranganJenisLokasi(lokasiTipe: LokasiTipe): string {
-    const r = RADIUS_PER_LOKASI[lokasiTipe];
-    return r === null
-        ? `${LABEL_LOKASI[lokasiTipe]}: gerbang GPS tidak diberlakukan.`
-        : `${LABEL_LOKASI[lokasiTipe]}: radius bawaan ${r} m.`;
-}
-
-/**
- * Label jadwal (Schedule.php:66-73): Terlaksana / Terlaksana (telat) / Terlewat / Belum.
- * Terlewat = belum dan hari tenggat sudah berakhir.
- */
 export function labelJadwal(
     status: ScheduleStatus,
     jatuhTempo: string,

@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, lt, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  areas,
   assetTypes,
   assets,
   checklistGroups,
@@ -317,10 +318,9 @@ export async function detailInspeksi(id: string) {
         lokasiTeks: assets.lokasiTeks,
         lat: assets.lat,
         lng: assets.lng,
-        lokasiTipe: assets.lokasiTipe,
-        radiusM: assets.radiusM,
         attributes: assets.attributes,
       },
+      area: { nama: areas.nama, polygon: areas.polygon },
       tipe: assetTypes.nama,
       petugas: users.name,
       nipPetugas: users.nip,
@@ -329,6 +329,7 @@ export async function detailInspeksi(id: string) {
     .innerJoin(assets, eq(assets.id, inspections.assetId))
     .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
     .innerJoin(users, eq(users.id, inspections.userId))
+    .leftJoin(areas, eq(areas.id, assets.areaId))
     .where(eq(inspections.id, id))
     .limit(1);
   if (!row) return null;

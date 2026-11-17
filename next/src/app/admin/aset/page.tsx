@@ -5,10 +5,8 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kosong, Lencana, Paginasi, Pilihan, Tabel, halamanDari, qs } from "@/features/admin/components/ui";
-import { labelRadius } from "@/features/admin/lib/label";
 import { PER_HALAMAN_ASET, daftarAset, parseFilterAset, pilihanAset } from "@/features/admin/server/aset";
 import { requireRole } from "@/lib/auth/guards";
-import { LABEL_LOKASI, LOKASI_TIPE } from "@/lib/domain/constants";
 import { labelLantai } from "@/lib/domain/asset";
 import { formatTanggal } from "@/lib/format";
 
@@ -24,7 +22,6 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
         q: f.q,
         tipe: f.tipe,
         gedung: f.gedung,
-        lokasi: f.lokasiTipe,
         aktif: f.aktif,
         tanpa_koordinat: f.tanpaKoordinat,
         jatuh_tempo: f.jatuhTempo,
@@ -75,17 +72,6 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                     </Pilihan>
                 </label>
                 <label className="flex flex-col gap-1 text-xs font-medium">
-                    Jenis lokasi
-                    <Pilihan name="lokasi" defaultValue={f.lokasiTipe ?? ""}>
-                        <option value="">Semua</option>
-                        {LOKASI_TIPE.map((l) => (
-                            <option key={l} value={l}>
-                                {LABEL_LOKASI[l]}
-                            </option>
-                        ))}
-                    </Pilihan>
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-medium">
                     Aktif
                     <Pilihan name="aktif" defaultValue={f.aktif ?? ""}>
                         <option value="">Semua</option>
@@ -131,11 +117,9 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                         <tr>
                             <th>Nomor</th>
                             <th>Tipe</th>
-                            <th>Gedung</th>
+                            <th>Area</th>
                             <th>Lantai</th>
                             <th>Lokasi</th>
-                            <th>Jenis</th>
-                            <th>Radius efektif</th>
                             <th>Titik</th>
                             <th>Divisi</th>
                             <th>Terakhir dicek</th>
@@ -151,13 +135,13 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                                     </Link>
                                 </td>
                                 <td>{a.tipe}</td>
-                                <td>{a.gedung ?? "-"}</td>
+                                <td>
+                                    {a.area ?? (a.isMobile ? "Bergerak" : <span className="text-warning">Belum berarea</span>)}
+                                </td>
                                 <td>{labelLantai(a.lantai) ?? "-"}</td>
                                 <td className="max-w-56 truncate" title={a.lokasiTeks}>
                                     {a.lokasiTeks.length > 40 ? a.lokasiTeks.slice(0, 40) + "…" : a.lokasiTeks}
                                 </td>
-                                <td className="whitespace-nowrap">{LABEL_LOKASI[a.lokasiTipe]}</td>
-                                <td className="whitespace-nowrap">{labelRadius(a.radiusM, a.lokasiTipe)}</td>
                                 <td>
                                     {a.lat != null && a.lng != null ? (
                                         <span title={`${a.lat}, ${a.lng}`} aria-label={`Koordinat ${a.lat}, ${a.lng}`}>
