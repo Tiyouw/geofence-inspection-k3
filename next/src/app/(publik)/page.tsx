@@ -21,9 +21,10 @@ export const metadata: Metadata = {
 /** Keterangan modul yang belum punya penjelasan di data induk (LandingController.php). */
 const RINGKASAN: Record<string, string> = {
     apar: "Pemeriksaan alat pemadam api ringan setiap bulan: isi, tekanan, kondisi fisik, mulut pancar, dan penempatan.",
-    hydrant: "Pemeriksaan jaringan hydrant: rumah hydrant, kopling, selang, nozel, dan katup.",
+    hydrant_pilar: "Pemeriksaan hydrant pilar di halaman, dermaga, dan dok: akses, katup, siamese connection, dan korosi.",
+    hydrant_box: "Pemeriksaan hydrant box di dalam gedung: akses, box dan kaca, selang, nozzle, dan katup.",
     p3k: "Pemeriksaan kotak pertolongan pertama: kelengkapan isi terhadap jumlah baku dan masa kedaluwarsa.",
-    damkar: "Pemeriksaan mobil pemadam kebakaran: mesin, pompa, tangki, dan kelengkapan perlengkapan.",
+    mobil_pemadam: "Pemeriksaan mobil pemadam kebakaran: mesin, pompa, tangki, dan kelengkapan perlengkapan.",
 };
 
 function labelPeriode(hari: number | null): string {
@@ -106,6 +107,7 @@ export default async function HalamanDepan() {
                 adaChecklist: sql<boolean>`exists (select 1 from ${checklistGroups} where ${eq(checklistGroups.assetTypeId, assetTypes.id)})`,
             })
             .from(assetTypes)
+            .where(eq(assetTypes.aktif, true))
             .orderBy(asc(assetTypes.urut)),
     ]);
     const masuk = user !== null;

@@ -1,7 +1,7 @@
 /**
  * Seed data awal, setara database/seeders Laravel (Master, User, Apar, DemoUser),
  * ditambah sedikit contoh inspeksi/temuan/jadwal agar dasbor tidak kosong.
- * Tidak ada data asli PT PAL: nama adalah nama peran, koordinat adalah contoh.
+ * Tidak ada data asli perusahaan: nama adalah nama peran, koordinat adalah contoh.
  *
  * Idempoten: aman dijalankan ulang (upsert pada kunci alami). Sandi akun yang
  * sudah ada tidak ditimpa, kecuali akun demo (supaya sandi demo selalu sesuai env).
@@ -13,14 +13,14 @@ config({ path: [".env.local", ".env"], quiet: true });
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import bcrypt from "bcryptjs";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as s from "../schema";
 import { buatTokenQr, tebakLokasiTipe } from "../../lib/domain/asset";
 import { hariIniJakarta } from "../../lib/format";
 import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
-import type { AnswerType, Role, Severity } from "../../lib/domain/constants";
+import { DIVISI, PEMILIK_TIPE, type AnswerType, type AssetTypeSlug, type Role, type Severity } from "../../lib/domain/constants";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema: s, casing: "snake_case" });
@@ -29,29 +29,46 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 const hash = (p: string) => bcrypt.hash(p, 10);
 
 async function divisi(tx: Tx) {
+  // v2: dua unit pemilik modul (PRD "Unit kerja"). Unit contoh v1 dinonaktifkan, tidak dihapus.
   const data = [
-    { nama: "Manajemen Aset/Infrastruktur & K3LH", kode: "K3LH" },
-    { nama: "Teknologi Informasi", kode: "TI" },
-    { nama: "Gedung PIP", kode: "PIP" },
+    { nama: "SAT. PK", kode: DIVISI.satPk, aktif: true },
+    { nama: "Divisi Matra & K3LH", kode: DIVISI.matra, aktif: true },
+    { nama: "Manajemen Aset/Infrastruktur & K3LH", kode: "K3LH", aktif: false },
+    { nama: "Teknologi Informasi", kode: "TI", aktif: false },
+    { nama: "Gedung PIP", kode: "PIP", aktif: false },
   ];
   for (const row of data) {
-    await tx.insert(s.divisions).values(row).onConflictDoUpdate({ target: s.divisions.kode, set: { nama: row.nama } });
+    await tx
+      .insert(s.divisions)
+      .values(row)
+      .onConflictDoUpdate({ target: s.divisions.kode, set: { nama: row.nama, aktif: row.aktif } });
   }
   const rows = await tx.select().from(s.divisions);
   return Object.fromEntries(rows.map((r) => [r.kode, r.id])) as Record<string, number>;
 }
 
-/** periode_hari APAR = 30 mengikuti NFPA 10 (inspeksi bulanan). */
-async function tipeObjek(tx: Tx) {
-  const data = [
+/**
+ * Tipe aset v2 dengan unit pemilik. periode_hari APAR = 30 mengikuti NFPA 10 (inspeksi bulanan);
+ * mobil pemadam 7 hari. Slug lama `damkar` diganti `mobil_pemadam` (id tetap); `hydrant` dipecah
+ * menjadi `hydrant_pilar` dan `hydrant_box`, dan baris lamanya dinonaktifkan (tidak dihapus).
+ */
+async function tipeObjek(tx: Tx, div: Record<string, number>) {
+  const [damkar] = await tx.select().from(s.assetTypes).where(eq(s.assetTypes.slug, "damkar"));
+  const [mobil] = await tx.select().from(s.assetTypes).where(eq(s.assetTypes.slug, "mobil_pemadam"));
+  if (damkar && !mobil) await tx.update(s.assetTypes).set({ slug: "mobil_pemadam" }).where(eq(s.assetTypes.id, damkar.id));
+
+  const data: { slug: AssetTypeSlug; nama: string; isMobile: boolean; periodeHari: number; urut: number }[] = [
     { slug: "apar", nama: "APAR", isMobile: false, periodeHari: 30, urut: 1 },
-    { slug: "hydrant", nama: "Hydrant", isMobile: false, periodeHari: 30, urut: 2 },
-    { slug: "p3k", nama: "Kotak P3K", isMobile: false, periodeHari: 30, urut: 3 },
-    { slug: "damkar", nama: "Mobil Pemadam", isMobile: true, periodeHari: 7, urut: 4 },
+    { slug: "hydrant_pilar", nama: "Hydrant Pilar", isMobile: false, periodeHari: 30, urut: 2 },
+    { slug: "hydrant_box", nama: "Hydrant Box", isMobile: false, periodeHari: 30, urut: 3 },
+    { slug: "p3k", nama: "Kotak P3K", isMobile: false, periodeHari: 30, urut: 4 },
+    { slug: "mobil_pemadam", nama: "Mobil Pemadam", isMobile: true, periodeHari: 7, urut: 5 },
   ];
   for (const row of data) {
-    await tx.insert(s.assetTypes).values(row).onConflictDoUpdate({ target: s.assetTypes.slug, set: row });
+    const values = { ...row, aktif: true, ownerDivisionId: div[PEMILIK_TIPE[row.slug]]! };
+    await tx.insert(s.assetTypes).values(values).onConflictDoUpdate({ target: s.assetTypes.slug, set: values });
   }
+  await tx.update(s.assetTypes).set({ aktif: false, urut: 99 }).where(eq(s.assetTypes.slug, "hydrant"));
   const [apar] = await tx.select().from(s.assetTypes).where(eq(s.assetTypes.slug, "apar"));
   return apar!.id;
 }
@@ -66,7 +83,7 @@ type ItemSeed = {
   keterangan?: string;
 };
 
-/** Checklist APAR 10 butir, turunan Lampiran 03 PT PAL. */
+/** Checklist APAR 10 butir, turunan formulir APAR perusahaan (Lampiran 03). */
 const CHECKLIST_APAR: { kode: string; nama: string; items: ItemSeed[] }[] = [
   {
     kode: "A",
@@ -167,17 +184,20 @@ async function checklistApar(tx: Tx, aparId: number) {
   }
 }
 
-/** Sembilan petugas contoh (nama peran, bukan pegawai asli). */
+/**
+ * Sembilan petugas contoh (nama peran, bukan pegawai asli). Inspektur wajib punya unit:
+ * SAT. PK (APAR, hydrant, mobil pemadam) atau Divisi Matra & K3LH (kotak P3K).
+ */
 const PETUGAS: [string, string, string, Role, string, string][] = [
-  ["1001", "Admin K3", "admin@pal.test", "admin", "Staf Administrasi K3LH", "K3LH"],
-  ["1002", "Kepala Seksi K3", "kasi.k3@pal.test", "admin", "Kepala Seksi K3LH", "K3LH"],
-  ["2001", "Inspektur Gedung PIP", "inspektur1@pal.test", "inspektur", "Petugas Inspeksi APAR", "PIP"],
-  ["2002", "Inspektur Workshop", "inspektur2@pal.test", "inspektur", "Petugas Inspeksi APAR", "PIP"],
-  ["2003", "Inspektur Area Luar", "inspektur3@pal.test", "inspektur", "Petugas Inspeksi APAR", "PIP"],
-  ["2004", "Inspektur Pengganti", "inspektur4@pal.test", "inspektur", "Petugas Inspeksi APAR", "PIP"],
-  ["2005", "Inspektur Shift Malam", "inspektur5@pal.test", "inspektur", "Petugas Inspeksi APAR", "PIP"],
-  ["3001", "Pemantau Manajemen", "pemantau@pal.test", "pemantau", "Manajer Infrastruktur", "TI"],
-  ["3002", "Pemantau TI", "pemantau.ti@pal.test", "pemantau", "Staf Teknologi Informasi", "TI"],
+  ["1001", "Admin K3", "admin@contoh.test", "admin", "Staf Administrasi K3", DIVISI.matra],
+  ["1002", "Kepala Seksi K3", "kasi.k3@contoh.test", "admin", "Kepala Seksi K3", DIVISI.matra],
+  ["2001", "Inspektur Gedung Kantor", "inspektur1@contoh.test", "inspektur", "Petugas SAT. PK", DIVISI.satPk],
+  ["2002", "Inspektur Bengkel", "inspektur2@contoh.test", "inspektur", "Petugas SAT. PK", DIVISI.satPk],
+  ["2003", "Inspektur Area Luar", "inspektur3@contoh.test", "inspektur", "Petugas SAT. PK", DIVISI.satPk],
+  ["2004", "Inspektur P3K", "inspektur4@contoh.test", "inspektur", "Petugas Matra & K3LH", DIVISI.matra],
+  ["2005", "Inspektur P3K Pengganti", "inspektur5@contoh.test", "inspektur", "Petugas Matra & K3LH", DIVISI.matra],
+  ["3001", "Pemantau Manajemen", "pemantau@contoh.test", "pemantau", "Pejabat Pengawas", DIVISI.matra],
+  ["3002", "Pemantau SAT. PK", "pemantau.pk@contoh.test", "pemantau", "Kepala SAT. PK", DIVISI.satPk],
 ];
 
 async function petugas(tx: Tx, div: Record<string, number>) {
@@ -204,15 +224,15 @@ async function akunDemo(tx: Tx, div: Record<string, number>) {
     return;
   }
   const akun: [string, string, Role, string, string][] = [
-    ["admin", "Administrator Demo", "admin", process.env.DEMO_ADMIN_PASSWORD || "admin123", "K3LH"],
-    ["pemantau", "Pemantau Demo", "pemantau", process.env.DEMO_PEMANTAU_PASSWORD || "pemantau123", "TI"],
-    ["inspektur", "Inspektur Demo", "inspektur", process.env.DEMO_INSPEKTUR_PASSWORD || "inspektur123", "PIP"],
+    ["admin", "Administrator Demo", "admin", process.env.DEMO_ADMIN_PASSWORD || "admin123", DIVISI.matra],
+    ["pemantau", "Pemantau Demo", "pemantau", process.env.DEMO_PEMANTAU_PASSWORD || "pemantau123", DIVISI.matra],
+    ["inspektur", "Inspektur Demo", "inspektur", process.env.DEMO_INSPEKTUR_PASSWORD || "inspektur123", DIVISI.satPk],
   ];
   for (const [nip, name, role, password, kodeDivisi] of akun) {
     const values = {
       nip,
       name,
-      email: `${nip}@demo.pal.test`,
+      email: `${nip}@demo.contoh.test`,
       role,
       jabatan: "Akun demonstrasi",
       isDemo: true,
@@ -250,12 +270,12 @@ function bacaCsv(teks: string): Record<string, string>[] {
  * 35 APAR contoh dari CSV. Token QR TIDAK ada di CSV: diterbitkan acak saat aset
  * pertama kali dibuat, dan seed ulang tidak menggantinya (stiker tetap berlaku).
  */
-async function apar(tx: Tx, aparId: number, divPip: number) {
+async function apar(tx: Tx, aparId: number, divSatPk: number) {
   const rows = bacaCsv(readFileSync(join(import.meta.dirname, "apar.csv"), "utf8"));
   for (const row of rows) {
     const values = {
       assetTypeId: aparId,
-      divisionId: divPip,
+      divisionId: divSatPk,
       kode: row.kode!,
       gedung: row.gedung!,
       lantai: row.lantai!,
@@ -398,14 +418,50 @@ async function contohOperasional(tx: Tx) {
   console.log(`Jadwal ${periode}: ${semuaAset.length}; inspeksi contoh: 6; temuan contoh: 1`);
 }
 
+/**
+ * Tech Spec migrasi 1: satu area (tanpa poligon) untuk tiap nilai `assets.gedung`, di bawah satu
+ * kawasan galangan, lalu `assets.area_id` diisi. Poligon digambar/diimpor admin kemudian.
+ * Aset yang sudah punya area tidak diubah.
+ */
+async function areaDariGedung(tx: Tx) {
+  const [kawasan] = await tx
+    .insert(s.areas)
+    .values({ kode: "KAWASAN", nama: "Kawasan Galangan", jenis: "kawasan" })
+    .onConflictDoUpdate({ target: s.areas.kode, set: { jenis: "kawasan" } })
+    .returning();
+  const gedung = await tx
+    .selectDistinct({ gedung: s.assets.gedung })
+    .from(s.assets)
+    .where(and(isNull(s.assets.areaId), isNotNull(s.assets.gedung)));
+  for (const { gedung: nama } of gedung) {
+    const kode = kodeArea(nama!);
+    const [area] = await tx
+      .insert(s.areas)
+      .values({ kode, nama: nama!, jenis: tebakLokasiTipe(nama!) === "bengkel" ? "bengkel" : "gedung", parentId: kawasan!.id })
+      .onConflictDoUpdate({ target: s.areas.kode, set: { nama: nama! } })
+      .returning();
+    await tx
+      .update(s.assets)
+      .set({ areaId: area!.id })
+      .where(and(eq(s.assets.gedung, nama!), isNull(s.assets.areaId)));
+  }
+  console.log(`Area dari gedung: ${gedung.length}`);
+}
+
+/** Kode area dari nama gedung: huruf besar, non-alfanumerik jadi "-", maks 32. */
+function kodeArea(nama: string): string {
+  return nama.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "AREA";
+}
+
 async function main() {
   await db.transaction(async (tx) => {
     const div = await divisi(tx);
-    const aparId = await tipeObjek(tx);
+    const aparId = await tipeObjek(tx, div);
     await checklistApar(tx, aparId);
     await petugas(tx, div);
     await akunDemo(tx, div);
-    await apar(tx, aparId, div.PIP!);
+    await apar(tx, aparId, div[DIVISI.satPk]!);
+    await areaDariGedung(tx);
     await contohOperasional(tx);
   });
 }
