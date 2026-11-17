@@ -1,0 +1,313 @@
+/*
+ * Halaman depan publik: salinan 1:1 sistem desain "Arc" dari aplikasi Laravel
+ * (resources/css/app.css, .kiro/steering/design.md). Build Tailwind TERPISAH dengan
+ * prefiks `s:` supaya token monokrom Arc (paper, charcoal, bone, ...) tidak bercampur
+ * dengan token aplikasi di globals.css, dan sebaliknya. Kelas di halaman depan ditulis
+ * `s:bg-paper`, `s:md:grid-cols-12`, dst.
+ *
+ * Hanya berkas di folder (publik)/situs dan page.tsx yang dipindai.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(s);
+@import "@fontsource-variable/inter";
+@import "tailwindcss/utilities.css" layer(utilities) prefix(s) source(none);
+@source "./page.tsx";
+@source "./situs";
+
+/* Varian js: berlaku setelah skrip sebaris menandai pembungkus <div class="situs js">. */
+@custom-variant js (&:where(.js, .js *));
+
+@theme {
+    --color-*: initial;
+    --color-bone: #e5e7eb;
+    --color-charcoal: #0a0a0a;
+    --color-paper: #ffffff;
+    --color-obsidian: #000000;
+    --color-deep-current: #031e25;
+    --color-slate-depth: #1d1d1e;
+
+    /* Berkas Inter yang sama dengan situs Laravel (@fontsource-variable/inter). */
+    --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    --font-weight-*: initial;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+
+    --text-*: initial;
+    --text-caption: 0.6875rem;
+    --text-caption--line-height: 1.3;
+    --text-caption--letter-spacing: 0.185em;
+    --text-label: 0.75rem;
+    --text-label--line-height: 1.3;
+    --text-label--letter-spacing: 0.15em;
+    --text-body-sm: 0.875rem;
+    --text-body-sm--line-height: 1.44;
+    --text-body: 1rem;
+    --text-body--line-height: 1.44;
+    --text-body-lg: 1.125rem;
+    --text-body-lg--line-height: 1.44;
+    --text-body-lg--letter-spacing: -0.01em;
+    --text-subheading: 1.375rem;
+    --text-subheading--line-height: 1.33;
+    --text-subheading--letter-spacing: -0.012em;
+    --text-heading: clamp(1.625rem, 1.3rem + 1.1vw, 2rem);
+    --text-heading--line-height: 1.3;
+    --text-heading--letter-spacing: -0.016em;
+    --text-heading-lg: clamp(2.125rem, 1.5rem + 2.2vw, 3rem);
+    --text-heading-lg--line-height: 1.16;
+    --text-heading-lg--letter-spacing: -0.021em;
+    --text-display: clamp(2.75rem, 0.9rem + 5.8vw, 8.75rem);
+    --text-display--line-height: 1;
+    --text-display--letter-spacing: -0.043em;
+
+    --radius-*: initial;
+    --radius-sm: 2.25px;
+    --radius-md: 5px;
+    --radius-3xl: 32px;
+
+    --shadow-*: initial;
+    --shadow-md: rgba(0, 0, 0, 0.05) 0 10px 15px -3px;
+    --drop-shadow-*: initial;
+    --blur-*: initial;
+    --inset-shadow-*: initial;
+    --text-shadow-*: initial;
+
+    --container-halaman: 80rem;
+    --spacing-pita: clamp(4rem, 2.5rem + 5vw, 6.25rem);
+
+    --ease-halus: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dasar halaman depan; dibatasi pada pembungkus .situs agar tidak mengubah halaman lain. */
+@layer base {
+    .situs {
+        font-family: var(--s-font-sans);
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: var(--s-color-paper);
+        color: var(--s-color-charcoal);
+        font-size: var(--s-text-body);
+        line-height: var(--s-text-body--line-height);
+    }
+
+    .situs b,
+    .situs strong {
+        font-weight: var(--s-font-weight-semibold);
+    }
+
+    .situs :focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 3px;
+    }
+
+    .situs ::selection {
+        background-color: var(--s-color-charcoal);
+        color: var(--s-color-paper);
+    }
+}
+
+@utility bingkai {
+    width: 100%;
+    max-width: var(--s-container-halaman);
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+
+    @media (width >= 48rem) {
+        padding-inline: 2.5rem;
+    }
+}
+
+@utility label-meta {
+    font-size: var(--s-text-caption);
+    line-height: var(--s-text-caption--line-height);
+    letter-spacing: var(--s-text-caption--letter-spacing);
+    font-weight: var(--s-font-weight-medium);
+    text-transform: uppercase;
+}
+
+@utility tombol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: var(--s-radius-md);
+    font-size: var(--s-text-label);
+    line-height: var(--s-text-label--line-height);
+    letter-spacing: var(--s-text-label--letter-spacing);
+    font-weight: var(--s-font-weight-medium);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition-property: color, background-color, border-color;
+    transition-duration: 200ms;
+    transition-timing-function: var(--s-ease-halus);
+}
+
+@utility tombol-terang {
+    color: var(--s-color-paper);
+    border-color: rgb(255 255 255 / 0.7);
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--s-color-paper);
+            border-color: var(--s-color-paper);
+            color: var(--s-color-charcoal);
+        }
+    }
+}
+
+@utility tombol-gelap {
+    color: var(--s-color-charcoal);
+    border-color: var(--s-color-charcoal);
+
+    @media (hover: hover) {
+        &:hover {
+            background-color: var(--s-color-charcoal);
+            border-color: var(--s-color-charcoal);
+            color: var(--s-color-paper);
+        }
+    }
+}
+
+@utility tautan {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.5em;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 200ms var(--s-ease-halus);
+
+    &:focus-visible {
+        text-decoration-color: currentColor;
+    }
+
+    @media (hover: hover) {
+        &:hover {
+            text-decoration-color: currentColor;
+        }
+    }
+}
+
+@utility bingkai-foto {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--s-radius-3xl);
+    clip-path: inset(0 round var(--s-radius-3xl));
+}
+
+@utility selubung-gelap {
+    background-image:
+        linear-gradient(to bottom, rgb(0 0 0 / 0.5) 0%, rgb(0 0 0 / 0) 14rem),
+        linear-gradient(
+            to top,
+            rgb(3 30 37 / 0.92) 0%,
+            rgb(3 30 37 / 0.65) 22rem,
+            rgb(3 30 37 / 0.55) 34rem,
+            rgb(3 30 37 / 0.3) 100%
+        );
+}
+
+@keyframes masuk-naik {
+    from {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+}
+
+@keyframes masuk-pudar {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes zoom-keluar {
+    from {
+        transform: scale(1.06);
+    }
+}
+
+@keyframes zoom-pelan {
+    to {
+        transform: scale(1.07);
+    }
+}
+
+@keyframes turun-masuk {
+    from {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    html:has(.situs) {
+        scroll-behavior: smooth;
+    }
+
+    .situs [data-masuk] {
+        animation: masuk-naik 700ms var(--s-ease-halus) both;
+        animation-delay: calc(150ms + var(--urutan, 0) * 110ms);
+    }
+
+    .situs [data-masuk="pudar"] {
+        animation-name: masuk-pudar;
+    }
+
+    .situs [data-masuk-media] {
+        animation: zoom-keluar 2400ms var(--s-ease-halus) both;
+    }
+
+    .situs.js [data-muncul] {
+        opacity: 0;
+        transform: translateY(1.25rem);
+        transition:
+            opacity 650ms var(--s-ease-halus),
+            transform 650ms var(--s-ease-halus);
+        transition-delay: calc(var(--urutan, 0) * 90ms);
+    }
+
+    .situs.js [data-muncul].muncul {
+        opacity: 1;
+        transform: none;
+    }
+
+    .situs.js [data-muncul] .s\:bingkai-foto > img {
+        transform: scale(1.08);
+        transition: transform 1800ms var(--s-ease-halus);
+    }
+
+    .situs.js [data-muncul].muncul .s\:bingkai-foto > img {
+        transform: none;
+    }
+
+    .situs [data-zoom-pelan] {
+        animation: zoom-pelan 24s ease-in-out infinite alternate;
+    }
+
+    .situs [data-menu-panel]:not([hidden]) {
+        animation: turun-masuk 200ms var(--s-ease-halus);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .situs *,
+    .situs ::before,
+    .situs ::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+    }
+
+    html:has(.situs) {
+        scroll-behavior: auto !important;
+    }
+}
+
+@media print {
+    .situs.js [data-muncul] {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
