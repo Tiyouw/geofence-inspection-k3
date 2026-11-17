@@ -2,6 +2,7 @@
 
 import { ChevronRight, QrCode, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LABEL_KESIMPULAN } from "@/lib/domain/constants";
@@ -68,7 +69,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
       </Button>
 
       {!siap ? (
-        <p className="text-sm text-muted-foreground">Memuat data di perangkat…</p>
+        <KerangkaKartu label="Memuat data di perangkat…" />
       ) : !paket ? (
         <Card>
           <CardContent className="p-4 text-sm">

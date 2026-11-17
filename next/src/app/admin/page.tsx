@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { FileDown } from "lucide-react";
+import { KerangkaHalaman } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
 import { AksiSelesai, AksiTenggat, AksiTinjau } from "@/features/admin/components/aksi-antrean";
 import { Peta, type TitikTampil } from "@/features/admin/components/peta";
@@ -37,7 +39,17 @@ export default async function AdminDasbor({ searchParams }: PageProps<"/admin">)
     const sp = await searchParams;
     const tab = parseTab(sp.tab);
     if (!tab) notFound();
+    // Parameter sudah sah (status 404 tetap terkirim untuk tab asing); isi dasbor menyusul
+    // di balik kerangka muat supaya halaman langsung tampil.
+    return (
+        <Suspense fallback={<KerangkaHalaman label="Memuat ringkasan…" />}>
+            <IsiDasbor nama={user.name} tab={tab} hal={sp.hal} />
+        </Suspense>
+    );
+}
 
+async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; hal: string | string[] | undefined }) {
+    const sp = { hal: typeof hal === "string" ? hal : undefined };
     const now = new Date();
     const [r, antrean] = await Promise.all([ringkasanDasbor(now), antreanDasbor(tab, sp.hal ?? 1, now)]);
     // Halaman yang kosong setelah entri terakhirnya diproses dikoreksi (I4).
@@ -64,7 +76,7 @@ export default async function AdminDasbor({ searchParams }: PageProps<"/admin">)
         <>
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Halo, {user.name}</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight">Halo, {nama}</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
                         {formatTanggal(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ·
                         Periode {bulan}
