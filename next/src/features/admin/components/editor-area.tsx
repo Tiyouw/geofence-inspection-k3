@@ -12,16 +12,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { formatWaktu } from "@/lib/format";
 import { AREA_JENIS, LABEL_AREA_JENIS } from "@/lib/domain/constants";
@@ -326,8 +316,6 @@ function drafTerhapus(a: AreaEditor) {
     return !a.polygon && !!a.polygonDraf && a.jenis !== "kawasan" && a.jumlahAset === 0;
 }
 
-type TanyaMassal = { aksi: "setujui" | "hapus"; judul: string; ids: number[]; dilewati: string };
-
 /**
  * Kartu "Draf massal": per kumpulan impor (satu impor = satu transaksi = satu waktu dibuat)
  * dan untuk semua draf, setujui atau hapus sekaligus. Angka dihitung dengan aturan yang sama
@@ -342,7 +330,7 @@ function DrafMassal({
     menunggu: boolean;
     jalankan: (k: () => Promise<Hasil>, setelah?: () => void) => void;
 }) {
-    const [tanya, setTanya] = useState<TanyaMassal | null>(null);
+    const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
     const ringkas = useMemo(() => {
         const draf = area.filter((a) => a.polygonDraf);
         const pilah = (isi: AreaEditor[]) => ({ setujui: pilahSetujuiMassal(isi, area), hapus: isi.filter(drafTerhapus).map((a) => a.id) });
@@ -359,9 +347,33 @@ function DrafMassal({
     }, [area]);
     if (ringkas.jumlah === 0) return null;
     const { semua } = ringkas;
-    const tanyaSetujui = (judul: string, p: PilahSetujui) =>
-        setTanya({ aksi: "setujui", judul, ids: p.setujui, dilewati: kalimatDilewati(p) });
-    const n = tanya?.ids.length ?? 0;
+    const setujui = async (judul: string, p: PilahSetujui) => {
+        const n = p.setujui.length;
+        const lewat = kalimatDilewati(p);
+        const ya = await konfirmasi({
+            judul: `Setujui ${n} poligon?`,
+            jumlah: `${n} poligon`,
+            isi: (
+                <>
+                    <p>{`Draf dari ${judul} menjadi poligon resmi dan langsung dipakai gerbang lokasi.`}</p>
+                    {lewat && <p data-testid="dilewati">{lewat}</p>}
+                </>
+            ),
+            tombol: `Setujui ${n} poligon`,
+        });
+        if (ya) jalankan(() => setujuiDrafMassal({ ids: p.setujui }));
+    };
+    const hapus = async (judul: string, ids: number[]) => {
+        const n = ids.length;
+        const ya = await konfirmasi({
+            judul: `Hapus ${n} draf area?`,
+            jumlah: `${n} draf`,
+            isi: `Draf dari ${judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.`,
+            tombol: `Hapus ${n} draf`,
+            bahaya: true,
+        });
+        if (ya) jalankan(() => hapusDrafMassal({ ids }));
+    };
     return (
         <Kartu judul="Draf massal" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
             <div data-testid="draf-massal">
@@ -382,7 +394,7 @@ function DrafMassal({
                                     variant="outline"
                                     size="sm"
                                     disabled={menunggu || k.setujui.setujui.length === 0}
-                                    onClick={() => tanyaSetujui(`kumpulan ${formatWaktu(k.waktu)}`, k.setujui)}
+                                    onClick={() => setujui(`kumpulan ${formatWaktu(k.waktu)}`, k.setujui)}
                                 >
                                     <Check aria-hidden /> Setujui {k.setujui.setujui.length}
                                 </Button>
@@ -390,7 +402,7 @@ function DrafMassal({
                                     variant="outline"
                                     size="sm"
                                     disabled={menunggu || k.hapus.length === 0}
-                                    onClick={() => setTanya({ aksi: "hapus", judul: `kumpulan ${formatWaktu(k.waktu)}`, ids: k.hapus, dilewati: "" })}
+                                    onClick={() => hapus(`kumpulan ${formatWaktu(k.waktu)}`, k.hapus)}
                                 >
                                     <Trash2 aria-hidden /> Hapus {k.hapus.length}
                                 </Button>
@@ -399,50 +411,20 @@ function DrafMassal({
                     ))}
                 </ul>
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="brand" size="sm" disabled={menunggu || semua.setujui.setujui.length === 0} onClick={() => tanyaSetujui("semua kumpulan", semua.setujui)}>
+                    <Button variant="brand" size="sm" disabled={menunggu || semua.setujui.setujui.length === 0} onClick={() => setujui("semua kumpulan", semua.setujui)}>
                         <Check aria-hidden /> Setujui semua draf ({semua.setujui.setujui.length})
                     </Button>
                     <Button
                         variant="destructive"
                         size="sm"
                         disabled={menunggu || semua.hapus.length === 0}
-                        onClick={() => setTanya({ aksi: "hapus", judul: "semua draf", ids: semua.hapus, dilewati: "" })}
+                        onClick={() => hapus("semua draf", semua.hapus)}
                     >
                         <Trash2 aria-hidden /> Hapus semua draf ({semua.hapus.length})
                     </Button>
                 </div>
             </div>
-            <AlertDialog open={!!tanya} onOpenChange={(b) => !b && setTanya(null)}>
-                <AlertDialogContent data-testid="dialog-draf-massal">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{tanya?.aksi === "setujui" ? `Setujui ${n} poligon?` : `Hapus ${n} draf area?`}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {tanya?.aksi === "setujui"
-                                ? `${n} draf dari ${tanya.judul} menjadi poligon resmi dan langsung dipakai gerbang lokasi.`
-                                : `${n} draf dari ${tanya?.judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.`}
-                        </AlertDialogDescription>
-                        {tanya?.dilewati && (
-                            <p className="text-sm text-muted-foreground" data-testid="dilewati">
-                                {tanya.dilewati}
-                            </p>
-                        )}
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction
-                            variant={tanya?.aksi === "setujui" ? "brand" : "destructive"}
-                            onClick={() => {
-                                const t = tanya;
-                                setTanya(null);
-                                if (!t) return;
-                                jalankan(() => (t.aksi === "setujui" ? setujuiDrafMassal({ ids: t.ids }) : hapusDrafMassal({ ids: t.ids })));
-                            }}
-                        >
-                            {tanya?.aksi === "setujui" ? `Setujui ${n} poligon` : `Hapus ${n} draf`}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {dialogKonfirmasi}
         </Kartu>
     );
 }

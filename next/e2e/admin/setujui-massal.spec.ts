@@ -40,7 +40,7 @@ test("setujui satu kumpulan impor: gedung disetujui, calon kawasan dilewati", as
     await expect(kumpulan).toContainText("3 draf");
     await kumpulan.getByRole("button", { name: "Setujui 2" }).click();
 
-    const dialog = page.getByTestId("dialog-draf-massal");
+    const dialog = page.getByTestId("dialog-konfirmasi");
     await expect(dialog).toContainText("Setujui 2 poligon?");
     await expect(dialog.getByTestId("dilewati")).toHaveText('1 dilewati: 1 calon batas kawasan (setujui lewat "Jadikan batas kawasan").');
     await dialog.getByRole("button", { name: "Batal" }).click();

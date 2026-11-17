@@ -60,7 +60,7 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
     await expect(kumpulan).toContainText("2 draf");
 
     await kumpulan.getByRole("button", { name: "Hapus 2" }).click();
-    const dialog = page.getByTestId("dialog-draf-massal");
+    const dialog = page.getByTestId("dialog-konfirmasi");
     await expect(dialog).toContainText("Hapus 2 draf area?");
     await dialog.getByRole("button", { name: "Batal" }).click();
     await expect(dialog).toBeHidden();
