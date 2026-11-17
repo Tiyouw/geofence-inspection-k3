@@ -143,7 +143,7 @@ describe("isian di perangkat", () => {
     if (!r.ok) throw new Error();
     const k = await kirimInspeksi(db, r.inspectionId, items, bukti());
     expect(k.ok).toBe(false);
-    if (!k.ok) expect(k.galat).toContain("Langkah foto yang belum diisi: Tabung utuh, Manometer");
+    if (!k.ok) expect(k.galat).toContain("Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: Tabung utuh, Manometer");
   });
 });
 

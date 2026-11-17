@@ -173,7 +173,7 @@ test("menutup kamera tanpa menyimpan membuang jepretan; kirim tanpa foto ditolak
 
   await isiSemua(page);
   await page.getByRole("button", { name: "Kirim", exact: true }).click();
-  await expect(page.getByTestId("galat-kirim")).toContainText(`Langkah foto yang belum diisi: ${LANGKAH_APAR.join(", ")}`);
+  await expect(page.getByTestId("galat-kirim")).toContainText(`Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: ${LANGKAH_APAR.join(", ")}`);
 });
 
 test("aset di area terbatas: tanpa kamera, dikirim dengan QR + GPS, otomatis ditandai", async ({ page }) => {

@@ -113,7 +113,7 @@ export function periksaFotoLangkah(
   const kenal = new Set(langkah.map((l) => l.kode));
   if ([...hitung.keys()].some((k) => !kenal.has(k))) galat.push("Ada foto untuk langkah yang tidak dikenal. Ulangi kamera terpandu.");
   const kosong = langkah.filter((l) => !hitung.get(l.kode)).map((l) => l.judul);
-  if (kosong.length) galat.push(`Langkah foto yang belum diisi: ${kosong.join(", ")}`);
+  if (kosong.length) galat.push(`Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: ${kosong.join(", ")}`);
   for (const l of langkah) {
     if ((hitung.get(l.kode) ?? 0) > MAKS_JEPRETAN_LANGKAH) galat.push(`Langkah "${l.judul}" paling banyak ${MAKS_JEPRETAN_LANGKAH} foto.`);
   }

@@ -92,7 +92,7 @@ export function KameraTerpandu({
   };
 
   const simpan = async () => {
-    if (kosong.length) return setPesan(`Langkah foto yang belum diisi: ${kosong.map((x) => x.judul).join(", ")}`);
+    if (kosong.length) return setPesan(`Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: ${kosong.map((x) => x.judul).join(", ")}`);
     setMenyimpan(true);
     try {
       await simpanSemuaFoto(db!, inspectionId);

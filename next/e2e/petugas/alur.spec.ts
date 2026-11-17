@@ -45,7 +45,7 @@ test.describe("daring", () => {
     await isiSemua(page, { volume: "Tidak penuh" });
     await page.getByRole("button", { name: "Kirim", exact: true }).click();
     const galat = page.getByTestId("galat-kirim");
-    await expect(galat).toContainText("Langkah foto yang belum diisi: Tabung utuh dan label");
+    await expect(galat).toContainText("Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: Tabung utuh dan label");
     // Temuan berat → usulan tidak layak dan rekomendasi wajib (G)
     await expect(page.getByRole("radio", { name: "Tidak layak pakai" })).toHaveAttribute("aria-checked", "true");
     await expect(galat).toContainText("rekomendasi wajib diisi");
