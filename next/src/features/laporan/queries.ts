@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNull, lt, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   assetTypes,
@@ -303,7 +303,11 @@ export async function ambilPapanPantau(now = new Date()) {
 
 /** Kondisi antrean tinjauan (SPEC §3.5). */
 export function antreanTinjauan(): SQL[] {
-  return [eq(inspections.status, "final"), inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), isNull(inspections.ditinjauPada)];
+  return [
+    eq(inspections.status, "final"),
+    or(inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), eq(inspections.restrictedArea, true))!,
+    isNull(inspections.ditinjauPada),
+  ];
 }
 
 /* ------------------------------------------------------------------ */

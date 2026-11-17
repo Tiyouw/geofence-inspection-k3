@@ -8,6 +8,7 @@ import {
   auditLogs,
   checklistGroups,
   checklistItems,
+  divisions,
   inspectionAnswers,
   inspectionPhotos,
   inspections,
@@ -15,6 +16,7 @@ import {
   issues,
   schedules,
 } from "@/db/schema";
+import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
 import { KESIMPULAN, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import {
@@ -55,6 +57,23 @@ export const startSchema = z.object({
 });
 
 /**
+ * Otorisasi unit (PRD F2, ADR-5): inspektur hanya menginspeksi aset yang tipenya dimiliki
+ * unit kerjanya. Ditolak 403 dengan pesan yang menyebut unit pemilik.
+ */
+async function pastikanAsetUnit(tx: Tx, user: SessionUser, assetTypeId: number) {
+  const [tipe] = await tx
+    .select({ owner: assetTypes.ownerDivisionId, unit: divisions.nama })
+    .from(assetTypes)
+    .leftJoin(divisions, eq(divisions.id, assetTypes.ownerDivisionId))
+    .where(eq(assetTypes.id, assetTypeId));
+  if (bolehInspeksiAset(user, tipe?.owner ?? null)) return;
+  const [unitSendiri] = user.divisionId
+    ? await tx.select({ nama: divisions.nama }).from(divisions).where(eq(divisions.id, user.divisionId))
+    : [];
+  throw new GalatApi(403, "aset_unit_lain", pesanAsetUnitLain(tipe?.unit ?? null, unitSendiri?.nama ?? null));
+}
+
+/**
  * SPEC §3.2 dan §7.3: membuat draf di peladen dengan id dari perangkat.
  * Idempoten per inspectionId. Draf peladen lama milik inspektur yang sama untuk aset
  * yang sama diganti: perangkat adalah sumber kebenaran selama draf (SPEC §7.1).
@@ -68,6 +87,7 @@ export async function mulai(user: SessionUser, input: z.infer<typeof startSchema
     if (!aset) {
       throw new GalatApi(410, "token_tidak_dikenal", "Stiker tidak dikenali. Laporkan ke Admin K3.");
     }
+    await pastikanAsetUnit(tx, user, aset.assetTypeId);
     if (input.assetId && input.assetId !== aset.id) {
       throw new GalatApi(409, "aset_berbeda", "Stiker tidak cocok dengan aset di perangkat. Perbarui data stiker.");
     }
@@ -284,6 +304,8 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       .from(assets)
       .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
       .where(eq(assets.id, ins.assetId))) as [{ a: typeof assets.$inferSelect; t: typeof assetTypes.$inferSelect }];
+    // Unit dapat berubah sejak draf dibuat (akun dipindah unit): diperiksa ulang saat final.
+    await pastikanAsetUnit(tx, user, tipe.id);
 
     const butirRows = await tx
       .select({ i: checklistItems })

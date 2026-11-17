@@ -5,21 +5,23 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { inspections } from "@/db/schema";
 import { skemaCatatanReview, skemaTinjau } from "../lib/skema";
-import { aksiAdmin, catatAudit, dariForm, type HasilAksi } from "../server/aksi";
+import { aksiAdmin, aksiPeninjau, catatAudit, dariForm, type HasilAksi } from "../server/aksi";
 import { syaratAntreanTinjauan } from "../server/dasbor";
 
 function segarkan(id: string) {
     revalidatePath("/admin");
     revalidatePath("/admin/tinjauan");
+    revalidatePath("/pemantau");
     revalidatePath(`/admin/tinjauan/${id}`);
 }
 
 /**
- * "Tandai ditinjau" (H6): hanya admin, hanya bila masih di antrean, alasan ≥ 10 karakter.
+ * "Tandai ditinjau" (H6): Administrator K3 atau Pemantau (ADR-9), hanya bila masih di antrean,
+ * alasan ≥ 10 karakter. Peninjau pertama tercatat; inspeksi lalu keluar dari antrean keduanya.
  * Mengisi peninjau dan waktu; angka GPS dan bukti lapangan tidak pernah diubah.
  */
 export async function tandaiDitinjau(_prev: unknown, fd: FormData): Promise<HasilAksi> {
-    return aksiAdmin(skemaTinjau, dariForm(fd), async (d, user) => {
+    return aksiPeninjau(skemaTinjau, dariForm(fd), async (d, user) => {
         const ok = await db.transaction(async (tx) => {
             const [r] = await tx
                 .update(inspections)

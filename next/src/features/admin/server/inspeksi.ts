@@ -169,6 +169,8 @@ export async function detailInspeksi(id: string) {
             gpsCapturedAt: inspections.gpsCapturedAt,
             jarakM: inspections.jarakM,
             gateStatus: inspections.gateStatus,
+            gateAlasan: inspections.gateAlasan,
+            restrictedArea: inspections.restrictedArea,
             qrVerified: inspections.qrVerified,
             qrVerification: inspections.qrVerification,
             kesimpulan: inspections.kesimpulan,
@@ -241,6 +243,7 @@ export async function detailInspeksi(id: string) {
             .where(eq(issues.inspectionId, id))
             .orderBy(sql`case ${issues.severity} when 'berat' then 0 when 'sedang' then 1 else 2 end`, asc(issues.id)),
     ]);
-    const perluTinjauan = i.status === "final" && GATE_PERLU_TINJAUAN.includes(i.gateStatus) && i.ditinjauPada === null;
+    const perluTinjauan =
+        i.status === "final" && (GATE_PERLU_TINJAUAN.includes(i.gateStatus) || i.restrictedArea) && i.ditinjauPada === null;
     return { ...i, perluTinjauan, jawaban, foto, temuan };
 }

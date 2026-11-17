@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lt, ne, notExists, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, ne, notExists, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assets, assetTypes, inspections, issues, users } from "@/db/schema";
 import { GATE_PERLU_TINJAUAN, KESIMPULAN, type Kesimpulan } from "@/lib/domain/constants";
@@ -17,9 +17,10 @@ const asetApar = eq(assets.assetTypeId, tipeApar);
 const asetAparAktif = and(eq(assets.aktif, true), asetApar);
 
 /** Antrean tinjauan: final ∧ gerbang menyimpang ∧ belum ditinjau (E7). */
+/** Antrean tinjauan: final, belum ditinjau, dan gerbang perlu tinjauan atau area terbatas (PRD F13). */
 export const syaratAntreanTinjauan = and(
     eq(inspections.status, "final"),
-    inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN),
+    or(inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), eq(inspections.restrictedArea, true)),
     isNull(inspections.ditinjauPada),
 );
 

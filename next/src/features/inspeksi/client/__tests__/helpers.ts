@@ -3,6 +3,8 @@ import type { PaketKerja } from "../types";
 
 export const TOKEN = "PAL-K3-" + "ab".repeat(16);
 export const TOKEN_LAIN = "PAL-K3-" + "cd".repeat(16);
+/** Stiker aset milik unit lain (kotak P3K, Divisi Matra & K3LH). */
+export const TOKEN_UNIT_LAIN = "PAL-K3-" + "ef".repeat(16);
 
 export function paketContoh(): PaketKerja {
   const key = randomBytes(32);
@@ -23,6 +25,8 @@ export function paketContoh(): PaketKerja {
     checklist: { 1: [{ kode: "A", nama: "Isi", items }] },
     sudahDiperiksa: [],
     terkirim: [],
+    unit: "SAT. PK",
+    asetUnitLain: [{ qrTokenHash: h(TOKEN_UNIT_LAIN), unit: "Divisi Matra & K3LH" }],
   };
 }
 

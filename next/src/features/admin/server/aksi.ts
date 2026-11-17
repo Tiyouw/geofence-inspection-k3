@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { db } from "@/db";
 import { auditLogs } from "@/db/schema";
 import { AksesDitolak, assertRole, type SessionUser } from "@/lib/auth/guards";
+import { PERAN_PENINJAU } from "@/lib/domain/constants";
 import { galatKolom } from "../lib/skema";
 
 /** Hasil setiap Server Action admin; tidak pernah melempar ke klien untuk galat yang diharapkan. */
@@ -43,6 +44,33 @@ export async function aksiAdmin<S extends z.ZodType, T = undefined>(
     }
     return kerja(hasil.data, user);
 }
+
+/**
+ * Seperti aksiAdmin, untuk tinjauan inspeksi: Administrator K3 atau Pemantau (ADR-9).
+ * Pemantau hanya boleh lewat pembungkus ini; semua aksi data induk tetap aksiAdmin.
+ */
+export async function aksiPeninjau<S extends z.ZodType, T = undefined>(
+    skema: S,
+    masukan: unknown,
+    kerja: (data: z.output<S>, user: SessionUser) => Promise<HasilAksi<T>>,
+): Promise<HasilAksi<T>> {
+    let user: SessionUser;
+    try {
+        user = await assertRole(...PERAN_PENINJAU);
+    } catch (e) {
+        if (e instanceof AksesDitolak) {
+            return { ok: false, status: e.status, pesan: e.status === 401 ? PESAN_AKSES[401] : PESAN_TINJAU_403 };
+        }
+        throw e;
+    }
+    const hasil = skema.safeParse(masukan);
+    if (!hasil.success) {
+        return { ok: false, status: 422, pesan: "Periksa kembali isian yang ditandai.", galat: galatKolom(hasil.error) };
+    }
+    return kerja(hasil.data, user);
+}
+
+const PESAN_TINJAU_403 = "Hanya Administrator K3 atau Pemantau yang boleh meninjau inspeksi.";
 
 /** FormData → objek biasa untuk zod. */
 export function dariForm(fd: FormData): Record<string, FormDataEntryValue> {

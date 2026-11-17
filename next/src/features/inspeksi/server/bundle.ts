@@ -2,7 +2,8 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, checklistGroups, checklistItems, inspections, issues } from "@/db/schema";
+import { assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
+import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
 import { jatuhTempo, periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
 import type { Kesimpulan } from "@/lib/domain/constants";
@@ -49,6 +50,13 @@ export type PaketKerja = {
   sudahDiperiksa: number[];
   /** Inspeksi final milik sendiri, 30 hari terakhir. */
   terkirim: TerkirimPaket[];
+  /** Nama unit kerja inspektur (PRD F2). */
+  unit: string | null;
+  /**
+   * Stiker aset milik unit lain: hanya hash token dan nama unitnya, supaya pemindai dapat
+   * menyebut pemilik aset (PRD alur Inspektur langkah 3). Aset ini tidak dapat diinspeksi.
+   */
+  asetUnitLain: { qrTokenHash: string; unit: string | null }[];
 };
 
 function labelMedia(attr: Record<string, unknown> | null): string | null {
@@ -65,12 +73,21 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
   const mulai = periodeDari(hariIni);
   const awalBulan = new Date(`${mulai}T00:00:00+07:00`);
 
-  const rows = await db
-    .select({ a: assets, t: assetTypes })
+  const semua = await db
+    .select({ a: assets, t: assetTypes, unit: divisions.nama })
     .from(assets)
     .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+    .leftJoin(divisions, eq(divisions.id, assetTypes.ownerDivisionId))
     .where(and(eq(assets.aktif, true), eq(assetTypes.aktif, true)))
     .orderBy(asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
+  // Otorisasi unit (PRD F2): paket hanya memuat aset milik unit inspektur.
+  const rows = semua.filter((r) => bolehInspeksiAset(user, r.t.ownerDivisionId));
+  const asetUnitLain = semua
+    .filter((r) => !bolehInspeksiAset(user, r.t.ownerDivisionId))
+    .map((r) => ({ qrTokenHash: createHmac("sha256", key).update(r.a.qrToken).digest("hex"), unit: r.unit }));
+  const [unitSendiri] = user.divisionId
+    ? await db.select({ nama: divisions.nama }).from(divisions).where(eq(divisions.id, user.divisionId))
+    : [];
 
   const aset: AsetPaket[] = rows.map(({ a, t }) => ({
     id: a.id,
@@ -161,6 +178,8 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     aset,
     checklist,
     sudahDiperiksa: sudah.map((s) => s.assetId),
+    unit: unitSendiri?.nama ?? null,
+    asetUnitLain,
     terkirim: milikSendiri.map((m) => ({ ...m, inspectedAt: m.inspectedAt!.toISOString() })),
   };
 }

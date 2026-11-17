@@ -2,6 +2,7 @@
  * Aksi inspektur di perangkat. Semua isian ditulis ke IndexedDB dulu, baru dikirim lewat
  * outbox (SPEC §7.1). Modul ini tidak memakai DOM selain fetch/crypto, sehingga bisa diuji.
  */
+import { pesanAsetUnitLain } from "@/lib/domain/akses";
 import { MAKS_FOTO } from "@/lib/domain/constants";
 import { ambilToken, bangunTemuan, miripNomorAset, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
 import { getMeta, setMeta, type DbAkun } from "./db";
@@ -64,6 +65,15 @@ export async function cariAsetDariToken(db: DbAkun, token: string): Promise<Aset
   return paket.aset.find((a) => a.qrTokenHash === h) ?? null;
 }
 
+/** Stiker aset milik unit lain (PRD F2): pesan yang menyebut pemiliknya, atau null. */
+export async function pesanUnitLain(db: DbAkun, token: string): Promise<string | null> {
+  const [paket, key] = await Promise.all([getMeta(db, "paket"), getMeta(db, "hmacKey")]);
+  if (!paket?.asetUnitLain || !key) return null;
+  const h = await hmacHex(key, token);
+  const lain = paket.asetUnitLain.find((a) => a.qrTokenHash === h);
+  return lain ? pesanAsetUnitLain(lain.unit, paket.unit ?? null) : null;
+}
+
 export function butirUntuk(paket: PaketKerja, assetTypeId: number): ButirChecklist[] {
   return (paket.checklist[assetTypeId] ?? []).flatMap((g) => g.items);
 }
@@ -103,6 +113,8 @@ export async function mulaiDariTeks(
   }
   if (!aset) {
     if (!(await getMeta(db, "paket"))) return { ok: false, pesan: PESAN.belumAdaPaket };
+    const unitLain = await pesanUnitLain(db, token);
+    if (unitLain) return { ok: false, pesan: unitLain };
     return { ok: false, pesan: opts.daring ? PESAN.tidakDikenali : PESAN.tidakDikenaliLuring };
   }
 
