@@ -101,7 +101,7 @@ export function DialogKonfirmasi({
           <AlertDialogAction
             onClick={onLanjut}
             variant={opsi?.bahaya ? "destructive" : "default"}
-            className={cn(opsi?.bahaya && "bg-danger text-white hover:bg-danger/90 focus-visible:ring-danger/30")}
+            className={cn(opsi?.bahaya && "bg-danger! text-white! hover:bg-danger/90! focus-visible:ring-danger/30")}
           >
             {opsi?.tombol ?? "Lanjutkan"}
           </AlertDialogAction>
