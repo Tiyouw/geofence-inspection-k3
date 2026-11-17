@@ -49,7 +49,8 @@ test("setujui satu kumpulan impor: gedung disetujui, calon kawasan dilewati", as
 
     await kumpulan.getByRole("button", { name: "Setujui 2" }).click();
     await dialog.getByRole("button", { name: "Setujui 2 poligon" }).click();
-    await expect(page.getByText(/^2 poligon disetujui dan dipakai gerbang lokasi\. 1 dilewati: 1 calon batas kawasan/)).toBeVisible();
+    // Kartu hanya mengirim yang lolos (alasan pelewatan sudah tampil di dialog).
+    await expect(page.getByText("2 poligon disetujui dan dipakai gerbang lokasi.", { exact: true })).toBeVisible();
 
     const rows = await q<{ nama: string; resmi: boolean; draf: boolean }>(
       "select nama, polygon is not null resmi, polygon_draf is not null draf from areas where nama like $1 order by nama",
