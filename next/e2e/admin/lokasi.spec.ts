@@ -19,6 +19,7 @@ function kotak(lat: number, lng: number, timurM: number, utaraM: number, lebarM:
 }
 
 test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpul, pasangkan aset, hapus", async ({ page }) => {
+  test.setTimeout(60_000);
   page.on("dialog", (d) => void d.accept());
   const a = await aset("29D");
   const unik = Date.now().toString(36).slice(-5).toUpperCase();
@@ -66,6 +67,14 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await page.getByTestId("daftar-area").getByRole("button", { name: new RegExp(`Bengkel Uji ${unik}`) }).click();
   const panel = page.getByTestId("panel-area");
   await expect(panel).toContainText("Ada draf");
+  // Sorotan: satu garis aksen di atas garis putih, pin bernama di kutub label, yang lain diredupkan.
+  const peta = page.getByTestId("peta-area");
+  await expect(peta.locator("path.poligon-terpilih")).toHaveCount(1);
+  await expect(peta.locator("path.poligon-terpilih")).toHaveAttribute("stroke", "#f5b700");
+  await expect(peta.locator(".pin-terpilih")).toContainText(`Bengkel Uji ${unik}`);
+  await expect(peta.locator(".pin-terpilih:not(.pin-kawasan)")).toHaveCount(1);
+  await expect(peta.locator("path.poligon-area").first()).toHaveAttribute("stroke-opacity", "0.35");
+  await expect(page.getByTestId("legenda-terpilih")).toHaveText("Terpilih");
   await panel.getByLabel("Nama", { exact: true }).fill(`Bengkel Las ${unik}`);
   await panel.getByLabel("Jenis").selectOption("bengkel");
   await panel.getByLabel("Unit kerja").selectOption({ index: 1 });
@@ -114,6 +123,10 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await page.getByTestId("aset-area").getByRole("button", { name: "Lepas" }).click();
   await expect(page.getByTestId("aset-area")).not.toContainText("29D");
   await page.getByRole("button", { name: "Tutup" }).click();
+  // Batal pilih: sorotan hilang, kecerahan kembali.
+  await expect(page.locator('[data-testid="peta-area"] path.poligon-terpilih')).toHaveCount(0);
+  await expect(page.locator('[data-testid="peta-area"] .pin-terpilih')).toHaveCount(0);
+  await expect(page.locator('[data-testid="peta-area"] path.poligon-area').first()).toHaveAttribute("stroke-opacity", "1");
   await page.getByLabel("Cari area").fill(`Dok Uji ${unik}`);
   await page.getByTestId("daftar-area").getByRole("button", { name: new RegExp(`Dok Uji ${unik}`) }).click();
   await page.getByRole("button", { name: "Hapus area" }).click();

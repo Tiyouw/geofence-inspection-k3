@@ -8,7 +8,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef } from "react";
-import type { GeometriArea, LngLat } from "@/lib/geo/geometri";
+import { type GeometriArea, type LngLat, titikLabel } from "@/lib/geo/geometri";
 
 export type PoligonTampil = {
     id: number | string;
@@ -33,26 +33,52 @@ function esc(s: string) {
 const keLatLng = (g: GeometriArea): L.LatLngExpression[][][] =>
     (g.type === "Polygon" ? [g.coordinates] : g.coordinates).map((p) => p.map((c) => c.map(([lng, lat]) => [lat, lng] as [number, number])));
 
-function gayaPoligon(p: PoligonTampil, terpilih: boolean): L.PathOptions {
-    const warna =
-        p.gaya === "kawasan"
-            ? token("muted-foreground")
-            : p.gaya === "terbatas"
-              ? token("danger")
-              : p.gaya === "impor"
-                ? token("chart-2")
-                : p.gaya === "impor-galat"
-                  ? token("danger")
-                  : token("info");
+type Keadaan = "biasa" | "redup" | "terpilih" | "hover";
+
+function warnaPoligon(p: PoligonTampil) {
+    return p.gaya === "kawasan"
+        ? token("muted-foreground")
+        : p.gaya === "terbatas" || p.gaya === "impor-galat"
+          ? token("danger")
+          : p.gaya === "impor"
+            ? token("chart-2")
+            : token("info");
+}
+
+/**
+ * Gaya dasar poligon. Yang terpilih digambar ulang di pane "sorot" di atas semuanya (garis
+ * putih lebar + garis aksen tebal), jadi aslinya dibuat transparan tetapi tetap bisa diklik.
+ */
+function gayaPoligon(p: PoligonTampil, k: Keadaan): L.PathOptions {
+    const warna = warnaPoligon(p);
+    const tebal = p.gaya === "kawasan" ? 2 : 1.5;
+    const isi = p.gaya === "kawasan" ? 0.03 : 0.12;
     return {
-        color: terpilih ? token("peran-admin") : warna,
-        weight: terpilih ? 3 : p.gaya === "kawasan" ? 2 : 1.5,
+        color: warna,
+        weight: k === "hover" ? tebal + 2 : tebal,
+        opacity: k === "terpilih" ? 0 : k === "redup" ? 0.35 : 1,
         dashArray: p.draf || p.gaya === "kawasan" ? "6 5" : undefined,
         fillColor: warna,
-        fillOpacity: p.gaya === "kawasan" ? 0.03 : terpilih ? 0.25 : 0.12,
-        className: `poligon-${p.gaya}`,
+        fillOpacity: k === "terpilih" ? 0 : k === "redup" ? isi * 0.35 : k === "hover" ? isi + 0.08 : isi,
     };
 }
+
+const IKON_PIN =
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3" fill="#fff"/>';
+const IKON_KAWASAN =
+    '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/>';
+
+function ikonPin(p: PoligonTampil): L.DivIcon {
+    const kawasan = p.gaya === "kawasan";
+    const svg = `<svg class="pin-ikon" viewBox="0 0 24 24" fill="var(--sorot-peta)" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${kawasan ? IKON_KAWASAN : IKON_PIN}</svg>`;
+    return L.divIcon({
+        className: `pin-terpilih${kawasan ? " pin-kawasan" : ""}`,
+        html: `${svg}<span class="pin-label">${esc(p.nama)}</span>`,
+        iconSize: [0, 0],
+    });
+}
+
+const gerakDikurangi = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export default function PetaAreaLeaflet({
     poligon,
@@ -82,7 +108,11 @@ export default function PetaAreaLeaflet({
 }) {
     const wadah = useRef<HTMLDivElement>(null);
     const peta = useRef<L.Map | null>(null);
-    const lapis = useRef<{ poligon: L.LayerGroup; aset: L.LayerGroup; sunting: L.LayerGroup } | null>(null);
+    const lapis = useRef<{ poligon: L.LayerGroup; sorot: L.LayerGroup; aset: L.LayerGroup; sunting: L.LayerGroup } | null>(null);
+    const lapisPer = useRef(new Map<number | string, { lyr: L.Polygon; p: PoligonTampil }>());
+    const pilihRef = useRef(pilihId);
+    /** Pilihan terakhir berasal dari klik di peta: jangan pindahkan peta. */
+    const dariPeta = useRef(false);
     const cb = useRef({ onPilih, onSunting, onKlikPeta });
     useEffect(() => {
         cb.current = { onPilih, onSunting, onKlikPeta };
@@ -96,8 +126,12 @@ export default function PetaAreaLeaflet({
             maxNativeZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(m);
+        // Pane sorot di atas poligon (overlayPane 400), di bawah titik aset (markerPane 600).
+        m.createPane("sorot").style.zIndex = "450";
+        m.getPane("sorot")!.style.pointerEvents = "none";
         lapis.current = {
             poligon: L.layerGroup().addTo(m),
+            sorot: L.layerGroup().addTo(m),
             aset: L.layerGroup().addTo(m),
             sunting: L.layerGroup().addTo(m),
         };
@@ -111,21 +145,67 @@ export default function PetaAreaLeaflet({
         };
     }, []);
 
-    // Poligon
+    // Poligon: dibangun ulang hanya bila daftar poligon berubah; memilih hanya mengganti gaya.
     useEffect(() => {
         const g = lapis.current?.poligon;
         if (!g) return;
         g.clearLayers();
+        lapisPer.current.clear();
         const urut = [...poligon].sort((a, b) => Number(b.gaya === "kawasan") - Number(a.gaya === "kawasan"));
         for (const p of urut) {
-            const terpilih = p.id === pilihId;
-            if (terpilih && sunting) continue; // digambar oleh lapis sunting
-            const lyr = L.polygon(keLatLng(p.geometry), { ...gayaPoligon(p, terpilih), bubblingMouseEvents: false }).addTo(g);
+            const lyr = L.polygon(keLatLng(p.geometry), {
+                ...gayaPoligon(p, "biasa"),
+                className: `poligon-${p.gaya}`,
+                bubblingMouseEvents: false,
+            }).addTo(g);
             lyr.bindTooltip(esc(p.nama), { sticky: true });
-            lyr.on("click", () => cb.current.onPilih?.(p.id));
-            if (terpilih) lyr.bringToFront();
+            lyr.on("click", () => {
+                // Klik pada area yang sudah terpilih tidak mengubah pilihan, jadi tidak ditandai.
+                dariPeta.current = pilihRef.current !== p.id;
+                cb.current.onPilih?.(p.id);
+            });
+            lyr.on("mouseover", () => {
+                if (pilihRef.current !== p.id) lyr.setStyle(gayaPoligon(p, "hover"));
+            });
+            lyr.on("mouseout", () => {
+                const ada = pilihRef.current != null && lapisPer.current.has(pilihRef.current);
+                lyr.setStyle(gayaPoligon(p, pilihRef.current === p.id ? "terpilih" : ada ? "redup" : "biasa"));
+            });
+            lapisPer.current.set(p.id, { lyr, p });
         }
-    }, [poligon, pilihId, sunting]);
+    }, [poligon]);
+
+    // Sorotan area terpilih: aksen tebal di atas garis putih, isi lebih pekat, sisanya diredupkan, pin di kutub label.
+    useEffect(() => {
+        pilihRef.current = pilihId;
+        const s = lapis.current?.sorot;
+        if (!s) return;
+        s.clearLayers();
+        const terpilih = pilihId != null ? lapisPer.current.get(pilihId) : undefined;
+        for (const [id, { lyr, p }] of lapisPer.current) {
+            lyr.setStyle(gayaPoligon(p, !terpilih ? "biasa" : id === pilihId ? "terpilih" : "redup"));
+        }
+        // Saat menyunting simpul, poligon asli tetap transparan dan lapis sunting yang menggambar.
+        if (!terpilih || sunting) return;
+        const { lyr, p } = terpilih;
+        lyr.bringToFront();
+        const aksen = token("sorot-peta");
+        const ll = keLatLng(p.geometry);
+        L.polygon(ll, { pane: "sorot", interactive: false, color: "#fff", weight: 8, opacity: 0.95, fill: false }).addTo(s);
+        L.polygon(ll, {
+            pane: "sorot",
+            interactive: false,
+            color: aksen,
+            weight: 4,
+            opacity: 1,
+            fillColor: aksen,
+            // Kawasan menutupi seluruh peta: isinya tetap tipis supaya gedung di dalamnya terbaca.
+            fillOpacity: p.gaya === "kawasan" ? 0.08 : 0.35,
+            className: `poligon-terpilih sorot-denyut`,
+        }).addTo(s);
+        const t = titikLabel(p.geometry);
+        if (t) L.marker([t.lat, t.lng], { icon: ikonPin(p), interactive: false, keyboard: false, pane: "sorot" }).addTo(s);
+    }, [pilihId, poligon, sunting]);
 
     // Titik aset
     useEffect(() => {
@@ -210,8 +290,14 @@ export default function PetaAreaLeaflet({
         const m = peta.current;
         const p = poligon.find((x) => x.id === pilihId);
         if (!m || !p) return;
+        // Klik di peta: hanya sorot, tanpa lompatan. Dari daftar/pencarian: terbang ke poligon.
+        if (dariPeta.current) {
+            dariPeta.current = false;
+            return;
+        }
         const b = L.polygon(keLatLng(p.geometry)).getBounds();
-        if (!m.getBounds().contains(b)) m.flyToBounds(b, { padding: [40, 40], maxZoom: 19, duration: 0.6 });
+        if (gerakDikurangi()) m.fitBounds(b, { padding: [48, 48], maxZoom: 19, animate: false });
+        else m.flyToBounds(b, { padding: [48, 48], maxZoom: 19, duration: 0.7 });
         // hanya saat pilihan berubah
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pilihId]);

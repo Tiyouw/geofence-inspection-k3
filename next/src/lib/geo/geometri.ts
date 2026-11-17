@@ -135,6 +135,77 @@ export function titikTengah(g: GeometriArea): Titik | null {
   return { lat, lng };
 }
 
+/**
+ * Titik label: kutub ketakterjangkauan (algoritme "polylabel"), yaitu titik di DALAM poligon
+ * yang paling jauh dari tepinya. Berbeda dengan titik tengah biasa, tetap di dalam gedung
+ * berbentuk L atau U. Untuk MultiPolygon dipakai bagian terluas. Bujur diskalakan cos(lintang)
+ * supaya jarak mendekati meter. `presisi` dalam derajat lintang (bawaan ~0,5 m).
+ */
+export function titikLabel(g: GeometriArea, presisi = 0.000005): Titik | null {
+  const bagian = daftarPoligon(g).filter((p) => p[0] && p[0].length >= 4);
+  if (!bagian.length) return null;
+  const luas = (c: Cincin) => Math.abs(c.reduce((a, [x1, y1], i) => {
+    const [x2, y2] = c[(i + 1) % c.length]!;
+    return a + x1 * y2 - x2 * y1;
+  }, 0));
+  const poli = bagian.reduce((a, b) => (luas(b[0]!) > luas(a[0]!) ? b : a));
+  const k = Math.cos(((poli[0]![0]![1]) * Math.PI) / 180) || 1;
+  const cincin = poli.map((c) => c.map(([lng, lat]) => [lng * k, lat] as LngLat));
+  const luar = cincin[0]!;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of luar) {
+    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  const lebar = maxX - minX, tinggi = maxY - minY;
+  const selesai = (x: number, y: number) => ({ lng: x / k, lat: y });
+  const ukuran = Math.min(lebar, tinggi);
+  if (ukuran === 0) return selesai(minX, minY);
+
+  // Jarak bertanda dari titik ke tepi (positif = di dalam).
+  const jarak = (x: number, y: number) => {
+    let dalam = false;
+    let min = Infinity;
+    for (const c of cincin) {
+      for (let i = 0, j = c.length - 1; i < c.length; j = i++) {
+        const [ax, ay] = c[i]!, [bx, by] = c[j]!;
+        if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) dalam = !dalam;
+        let px = bx, py = by;
+        const dx = ax - bx, dy = ay - by;
+        if (dx !== 0 || dy !== 0) {
+          const t = ((x - px) * dx + (y - py) * dy) / (dx * dx + dy * dy);
+          if (t > 1) { px = ax; py = ay; } else if (t > 0) { px += dx * t; py += dy * t; }
+        }
+        min = Math.min(min, (x - px) ** 2 + (y - py) ** 2);
+      }
+    }
+    return (dalam ? 1 : -1) * Math.sqrt(min);
+  };
+  type Sel = { x: number; y: number; h: number; d: number; maks: number };
+  const sel = (x: number, y: number, h: number): Sel => {
+    const d = jarak(x, y);
+    return { x, y, h, d, maks: d + h * Math.SQRT2 };
+  };
+  const antre: Sel[] = [];
+  const h0 = ukuran / 2;
+  for (let x = minX; x < maxX; x += ukuran) for (let y = minY; y < maxY; y += ukuran) antre.push(sel(x + h0, y + h0, h0));
+  // Tebakan awal: titik tengah bbox, lalu titik tengah simpul.
+  let terbaik = sel(minX + lebar / 2, minY + tinggi / 2, 0);
+  const n = luar.length - 1;
+  const rata = sel(luar.slice(0, n).reduce((a, c) => a + c[0], 0) / n, luar.slice(0, n).reduce((a, c) => a + c[1], 0) / n, 0);
+  if (rata.d > terbaik.d) terbaik = rata;
+  let langkah = 0;
+  while (antre.length && langkah++ < 10_000) {
+    let iMaks = 0;
+    for (let i = 1; i < antre.length; i++) if (antre[i]!.maks > antre[iMaks]!.maks) iMaks = i;
+    const c = antre.splice(iMaks, 1)[0]!;
+    if (c.d > terbaik.d) terbaik = c;
+    if (c.maks - terbaik.d <= presisi) continue;
+    const h = c.h / 2;
+    antre.push(sel(c.x - h, c.y - h, h), sel(c.x + h, c.y - h, h), sel(c.x - h, c.y + h, h), sel(c.x + h, c.y + h, h));
+  }
+  return selesai(terbaik.x, terbaik.y);
+}
+
 /* ---------- validasi ---------- */
 
 export type HasilValidasi = { sah: true } | { sah: false; pesan: string };

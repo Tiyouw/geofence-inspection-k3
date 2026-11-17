@@ -255,6 +255,51 @@
   transition-timing-function: var(--ease-halus) !important;
 }
 
+/* ---------- Peta area: area terpilih ---------- */
+/* Aksen sorot sengaja kuning tajam (bukan token brand): harus terbaca di atas daratan merah muda dan laut biru OSM. */
+:root {
+  --sorot-peta: #f5b700;
+}
+@keyframes sorot-denyut {
+  40% {
+    stroke-width: 9px;
+    stroke-opacity: 0.55;
+  }
+}
+.sorot-denyut {
+  animation: sorot-denyut 700ms var(--ease-halus) 2;
+}
+.pin-terpilih {
+  background: none;
+  border: 0;
+}
+.pin-terpilih .pin-ikon {
+  position: absolute;
+  left: -15px;
+  top: -32px;
+  width: 30px;
+  height: 32px;
+  color: #1f2937;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45));
+  animation: muncul-halus var(--durasi-lambat) var(--ease-halus);
+}
+.pin-terpilih .pin-label {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  transform: translateX(-50%);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.95);
+  padding: 1px 6px;
+  font: 600 12px/1.4 var(--font-sans, system-ui), system-ui, sans-serif;
+  color: #111827;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
