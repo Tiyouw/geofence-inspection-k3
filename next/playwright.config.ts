@@ -19,8 +19,10 @@ export default defineConfig({
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: { baseURL, trace: "retain-on-failure", locale: "id-ID", timezoneId: "Asia/Jakarta" },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /petugas\// },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /petugas\/|akhir\// },
     { name: "ponsel", use: { ...devices["Pixel 7"] }, testMatch: /petugas\// },
+    // Uji yang mengubah keadaan bersama (mis. kawasan aktif): setelah semua uji lain selesai.
+    { name: "akhir", use: { ...devices["Desktop Chrome"] }, testMatch: /akhir\//, dependencies: ["desktop", "ponsel"] },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
