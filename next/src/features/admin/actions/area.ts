@@ -89,7 +89,7 @@ export async function imporArea(masukan: z.input<typeof skemaImpor>): Promise<Ha
 /* ---------- hapus draf massal ---------- */
 
 /** Batas satu kali hapus massal; jauh di atas jumlah area satu denah. */
-export const MAKS_HAPUS_DRAF = 2000;
+const MAKS_HAPUS_DRAF = 2000;
 
 const skemaHapusDraf = z.object({
     ids: z.array(z.number().int().positive()).min(1, "Tidak ada draf yang dipilih.").max(MAKS_HAPUS_DRAF),
