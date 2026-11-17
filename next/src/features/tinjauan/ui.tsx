@@ -4,7 +4,7 @@
  * alasan masuk antrean, lalu memutuskan Diterima atau Ditolak dengan catatan.
  */
 import Link from "next/link";
-import { GaleriFoto } from "@/features/admin/components/galeri-foto";
+import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { Peta, type LingkaranTampil, type PoligonTampil, type TitikTampil } from "@/features/admin/components/peta";
 import { Kartu, Kosong, Lencana, Paginasi, Tabel, qs } from "@/features/admin/components/ui";
 import { LABEL_GERBANG } from "@/features/admin/lib/label";
@@ -208,12 +208,6 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
                   },
               ]
             : [];
-    const fotoId = new Map(d.foto.map((f) => [f.id, f]));
-    const keterangan = (id: string) => {
-        const f = fotoId.get(id);
-        return [f?.langkah, formatWaktu(f?.takenAtDevice ?? f?.uploadedAt ?? null)].filter(Boolean).join(" · ");
-    };
-
     return (
         <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
             <div className="flex min-w-0 flex-col gap-4">
@@ -254,39 +248,34 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
                     </dl>
                 </Kartu>
 
-                <Kartu judul="Jawaban dan foto per butir">
-                    {d.restrictedArea && (
-                        <p className="mb-3 rounded-lg bg-info-soft p-3 text-sm text-info">
-                            Area terbatas: foto tidak diambil. Bukti cukup dari stiker QR dan GPS.
-                        </p>
+                <Kartu judul="Foto per butir">
+                    {d.foto ? (
+                        <FotoPerButir data={d.foto} />
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Belum ada foto.</p>
                     )}
+                </Kartu>
+
+                <Kartu judul="Jawaban checklist">
                     {d.butir.length === 0 ? (
                         <p className="text-sm text-muted-foreground">Belum ada jawaban.</p>
                     ) : (
                         <ol className="divide-y">
                             {d.butir.map((j) => (
-                                <li key={j.checklistItemId} className="space-y-2 py-3">
-                                    <div className="flex flex-wrap items-start justify-between gap-2 text-sm">
-                                        <span>
-                                            <span className="text-muted-foreground tabular-nums">{j.urut}. </span>
-                                            {j.label}
-                                            <span className="block text-xs text-muted-foreground">{j.grup}</span>
-                                            {j.catatan && <span className="block text-xs">Catatan: {j.catatan}</span>}
-                                        </span>
-                                        <span className="font-medium">{nilaiJawaban(j)}</span>
-                                    </div>
-                                    {j.foto.length > 0 && (
-                                        <GaleriFoto foto={j.foto.map((id) => ({ id, keterangan: keterangan(id) }))} />
-                                    )}
+                                <li
+                                    key={j.checklistItemId}
+                                    className="flex flex-wrap items-start justify-between gap-2 py-2.5 text-sm"
+                                >
+                                    <span>
+                                        <span className="text-muted-foreground tabular-nums">{j.urut}. </span>
+                                        {j.label}
+                                        <span className="block text-xs text-muted-foreground">{j.grup}</span>
+                                        {j.catatan && <span className="block text-xs">Catatan: {j.catatan}</span>}
+                                    </span>
+                                    <span className="font-medium">{nilaiJawaban(j)}</span>
                                 </li>
                             ))}
                         </ol>
-                    )}
-                    {d.fotoLepas.length > 0 && (
-                        <div className="mt-3 border-t pt-3">
-                            <p className="mb-2 text-sm font-medium">Foto inspeksi ({d.fotoLepas.length})</p>
-                            <GaleriFoto foto={d.fotoLepas.map((f) => ({ id: f.id, keterangan: keterangan(f.id) }))} />
-                        </div>
                     )}
                 </Kartu>
             </div>

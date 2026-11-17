@@ -35,8 +35,8 @@ test.describe("tinjauan inspeksi oleh Administrator K3", () => {
         await expect(page.locator(".leaflet-container")).toBeVisible();
 
         // Foto ditautkan ke butirnya dan disajikan lewat rute bersesi.
-        const butir = page.getByRole("listitem").filter({ hasText: insp.butir });
-        await expect(butir.getByRole("img").first()).toHaveAttribute("src", `/api/foto/${insp.fotoId}`);
+        const foto = page.getByTestId("foto-per-butir").getByRole("img", { name: `Foto ${insp.butir} 1` });
+        await expect(foto).toHaveAttribute("src", `/api/foto/${insp.fotoId}`);
         const tamu = await playwright.request.newContext({ baseURL });
         expect((await tamu.get(`/api/foto/${insp.fotoId}`, { maxRedirects: 0 })).status()).not.toBe(200);
         await tamu.dispose();

@@ -9,12 +9,12 @@ import {
     checklistItems,
     divisions,
     inspectionAnswers,
-    inspectionPhotos,
     inspections,
     issues,
     users,
 } from "@/db/schema";
 import { polaMengandung } from "@/features/admin/lib/pencarian";
+import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
 import { tindakanBawaan } from "@/lib/domain/inspeksi";
 import { lokasiTemuan } from "@/lib/domain/temuan";
 import { lingkupRekap, type FilterTemuan } from "./filter";
@@ -203,25 +203,14 @@ export async function detailTemuan(id: number) {
 }
 
 /**
- * Foto yang membuktikan butir temuan (inspection_photo_items, ADR-8). Bila inspeksi belum
- * memakai kamera terpandu (tanpa tautan butir), semua foto inspeksi ditampilkan.
+ * Foto yang membuktikan butir temuan, lewat langkah kamera terpandu (ADR-8, fotoPerButir sesi C).
+ * Bila inspeksi belum memakai kamera terpandu, foto tanpa langkah ditampilkan.
  */
 async function fotoButir(inspectionId: string, checklistItemId: number | null) {
-    const semua = await db
-        .select({
-            id: inspectionPhotos.id,
-            takenAtDevice: inspectionPhotos.takenAtDevice,
-            uploadedAt: inspectionPhotos.uploadedAt,
-            untukButir: checklistItemId
-                ? sql<boolean>`exists (select 1 from inspection_photo_items ipi where ipi.photo_id = ${inspectionPhotos.id} and ipi.checklist_item_id = ${checklistItemId})`
-                : sql<boolean>`false`,
-            adaTautan: sql<boolean>`exists (select 1 from inspection_photo_items ipi where ipi.photo_id = ${inspectionPhotos.id})`,
-        })
-        .from(inspectionPhotos)
-        .where(eq(inspectionPhotos.inspectionId, inspectionId))
-        .orderBy(asc(inspectionPhotos.takenAtDevice), asc(inspectionPhotos.uploadedAt));
-    const butir = semua.filter((f) => f.untukButir);
-    return butir.length || semua.some((f) => f.adaTautan) ? butir : semua;
+    const data = await fotoPerButir(inspectionId);
+    if (!data) return [];
+    const butir = data.butir.find((b) => b.id === checklistItemId)?.foto ?? [];
+    return butir.length ? butir : data.tanpaLangkah;
 }
 
 /** Bahan PDF rekap temuan: judul, lingkup, baris, dan tanda tangan per unit pemilik modul. */

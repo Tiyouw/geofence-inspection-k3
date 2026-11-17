@@ -39,6 +39,9 @@ export async function langkahPerTipe(q: Kueri, tipeIds: number[]): Promise<Map<n
       if (!l) dariDb.push((l = { id: s.id, kode: s.kode ?? `langkah-${s.id}`, judul: s.judul, petunjuk: s.petunjuk, itemIds: [] }));
       if (itemId !== null && aktif.has(itemId)) l.itemIds.push(itemId);
     }
+    // Butir per langkah mengikuti urutan checklist (gabungan tabel tidak menjamin urutan).
+    const posisi = new Map(items.map((b, i) => [b.id, i]));
+    for (const l of dariDb) l.itemIds.sort((x, y) => posisi.get(x)! - posisi.get(y)!);
     const terpakai = dariDb.filter((l) => l.itemIds.length > 0);
     if (terpakai.length) {
       out.set(tipe, lengkapiLangkah(terpakai, [...aktif]));

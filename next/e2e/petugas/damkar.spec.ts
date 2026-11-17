@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { readFileSync } from "node:fs";
 import { masuk } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
+import { fotoSemuaLangkah, KAMERA_PALSU } from "../kamera-uji";
+import { LANGKAH_FOTO_DAMKAR } from "../../src/lib/domain/modul/damkar";
 
 /** PRD tab Mobil pemadam, F10, F16: objek bergerak tanpa gerbang lokasi, odometer, jadwal mingguan. */
-const FOTO = { name: "pmk.png", mimeType: "image/png", buffer: readFileSync("public/icons/icon-512.png") };
+test.use(KAMERA_PALSU);
 
 test.afterAll(tutup);
 
@@ -14,7 +15,6 @@ test("mobil pemadam: 'Objek bergerak', 17 butir, odometer bukan temuan; temuan d
 }) => {
   const a = await aset("PMK-01");
   // Posisi jauh dari mana pun: objek bergerak tidak pernah dinilai gerbang lokasi.
-  await context.grantPermissions(["geolocation"]);
   await context.setGeolocation({ latitude: -6.2, longitude: 106.8, accuracy: 10 });
   await masuk(page, "inspektur");
 
@@ -55,8 +55,7 @@ test("mobil pemadam: 'Objek bergerak', 17 butir, odometer bukan temuan; temuan d
   await expect(rem.getByRole("combobox")).toHaveValue("perbaiki");
   await rem.getByRole("combobox").selectOption("ganti");
 
-  await page.getByTestId("input-foto").setInputFiles(FOTO);
-  await expect(page.getByRole("img", { name: "Foto bukti" })).toHaveCount(1);
+  await fotoSemuaLangkah(page, LANGKAH_FOTO_DAMKAR.map((l) => l.judul));
   await page.getByLabel(/Rekomendasi/).fill("Kendaraan tidak dioperasikan sampai rem diperbaiki.");
   await page.getByRole("button", { name: "Kirim", exact: true }).click();
   await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });

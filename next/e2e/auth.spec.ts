@@ -41,6 +41,8 @@ test("callbackUrl dipakai setelah masuk", async ({ page }) => {
 
 test("keluar mengakhiri sesi", async ({ page }) => {
   await masuk(page, "pemantau");
+  // Tunggu papan selesai dirender: navigasi yang masih berjalan bisa menimpa pengalihan aksi keluar.
+  await expect(page.getByText("Ringkasan untuk manajemen")).toBeVisible();
   await page.getByRole("button", { name: "Keluar" }).first().click();
   await expect(page).toHaveURL(/\/masuk/);
   await expect(page.getByRole("status").filter({ hasText: "Anda sudah keluar." })).toBeVisible();

@@ -26,6 +26,7 @@ import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
 import { LANGKAH_FOTO_APAR, validasiDefinisiLangkah, type DefinisiLangkahFoto } from "../../lib/domain/langkah-foto";
 import { DIVISI, PEMILIK_TIPE, type AnswerType, type AssetTypeSlug, type Role, type Severity } from "../../lib/domain/constants";
 import { seedDamkar } from "./checklist-damkar";
+import { LANGKAH_FOTO_DAMKAR, SLUG_DAMKAR } from "../../lib/domain/modul/damkar";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema: s, casing: "snake_case" });
@@ -510,6 +511,8 @@ async function main() {
     await apar(tx, aparId, div[DIVISI.satPk]!);
     await areaDariGedung(tx);
     await seedDamkar(tx, div[DIVISI.satPk] ?? null);
+    const [damkar] = await tx.select({ id: s.assetTypes.id }).from(s.assetTypes).where(eq(s.assetTypes.slug, SLUG_DAMKAR));
+    if (damkar) await seedLangkahFoto(tx, damkar.id, LANGKAH_FOTO_DAMKAR);
     await contohOperasional(tx);
     // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
     await seedP3kHydrant(tx);

@@ -9,12 +9,10 @@ import {
     checklistGroups,
     checklistItems,
     inspectionAnswers,
-    inspectionPhotoItems,
-    inspectionPhotos,
     inspections,
-    photoSteps,
     users,
 } from "@/db/schema";
+import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
 import { GATE_PERLU_TINJAUAN } from "@/lib/domain/constants";
 import { lokasiTemuan } from "@/lib/domain/temuan";
 
@@ -194,7 +192,7 @@ export async function detailTinjauan(id: string) {
         .where(eq(inspections.id, id));
     if (!i) return null;
 
-    const [kawasan, jawaban, foto, tautan] = await Promise.all([
+    const [kawasan, jawaban, foto] = await Promise.all([
         db
             .select({ id: areas.id, nama: areas.nama, polygon: areas.polygon })
             .from(areas)
@@ -224,44 +222,16 @@ export async function detailTinjauan(id: string) {
             .innerJoin(checklistGroups, eq(checklistGroups.id, checklistItems.checklistGroupId))
             .where(eq(inspectionAnswers.inspectionId, id))
             .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut)),
-        db
-            .select({
-                id: inspectionPhotos.id,
-                takenAtDevice: inspectionPhotos.takenAtDevice,
-                uploadedAt: inspectionPhotos.uploadedAt,
-                langkah: photoSteps.judul,
-                langkahUrut: photoSteps.urut,
-            })
-            .from(inspectionPhotos)
-            .leftJoin(photoSteps, eq(photoSteps.id, inspectionPhotos.stepId))
-            .where(eq(inspectionPhotos.inspectionId, id))
-            .orderBy(asc(photoSteps.urut), asc(inspectionPhotos.takenAtDevice), asc(inspectionPhotos.uploadedAt)),
-        db
-            .select({ photoId: inspectionPhotoItems.photoId, checklistItemId: inspectionPhotoItems.checklistItemId })
-            .from(inspectionPhotoItems)
-            .innerJoin(inspectionPhotos, eq(inspectionPhotos.id, inspectionPhotoItems.photoId))
-            .where(eq(inspectionPhotos.inspectionId, id)),
+        // Tautan foto ke butir diturunkan dari langkahnya (kamera terpandu, sesi C).
+        fotoPerButir(id),
     ]);
-
-    const fotoPerButir = Map.groupBy(tautan, (t) => t.checklistItemId);
-    const butir = jawaban.map((j) => ({
-        ...j,
-        foto: (fotoPerButir.get(j.checklistItemId) ?? []).map((t) => t.photoId),
-    }));
-    // Foto tanpa tautan butir (inspeksi sebelum kamera terpandu) dikumpulkan per langkah atau sebagai satu grup.
-    const bertaut = new Set(tautan.map((t) => t.photoId));
-    const fotoLepas = foto.filter((f) => !bertaut.has(f.id));
 
     return {
         ...i,
-        menunggu:
-            i.status === "final" &&
-            i.ditinjauPada === null &&
-            (GATE_PERLU_TINJAUAN.includes(i.gateStatus) || i.restrictedArea),
+        menunggu: i.status === "final" && i.ditinjauPada === null && (GATE_PERLU_TINJAUAN.includes(i.gateStatus) || i.restrictedArea),
         kawasan,
-        butir,
+        butir: jawaban,
         foto,
-        fotoLepas,
     };
 }
 

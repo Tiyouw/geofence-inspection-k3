@@ -54,28 +54,30 @@ export async function buatInspeksiAntre(
             opsi.terbatas ?? false,
         ],
     );
+    // Langkah foto pertama tipe aset ini dan butir pertamanya (kamera terpandu, ADR-8).
+    const langkah = await c.query<{ step_id: number; item_id: number; label: string }>(
+        `select s.id step_id, ci.id item_id, ci.label from photo_steps s
+           join photo_step_items psi on psi.step_id = s.id
+           join checklist_items ci on ci.id = psi.checklist_item_id
+           join assets a on a.asset_type_id = s.asset_type_id
+          where a.id = $1 and s.aktif order by s.urut, ci.urut limit 1`,
+        [assetId],
+    );
+    const { step_id: stepId, item_id: itemId, label } = langkah.rows[0]!;
     const fotoId = randomUUID();
     const key = `inspeksi/${id}/${fotoId}.jpg`;
     const path = join(process.cwd(), ".data", "foto", key);
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, JPEG);
     await c.query(
-        "insert into inspection_photos (id, inspection_id, storage_key, sha256, content_type, bytes) values ($1, $2, $3, $4, 'image/jpeg', $5)",
-        [fotoId, id, key, "0".repeat(64), JPEG.byteLength],
-    );
-    const butir = await c.query<{ id: number; label: string }>(
-        `select i.id, i.label from checklist_items i join checklist_groups g on g.id = i.checklist_group_id
-          join assets a on a.asset_type_id = g.asset_type_id where a.id = $1 order by i.urut limit 1`,
-        [assetId],
+        "insert into inspection_photos (id, inspection_id, storage_key, sha256, content_type, bytes, step_id) values ($1, $2, $3, $4, 'image/jpeg', $5, $6)",
+        [fotoId, id, key, "0".repeat(64), JPEG.byteLength, stepId],
     );
     await c.query("insert into inspection_answers (inspection_id, checklist_item_id, nilai) values ($1, $2, 'ok')", [
         id,
-        butir.rows[0]!.id,
+        itemId,
     ]);
-    await c.query("insert into inspection_photo_items (photo_id, checklist_item_id) values ($1, $2)", [
-        fotoId,
-        butir.rows[0]!.id,
-    ]);
+    const butir = { rows: [{ label }] };
     return { id, kode, fotoId, butir: butir.rows[0]!.label };
 }
 
