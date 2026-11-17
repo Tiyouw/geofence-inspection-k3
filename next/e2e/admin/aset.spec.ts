@@ -22,7 +22,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         await page.goto("/admin/aset");
         const filter = page.getByRole("search", { name: "Filter" });
         await expect(filter.getByRole("heading", { name: "Filter" })).toBeVisible();
-        await pilih(filter.getByLabel("Area", { exact: true }), /^Belum berarea \(\d+\)$/);
+        await pilih(filter.getByRole("combobox", { name: "Area", exact: true }), /^Belum berarea \(\d+\)$/);
         await filter.getByRole("button", { name: "Terapkan filter" }).click();
         await expect(page).toHaveURL(/area=belum/);
         await expect(page.getByRole("list", { name: "Filter aktif" })).toContainText("Area: Belum berarea");
@@ -33,7 +33,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
 
         // Papan ketik: fokus pemicu, panah bawah membuka, Enter memilih, Esc tidak mengirim.
         await page.goto("/admin/aset");
-        const status = page.getByRole("search", { name: "Filter" }).getByLabel("Status");
+        const status = page.getByRole("search", { name: "Filter" }).getByRole("combobox", { name: "Status", exact: true });
         await status.focus();
         await page.keyboard.press("ArrowDown");
         await expect(page.getByRole("listbox")).toBeVisible();
@@ -49,7 +49,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         const kode = `E2E-${Date.now().toString(36)}`;
         await page.goto("/admin/aset/baru");
         await expect(page.getByLabel("Radius khusus (m)")).toHaveCount(0);
-        await pilih(page.getByLabel("Area", { exact: true }), "Gedung PIP");
+        await pilih(page.getByRole("combobox", { name: "Area", exact: true }), "Gedung PIP");
         await page.getByLabel("Nomor aset").fill(kode);
         await page.getByLabel("Uraian lokasi").fill("Uji otomatis dinding utara");
         await page.getByLabel("Lintang").fill("95");
@@ -71,8 +71,8 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         expect(token1).not.toContain(kode);
 
         // Ubah tanpa menyentuh token.
-        await expect(page.getByLabel("Area", { exact: true })).toHaveAttribute("data-nilai", /\d+/);
-        await pilih(page.getByLabel("Area", { exact: true }), "Belum dipasangkan");
+        await expect(page.getByRole("combobox", { name: "Area", exact: true })).toHaveAttribute("data-nilai", /\d+/);
+        await pilih(page.getByRole("combobox", { name: "Area", exact: true }), "Belum dipasangkan");
         await page.getByRole("button", { name: "Simpan perubahan" }).click();
         await expect(page.getByText("Perubahan tersimpan.")).toBeVisible();
 

@@ -75,8 +75,8 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await expect(peta.locator("path.poligon-area").first()).toHaveAttribute("stroke-opacity", "0.35");
   await expect(page.getByTestId("legenda-terpilih")).toHaveText("Terpilih");
   await panel.getByLabel("Nama", { exact: true }).fill(`Bengkel Las ${unik}`);
-  await pilih(panel.getByLabel("Jenis"), "Bengkel");
-  await pilih(panel.getByLabel("Unit kerja"), 1);
+  await pilih(panel.getByRole("combobox", { name: "Jenis" }), "Bengkel");
+  await pilih(panel.getByRole("combobox", { name: "Unit kerja" }), 1);
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "Simpan atribut" }).click();
   await expect.poll(async () => (await q("select nama, jenis, restricted, division_id is not null as unit from areas where id = $1", [bengkel.id]))[0]).toEqual({
@@ -114,7 +114,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
 
   // Pasangkan aset (panel area tetap terbuka setelah simpan draf)
   await expect(panel).toContainText("Ada draf");
-  await pilih(page.getByLabel("Aset untuk dipasangkan"), /^29D · /);
+  await pilih(page.getByRole("combobox", { name: "Aset untuk dipasangkan" }), /^29D · /);
   await page.getByRole("button", { name: "Pasangkan", exact: true }).click();
   await expect(page.getByTestId("aset-area")).toContainText("29D");
   expect((await q("select area_id from assets where id = $1", [a.id]))[0]).toEqual({ area_id: bengkel.id });

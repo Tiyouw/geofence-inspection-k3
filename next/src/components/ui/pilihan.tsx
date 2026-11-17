@@ -99,6 +99,7 @@ export function Pilihan({
   const [nilaiSendiri, setNilaiSendiri] = React.useState(String(awal ?? ""));
   const nilai = terkendali ? String(value ?? "") : nilaiSendiri;
   const [buka, setBuka] = React.useState(false);
+  const akar = React.useRef<HTMLDivElement>(null);
   const idOtomatis = React.useId();
   const idDaftar = `${id ?? idOtomatis}-daftar`;
   const terpilih = opsi.find((o) => o.value === nilai);
@@ -161,16 +162,18 @@ export function Pilihan({
           className="w-(--radix-popover-trigger-width) min-w-48 p-0"
           onOpenAutoFocus={(e) => {
             if (!pakaiCari) {
-              // Tanpa kotak cari, fokus ke daftar supaya panah langsung berfungsi.
+              // Tanpa kotak cari, fokus ke akar cmdk supaya panah dan Enter langsung berfungsi.
               e.preventDefault();
-              (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>("[cmdk-list]")?.focus();
+              akar.current?.focus();
             }
           }}
         >
           <Command
+            ref={akar}
+            tabIndex={-1}
             defaultValue={terpilih ? kunciItem(terpilih) : undefined}
             loop
-            className="rounded-lg"
+            className="rounded-lg outline-none"
           >
             {pakaiCari && <CommandInput placeholder="Cari…" aria-label="Cari pilihan" />}
             <CommandList id={idDaftar} tabIndex={-1} label={aria["aria-label"] ?? "Pilihan"} className="max-h-72 outline-none">
