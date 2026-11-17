@@ -196,3 +196,13 @@ export const TENGGAT_HARI: Record<Severity, number> = { berat: 3, sedang: 14, ri
 
 /** SPEC §3.1: pola token stiker. */
 export const POLA_TOKEN_QR = /^PAL-K3-[0-9a-f]{32}$/i;
+
+export const TINDAKAN_REKOMENDASI = ["perbaiki", "ganti", "isi_ulang", "lengkapi", "lainnya"] as const;
+export type TindakanRekomendasi = (typeof TINDAKAN_REKOMENDASI)[number];
+export const LABEL_TINDAKAN: Record<TindakanRekomendasi, string> = {
+  perbaiki: "Perbaiki",
+  ganti: "Ganti",
+  isi_ulang: "Isi ulang",
+  lengkapi: "Lengkapi",
+  lainnya: "Lainnya",
+};
