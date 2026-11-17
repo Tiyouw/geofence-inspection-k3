@@ -18,6 +18,8 @@ import {
 } from "@/lib/domain/constants";
 import { labelLantai } from "@/lib/domain/asset";
 import { simbolJawaban, TINDAKAN_BAKU } from "@/lib/domain/jawaban";
+import { bacaTipeKotak, butirIsiDari, kelengkapanP3k, nilaiIsi, type KondisiIsi } from "@/lib/domain/modul/p3k";
+import { SIMBOL_KEDALUWARSA, SIMBOL_KURANG, SIMBOL_TIDAK_ADA } from "./profil";
 import { NAMA_BULAN, tanggalIso } from "./format";
 
 /* ---------- bahan (bentuk baris dari queries.ts) ---------- */
@@ -29,6 +31,8 @@ export type AsetLaporan = {
   lantai: string | null;
   lokasiTeks: string;
   aktif: boolean;
+  /** Atribut aset (tipe_kotak untuk P3K). */
+  attributes?: Record<string, unknown> | null;
 };
 
 export type ButirLaporan = {
@@ -42,6 +46,8 @@ export type ButirLaporan = {
   severityMap: Record<string, Severity> | null;
   severityDefault: Severity;
   jumlahBaku: number | null;
+  jumlahBakuPerTipe?: Partial<Record<"A" | "B" | "C", number>> | null;
+  hasExpiry?: boolean;
 };
 
 export type InspeksiLaporan = {
@@ -52,7 +58,13 @@ export type InspeksiLaporan = {
   gateStatus: GateStatus;
   ditinjauPada: Date | null;
   petugas: string;
-  jawaban: { checklistItemId: number; nilai: string | null; nilaiAngka: number | null }[];
+  jawaban: {
+    checklistItemId: number;
+    nilai: string | null;
+    nilaiAngka: number | null;
+    kondisiIsi?: KondisiIsi | null;
+    tglKedaluwarsaTerdekat?: string | null;
+  }[];
 };
 
 export type TemuanLaporan = {
@@ -145,6 +157,8 @@ export type BarisPms = {
   inspeksi: InspeksiLaporan | null;
   simbol: string[];
   kesimpulan: string;
+  /** Kotak P3K: kelengkapan isi (%), null bila belum diperiksa; undefined untuk modul lain. */
+  kelengkapan?: number | null;
 };
 
 export type RingkasPeriode = {
@@ -167,12 +181,39 @@ export type DataPeriode = {
   ringkas: RingkasPeriode;
 };
 
+/** Tanggal WIB "YYYY-MM-DD" dari waktu inspeksi: acuan kedaluwarsa isi P3K. */
+function tanggalWib(t: Date): string {
+  return new Date(t.getTime() + 7 * 3600_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Sel lembar PMS untuk modul tertentu. Isi kotak P3K: jumlah, ditambah ↓ bila kurang dari baku
+ * tipe kotak dan K bila ada yang kedaluwarsa. Pilihan "Tidak ada" (siamese pilar): TA.
+ */
+function simbolSel(
+  b: ButirLaporan,
+  j: InspeksiLaporan["jawaban"][number] | undefined,
+  p3k: { tipeKotak: "A" | "B" | "C"; hariIni: string } | null,
+): string {
+  if (p3k && b.answerType === "number" && b.jumlahBakuPerTipe) {
+    if (j?.nilaiAngka == null) return "-";
+    const [isi] = butirIsiDari([b]);
+    const n = nilaiIsi(isi!, j, p3k);
+    return `${n.jumlah}${n.kosong || n.kurang > 0 ? SIMBOL_KURANG : ""}${n.kedaluwarsa ? SIMBOL_KEDALUWARSA : ""}`;
+  }
+  if (b.answerType === "select" && j?.nilai === "Tidak ada" && !b.severityMap?.["Tidak ada"]) return SIMBOL_TIDAK_ADA;
+  return simbolJawaban(b, j);
+}
+
 export function rakitPeriode(input: {
   aset: AsetLaporan[];
   butir: ButirLaporan[];
   inspeksi: InspeksiLaporan[];
   temuan: TemuanLaporan[];
+  /** Slug tipe aset; "p3k" menambah penilaian isi dan kelengkapan. */
+  slug?: string;
 }): DataPeriode {
+  const isP3k = input.slug === "p3k";
   const terakhir = inspeksiTerakhirPerAset(input.inspeksi);
   // §9 #9: aset nonaktif tetap muncul di periode yang sempat ia diinspeksi.
   const aset = urutAset(input.aset.filter((a) => a.aktif || terakhir.has(a.id)));
@@ -189,12 +230,24 @@ export function rakitPeriode(input: {
   const baris = aset.map((a): BarisPms => {
     const ins = terakhir.get(a.id) ?? null;
     const jawaban = new Map(ins?.jawaban.map((j) => [j.checklistItemId, j]));
+    const p3k = isP3k && ins ? { tipeKotak: bacaTipeKotak(a.attributes) ?? ("A" as const), hariIni: tanggalWib(ins.inspectedAt) } : null;
     return {
       aset: a,
       lokasi: lokasiAset(a),
       inspeksi: ins,
-      simbol: butir.map((b) => (ins ? simbolJawaban(b, jawaban.get(b.id)) : "-")),
+      simbol: butir.map((b) => (ins ? simbolSel(b, jawaban.get(b.id), p3k) : "-")),
       kesimpulan: ins ? (ins.kesimpulan ? LABEL_KESIMPULAN[ins.kesimpulan] : "-") : "Belum diperiksa",
+      ...(isP3k
+        ? {
+            kelengkapan: p3k
+              ? kelengkapanP3k(
+                  butirIsiDari(butir),
+                  ins!.jawaban,
+                  p3k,
+                ).persen
+              : null,
+          }
+        : {}),
     };
   });
 

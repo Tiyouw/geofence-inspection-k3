@@ -210,7 +210,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
 
   const kirim = async () => {
     setMengirim(true);
-    const r = await kirimInspeksi(db!, draf.inspectionId, items, p3k);
+    const r = await kirimInspeksi(db!, draf.inspectionId, items, { p3k });
     setMengirim(false);
     if (!r.ok) {
       setGalat(r.galat);

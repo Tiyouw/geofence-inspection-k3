@@ -64,6 +64,7 @@ export async function ambilDataPeriode(f: FilterPeriode) {
       lantai: assets.lantai,
       lokasiTeks: assets.lokasiTeks,
       aktif: assets.aktif,
+      attributes: assets.attributes,
     })
     .from(assets)
     .where(and(eq(assets.assetTypeId, tipe.id), f.gedung ? eq(assets.gedung, f.gedung) : undefined));
@@ -80,6 +81,8 @@ export async function ambilDataPeriode(f: FilterPeriode) {
       severityMap: checklistItems.severityMap,
       severityDefault: checklistItems.severityDefault,
       jumlahBaku: checklistItems.jumlahBaku,
+      jumlahBakuPerTipe: checklistItems.jumlahBakuPerTipe,
+      hasExpiry: checklistItems.hasExpiry,
     })
     .from(checklistItems)
     .innerJoin(checklistGroups, eq(checklistGroups.id, checklistItems.checklistGroupId))
@@ -116,6 +119,8 @@ export async function ambilDataPeriode(f: FilterPeriode) {
           checklistItemId: inspectionAnswers.checklistItemId,
           nilai: inspectionAnswers.nilai,
           nilaiAngka: inspectionAnswers.nilaiAngka,
+          kondisiIsi: inspectionAnswers.kondisiIsi,
+          tglKedaluwarsaTerdekat: inspectionAnswers.tglKedaluwarsaTerdekat,
         })
         .from(inspectionAnswers)
         .where(inArray(inspectionAnswers.inspectionId, insRows.map((i) => i.id)))
@@ -145,6 +150,7 @@ export async function ambilDataPeriode(f: FilterPeriode) {
     butir: butirRows,
     inspeksi: insRows.map((i) => ({ ...i, inspectedAt: i.inspectedAt!, jawaban: jawabanPer.get(i.id) ?? [] })),
     temuan: temuanRows,
+    slug: tipe.slug,
   });
   return { tipe: { slug: tipe.slug, nama: tipe.nama }, filter: f, ...data };
 }

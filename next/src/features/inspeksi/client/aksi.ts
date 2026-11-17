@@ -222,8 +222,9 @@ export async function kirimInspeksi(
   db: DbAkun,
   inspectionId: string,
   items: ButirChecklist[],
-  p3k: KonteksP3k | null = null,
+  opsi: { p3k?: KonteksP3k | null } = {},
 ): Promise<{ ok: true } | { ok: false; galat: string[] }> {
+  const p3k = opsi.p3k ?? null;
   const d = await db.get("drafts", inspectionId);
   if (!d) return { ok: false, galat: ["Draf tidak ditemukan di perangkat."] };
   const fotos = await db.getAllFromIndex("photos", "byInspection", inspectionId);
