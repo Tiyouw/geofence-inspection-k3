@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

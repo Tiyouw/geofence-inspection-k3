@@ -3,7 +3,7 @@
  * Masukan formulir datang sebagai string; kosong berarti null.
  */
 import { z } from "zod";
-import { LOKASI_TIPE, ROLES } from "@/lib/domain/constants";
+import { ROLES } from "@/lib/domain/constants";
 
 const kosongJadiNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
 const teks = (label: string, maks: number) =>
