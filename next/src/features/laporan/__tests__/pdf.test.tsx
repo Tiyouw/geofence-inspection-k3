@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 import { daftarkanFont } from "../pdf/dasar";
 import { DokumenKartu } from "../pdf/kartu";
 import { DokumenPms } from "../pdf/pms";
+import { DokumenProgres } from "../pdf/progres";
 import { DokumenRekap } from "../pdf/rekap";
+import { barisLaporanProgres, rakitProgres } from "@/features/dasbor/rakit";
 import { kolomTandaTangan, rakitRekapTemuan } from "@/features/temuan/rekap";
 import { rakitKartu, rakitPeriode } from "../rakit";
 import { ASET, BUTIR, DICETAK, INSPEKSI, TEMUAN, asetKode } from "./contoh-oktober";
@@ -81,5 +83,24 @@ describe("PDF laporan", { timeout: 60_000 }, () => {
     const b = await renderToBuffer(<DokumenKartu kartu={kartu} tahun={2026} baris={rakitKartu(2026, inspeksi, DICETAK)} dicetak={DICETAK} />);
     simpan("Kartu-Kontrol-31D-2026.pdf", b);
     expect(halaman(b)).toBe(1);
+  });
+  it("progres per gedung: satu halaman lanskap", async () => {
+    const modul = [
+      { slug: "apar", nama: "APAR", periode: "2026-10-01", jatuhTempo: "2026-10-31", mingguan: false },
+      { slug: "mobil_pemadam", nama: "Mobil Pemadam", periode: "2026-10-05", jatuhTempo: "2026-11-01", mingguan: true },
+    ];
+    const aset = ASET.map((a) => ({ id: a.id, kode: a.kode, modulSlug: "apar", modul: "APAR", area: a.gedung, lokasi: a.lokasiTeks }));
+    const cek = new Map(INSPEKSI.map((i) => [i.assetId as number | string, { kesimpulan: i.kesimpulan }]));
+    const p = rakitProgres(modul, aset, cek);
+    const data = { modul: p.perModul, unit: ["SAT. PK"], ...barisLaporanProgres(p, new Map([["Gedung PIP", { perluTinjauan: 2, ditolak: 1, temuan: 3 }]])) };
+    const b = await renderToBuffer(
+      <DokumenProgres
+        isi={{ data, judulPeriode: "periode Oktober 2026", judulModul: "Semua modul", tandaTangan: kolomTandaTangan(["SAT. PK"]) }}
+        dicetak={DICETAK}
+      />,
+    );
+    simpan("Progres-Gedung-2026-10.pdf", b);
+    expect(b.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(halaman(b)).toBeGreaterThanOrEqual(1);
   });
 });

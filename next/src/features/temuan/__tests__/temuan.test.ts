@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rakitProgres } from "@/features/dasbor/rakit";
+import { barisLaporanProgres, namaGedung, rakitProgres } from "@/features/dasbor/rakit";
 import { filterRekap, lingkupRekap, namaBerkasRekap, parseFilterTemuan } from "../filter";
 import { kolomTandaTangan, rakitRekapTemuan, type TemuanRekap } from "../rekap";
 
@@ -132,5 +132,47 @@ describe("progres lintas modul (PRD F14)", () => {
         expect(p.kondisi).toEqual({ layak: 1, layak_catatan: 0, tidak_layak: 1 });
         expect(p.perArea.map((a) => a.nama)).toEqual(["Gedung A", "Tanpa area (objek bergerak)"]);
         expect(p.perArea[0]!.belum.map((a) => a.kode)).toEqual(["02D"]);
+    });
+});
+
+describe("laporan progres per gedung (PRD F15)", () => {
+    it("menambah tinjauan, ditolak, dan temuan per gedung; gedung tanpa aset aktif tetap tampil; jumlah", () => {
+        const modul = [{ slug: "apar", nama: "APAR", periode: "2026-11-01", jatuhTempo: "2026-11-30", mingguan: false }];
+        const aset = [
+            { id: 1, kode: "01D", modulSlug: "apar", modul: "APAR", area: "Gedung A", lokasi: "-" },
+            { id: 2, kode: "02D", modulSlug: "apar", modul: "APAR", area: "Gedung B", lokasi: "-" },
+        ];
+        const p = rakitProgres(modul, aset, new Map([[1, { kesimpulan: "layak" as const }]]));
+        const r = barisLaporanProgres(
+            p,
+            new Map([
+                ["Gedung A", { perluTinjauan: 1, ditolak: 0, temuan: 2 }],
+                ["Gedung Lama", { perluTinjauan: 0, ditolak: 1, temuan: 1 }],
+            ]),
+        );
+        expect(r.baris.map((b) => [b.nama, b.sudah, b.total, b.perluTinjauan, b.ditolak, b.temuan])).toEqual([
+            ["Gedung A", 1, 1, 1, 0, 2],
+            ["Gedung B", 0, 1, 0, 0, 0],
+            ["Gedung Lama", 0, 0, 0, 1, 1],
+        ]);
+        expect(r.total).toEqual({ total: 2, sudah: 1, persen: 50, perluTinjauan: 1, ditolak: 1, temuan: 3 });
+    });
+
+    it("slot per minggu: aset yang sama dihitung per periode", () => {
+        const modul = [{ slug: "mobil_pemadam", nama: "Mobil Pemadam", periode: "2026-11-02", jatuhTempo: "2026-11-08", mingguan: true }];
+        const slot = ["2026-11-02", "2026-11-09"].map((p) => ({
+            id: `3@${p}`,
+            kode: "PMK-01",
+            modulSlug: "mobil_pemadam",
+            modul: "Mobil Pemadam",
+            area: null,
+            lokasi: "Pos",
+            periode: p,
+        }));
+        const p = rakitProgres(modul, slot, new Map([["3@2026-11-02", { kesimpulan: "layak" as const }]]));
+        expect(p.perModul[0]).toMatchObject({ sudah: 1, total: 2, persen: 50 });
+        expect(p.perArea[0]!.belum.map((b) => b.periode)).toEqual(["2026-11-09"]);
+        expect(namaGedung(null, " Gedung Lama ")).toBe("Gedung Lama");
+        expect(namaGedung(null, null)).toBe("Tanpa area (objek bergerak)");
     });
 });

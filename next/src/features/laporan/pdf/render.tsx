@@ -6,6 +6,7 @@ import { rakitKartu } from "../rakit";
 import { daftarkanFont } from "./dasar";
 import { DokumenKartu } from "./kartu";
 import { DokumenPms } from "./pms";
+import { DokumenProgres, type IsiProgres } from "./progres";
 import { DokumenRekap, type FotoLampiran, type IsiRekap } from "./rekap";
 import { DokumenRekapP3k } from "./rekap-p3k";
 import type { rakitRekapP3k } from "../rekap-p3k";
@@ -59,4 +60,9 @@ export async function renderKartu(assetId: number, tahun: number, dicetak: Date)
 export async function renderRekapP3k(rekap: ReturnType<typeof rakitRekapP3k>, judulPeriode: string, gedung: string | null, dicetak: Date): Promise<Buffer> {
   daftarkanFont();
   return renderToBuffer(<DokumenRekapP3k rekap={rekap} judulPeriode={judulPeriode} gedung={gedung} dicetak={dicetak} />);
+}
+
+export async function renderProgres(isi: IsiProgres, dicetak: Date): Promise<Buffer> {
+  daftarkanFont();
+  return renderToBuffer(<DokumenProgres isi={isi} dicetak={dicetak} />);
 }

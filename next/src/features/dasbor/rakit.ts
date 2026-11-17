@@ -5,13 +5,16 @@
 import { KESIMPULAN, type Kesimpulan } from "@/lib/domain/constants";
 
 export type AsetProgres = {
-    id: number;
+    /** Kunci slot: id aset (periode berjalan) atau "{id aset}@{periode}" (laporan per bulan). */
+    id: number | string;
     kode: string;
     modulSlug: string;
     modul: string;
     /** Nama area/gedung; null untuk aset tanpa area (mis. mobil pemadam). */
     area: string | null;
     lokasi: string;
+    /** Periode slot ("YYYY-MM-DD"), untuk laporan per bulan yang memuat beberapa minggu. */
+    periode?: string;
 };
 
 /** Inspeksi final terakhir aset di periode modulnya; tidak ada = belum dicek. */
@@ -25,10 +28,18 @@ const hitung = (total: number, sudah: number): Hitung => ({ total, sudah, persen
 
 export const AREA_TANPA_NAMA = "Tanpa area (objek bergerak)";
 
+/**
+ * Nama "gedung" untuk progres dan laporan: area yang ditunjuk aset (gedung, bengkel, dok, dermaga;
+ * area bersarang tidak digulung ke induknya), cadangan teks gedung lama, lalu "Tanpa area".
+ */
+export function namaGedung(area: string | null | undefined, gedung: string | null | undefined): string {
+    return area?.trim() || gedung?.trim() || AREA_TANPA_NAMA;
+}
+
 export function rakitProgres(
     modul: { slug: string; nama: string; periode: string; jatuhTempo: string; mingguan: boolean }[],
     aset: AsetProgres[],
-    cek: Map<number, CekTerakhir>,
+    cek: Map<number | string, CekTerakhir>,
 ) {
     const kondisi = Object.fromEntries(KESIMPULAN.map((k) => [k, 0])) as Record<Kesimpulan, number>;
     for (const a of aset) {
@@ -43,7 +54,7 @@ export function rakitProgres(
 
     const area = new Map<string, { modul: Map<string, { total: number; sudah: number }>; belum: AsetProgres[] }>();
     for (const a of aset) {
-        const nama = a.area ?? AREA_TANPA_NAMA;
+        const nama = namaGedung(a.area, null);
         const v = area.get(nama) ?? {
             modul: new Map<string, { total: number; sudah: number }>(),
             belum: [] as AsetProgres[],
@@ -83,3 +94,32 @@ export function rakitProgres(
 }
 
 export type Progres = ReturnType<typeof rakitProgres>;
+
+export type HitunganArea = { perluTinjauan: number; ditolak: number; temuan: number };
+
+/**
+ * Baris laporan "Progres per gedung" (PRD F15): progres per modul dari `rakitProgres` ditambah,
+ * per gedung, inspeksi yang menunggu tinjauan, inspeksi yang ditolak peninjau, dan jumlah temuan
+ * pada periode itu. Gedung yang hanya punya hitungan (mis. aset sudah nonaktif) tetap tampil.
+ */
+export function barisLaporanProgres(progres: Pick<Progres, "perArea" | "total" | "sudah" | "persen">, hitungan: Map<string, HitunganArea>) {
+    const kosong: HitunganArea = { perluTinjauan: 0, ditolak: 0, temuan: 0 };
+    const baris = progres.perArea.map((a) => ({ ...a, ...(hitungan.get(a.nama) ?? kosong) }));
+    for (const [nama, h] of hitungan) {
+        if (!baris.some((b) => b.nama === nama)) {
+            baris.push({ nama, total: 0, sudah: 0, persen: 0, modul: [], belum: [], ...h });
+        }
+    }
+    const jumlah = (k: keyof HitunganArea) => baris.reduce((n, b) => n + b[k], 0);
+    return {
+        baris,
+        total: {
+            total: progres.total,
+            sudah: progres.sudah,
+            persen: progres.persen,
+            perluTinjauan: jumlah("perluTinjauan"),
+            ditolak: jumlah("ditolak"),
+            temuan: jumlah("temuan"),
+        },
+    };
+}

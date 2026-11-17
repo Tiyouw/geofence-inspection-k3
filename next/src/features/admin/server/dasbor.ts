@@ -44,7 +44,7 @@ export async function ringkasanDasbor(now = new Date()) {
         progres.aset
             .filter((a) => a.lat != null && a.lng != null)
             .map((a) => ({
-                id: a.id,
+                id: a.asetId,
                 kode: a.kode,
                 gedung: a.area,
                 lantai: null,
@@ -53,7 +53,7 @@ export async function ringkasanDasbor(now = new Date()) {
                 lng: a.lng,
                 sudahDiperiksa: progres.cek.has(a.id),
                 kesimpulan: progres.cek.get(a.id)?.kesimpulan ?? null,
-                tinjau: tinjau.has(a.id),
+                tinjau: tinjau.has(a.asetId),
             })),
     );
 
@@ -195,7 +195,7 @@ export async function antreanDasbor(
     return {
         baris: belum.slice((halaman - 1) * per, halaman * per).map((a) => ({
             jenis: "belum" as const,
-            id: a.id,
+            id: a.asetId,
             asetKode: a.kode,
             modul: a.modul,
             lokasi: [a.area, a.lokasi === "-" ? null : a.lokasi].filter(Boolean).join(" · ") || "-",

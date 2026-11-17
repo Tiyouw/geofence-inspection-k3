@@ -13,7 +13,7 @@ const pilih = "h-9 rounded-md border bg-card px-2 text-sm";
 
 /**
  * Laporan bulanan (SPEC §4.9, ACCEPTANCE L6): saring tipe/tahun/bulan/gedung, ringkasan,
- * unduhan dua PDF, dan rincian per unit dengan tautan kartu kontrol.
+ * unduhan PDF (PMS, rekap temuan, progres per gedung), dan rincian per unit dengan tautan kartu kontrol.
  */
 export async function HalamanLaporan({ q }: { q: Record<string, string | string[] | undefined> }) {
   await requireRole("admin", "pemantau");
@@ -102,6 +102,28 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
               </a>
             )}
           </div>
+
+          <section aria-labelledby="judul-progres" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3" data-testid="unduh-progres">
+            <h2 id="judul-progres" className="mr-1 text-sm font-medium">
+              Progres per gedung, semua modul:
+            </h2>
+            <a
+              href={`/laporan/progres?tahun=${f.tahun}&bulan=${f.bulan}`}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-muted"
+            >
+              <Download className="size-4" aria-hidden /> {namaPeriode(f.tahun, f.bulan)} (PDF)
+            </a>
+            <a
+              href="/laporan/progres"
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-muted"
+            >
+              <Download className="size-4" aria-hidden /> Periode berjalan, sama dengan dasbor (PDF)
+            </a>
+          </section>
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Kepatuhan" value={`${persen1(data.ringkas.kepatuhan)}%`} hint={`${data.ringkas.diperiksa} diperiksa, ${data.ringkas.belum} belum`} tone="success" />
