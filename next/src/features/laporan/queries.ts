@@ -196,6 +196,7 @@ export async function ambilKartu(assetId: number, tahun: number) {
       attributes: assets.attributes,
       tglExpired: assets.tglExpired,
       tipe: assetTypes.nama,
+      slug: assetTypes.slug,
       divisi: divisions.nama,
     })
     .from(assets)

@@ -96,6 +96,11 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
             <a href={`/laporan/temuan?${query}&foto=0`} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
               Rekap temuan tanpa foto
             </a>
+            {f.tipe === "p3k" && (
+              <a href={`/laporan/isi-p3k?${query}`} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
+                <Download className="size-4" aria-hidden /> Rekap isi P3K (PDF)
+              </a>
+            )}
           </div>
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
