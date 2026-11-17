@@ -113,8 +113,8 @@ describe("periksa kirim (SPEC §3.7)", () => {
   it("kamera terpandu: galat per langkah menggantikan hitungan foto (PRD Aturan bukti 3-4)", () => {
     // area terbatas: tanpa foto tetap boleh
     expect(periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 0, galatFoto: [], kesimpulan: "layak" }, 6)).toEqual([]);
-    const g = periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 12, galatFoto: ["Langkah foto yang belum diisi: Manometer"], kesimpulan: "layak" }, 6);
-    expect(g).toEqual(["Langkah foto yang belum diisi: Manometer"]);
+    const g = periksaKirim(ITEMS, { jawaban: lengkap, jumlahFoto: 12, galatFoto: ["Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: Manometer"], kesimpulan: "layak" }, 6);
+    expect(g).toEqual(["Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: Manometer"]);
   });
 });
 

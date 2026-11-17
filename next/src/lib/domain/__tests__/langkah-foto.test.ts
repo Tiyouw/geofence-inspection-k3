@@ -69,7 +69,7 @@ describe("selesaikanLangkah dan cadangan", () => {
 describe("periksaFotoLangkah (PRD Aturan bukti 3-4)", () => {
   it("setiap langkah wajib minimal satu foto", () => {
     expect(periksaFotoLangkah(langkah, [{ langkah: "tabung" }], { areaTerbatas: false })).toEqual([
-      "Langkah foto yang belum diisi: Manometer",
+      "Masih ada butir tanpa jawaban atau langkah foto yang belum diisi: Manometer",
     ]);
     expect(periksaFotoLangkah(langkah, [{ langkah: "tabung" }, { langkah: "manometer" }], { areaTerbatas: false })).toEqual([]);
   });
