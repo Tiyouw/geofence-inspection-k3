@@ -25,6 +25,7 @@ import { hariIniJakarta } from "../../lib/format";
 import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
 import { LANGKAH_FOTO_APAR, validasiDefinisiLangkah, type DefinisiLangkahFoto } from "../../lib/domain/langkah-foto";
 import { DIVISI, PEMILIK_TIPE, type AnswerType, type AssetTypeSlug, type Role, type Severity } from "../../lib/domain/constants";
+import { seedDamkar } from "./checklist-damkar";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL });
 const db = drizzle({ client: pool, schema: s, casing: "snake_case" });
@@ -320,10 +321,14 @@ async function contohOperasional(tx: Tx) {
   const [petugasDemo] = await tx.select().from(s.users).where(eq(s.users.nip, "inspektur"));
   const [petugasContoh] = await tx.select().from(s.users).where(eq(s.users.nip, "2001"));
   const userId = (petugasDemo ?? petugasContoh)!.id;
-  const semuaAset = await tx.select().from(s.assets).orderBy(s.assets.kode);
+  // Contoh hanya untuk APAR: modul lain punya checklist sendiri.
+  const [tipeApar] = await tx.select().from(s.assetTypes).where(eq(s.assetTypes.slug, "apar"));
+  const semuaAset = await tx.select().from(s.assets).where(eq(s.assets.assetTypeId, tipeApar!.id)).orderBy(s.assets.kode);
   const items = await tx
     .select({ id: s.checklistItems.id, answerType: s.checklistItems.answerType, options: s.checklistItems.options, label: s.checklistItems.label })
     .from(s.checklistItems)
+    .innerJoin(s.checklistGroups, eq(s.checklistGroups.id, s.checklistItems.checklistGroupId))
+    .where(eq(s.checklistGroups.assetTypeId, tipeApar!.id))
     .orderBy(s.checklistItems.urut);
 
   const contohFoto = new Uint8Array(readFileSync(join(import.meta.dirname, "../../../public/icons/icon-192.png")));
@@ -504,6 +509,7 @@ async function main() {
     await akunDemo(tx, div);
     await apar(tx, aparId, div[DIVISI.satPk]!);
     await areaDariGedung(tx);
+    await seedDamkar(tx, div[DIVISI.satPk] ?? null);
     await contohOperasional(tx);
     // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
     await seedP3kHydrant(tx);

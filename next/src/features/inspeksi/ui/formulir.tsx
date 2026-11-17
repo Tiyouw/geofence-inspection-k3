@@ -235,10 +235,12 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
         <CardContent className="space-y-2 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold">Lokasi</p>
-            {draf.gps && <LencanaGerbang status={gerbang} />}
+            {aset.bergerak ? <LencanaGerbang status="tidak_berlaku" /> : draf.gps && <LencanaGerbang status={gerbang} />}
           </div>
           <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
-            {statusGps === "mencari" && !draf.gps
+            {aset.bergerak
+              ? "Objek bergerak: lokasi tidak diperiksa. Posisi tetap direkam sebagai informasi."
+              : statusGps === "mencari" && !draf.gps
               ? "Mencari posisi…"
               : statusGps === "ditolak" && !draf.gps
                 ? "Izin lokasi ditolak. Inspeksi tetap dapat dikirim, namun akan ditandai untuk ditinjau Admin K3."

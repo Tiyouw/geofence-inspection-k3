@@ -10,6 +10,7 @@ import { labelJadwal } from "@/features/admin/lib/label";
 import { mundurBulan, parsePeriode, periodeJakarta } from "@/features/admin/lib/periode";
 import { daftarTipe, jadwalPeriode } from "@/features/admin/server/jadwal";
 import { requireRole } from "@/lib/auth/guards";
+import { PERIODE_MINGGUAN_HARI } from "@/lib/domain/jadwal";
 import { labelLokasi } from "@/lib/domain/label-aset";
 import { formatTanggal, formatWaktu, hariIniJakarta } from "@/lib/format";
 
@@ -78,6 +79,7 @@ export default async function Jadwal({ searchParams }: PageProps<"/admin/jadwal"
                             <thead>
                                 <tr>
                                     <th>Aset</th>
+                                    {rows[0]?.mingguan && <th>Minggu</th>}
                                     <th>Lokasi</th>
                                     <th>Jatuh tempo</th>
                                     <th>Status</th>
@@ -86,12 +88,17 @@ export default async function Jadwal({ searchParams }: PageProps<"/admin/jadwal"
                             </thead>
                             <tbody>
                                 {rows.map((r, i) => (
-                                    <tr key={r.asetId}>
+                                    <tr key={`${r.asetId}:${r.periode}`}>
                                         <td className="font-medium">
                                             <Link href={`/admin/aset/${r.asetId}`} className="hover:underline">
                                                 {r.kode}
                                             </Link>
                                         </td>
+                                        {r.mingguan && (
+                                            <td className="whitespace-nowrap">
+                                                {tgl(r.periode)} s.d. {tgl(r.jatuhTempo)}
+                                            </td>
+                                        )}
                                         <td>{labelLokasi(r)}</td>
                                         <td className="whitespace-nowrap">
                                             {tgl(r.jatuhTempo)}
@@ -129,7 +136,8 @@ export default async function Jadwal({ searchParams }: PageProps<"/admin/jadwal"
                                 <span>
                                     {t.nama}
                                     <span className="block text-xs text-muted-foreground">
-                                        tiap {t.periodeHari} hari · {t.jumlahAset} aset aktif
+                                        {t.periodeHari === PERIODE_MINGGUAN_HARI ? "mingguan (Senin s.d. Minggu)" : `tiap ${t.periodeHari} hari`} ·{" "}
+                                        {t.jumlahAset} aset aktif
                                     </span>
                                 </span>
                                 <DialogAksi

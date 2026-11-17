@@ -13,7 +13,6 @@ import {
   inspectionAnswers,
   inspectionPhotos,
   inspections,
-  issueEvents,
   issues,
   schedules,
 } from "@/db/schema";
@@ -22,16 +21,10 @@ import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
 import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
 import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
-import {
-  bangunTemuan,
-  jatuhTempo,
-  periksaKirim,
-  periodeDari,
-  tenggatTemuan,
-  waktuResmi,
-  type ButirChecklist,
-  type Temuan,
-} from "@/lib/domain/inspeksi";
+import { bangunTemuan, periksaKirim, waktuResmi, type ButirChecklist, type Temuan } from "@/lib/domain/inspeksi";
+import { jatuhTempoUntuk, periodeUntuk } from "@/lib/domain/jadwal";
+import { identitasDamkar, type AtributDamkar } from "@/lib/domain/modul/damkar";
+import { lokasiTemuan } from "@/lib/domain/temuan";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
@@ -292,7 +285,7 @@ export type HasilFinal = {
   jarakM: number | null;
   qrVerified: boolean;
   jumlahFoto: number;
-  temuan: { item: string; severity: string; targetSelesai: string | null }[];
+  temuan: { item: string; severity: string; tindakan: string | null }[];
 };
 
 async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
@@ -302,7 +295,7 @@ async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
     .innerJoin(assets, eq(assets.id, inspections.assetId))
     .where(eq(inspections.id, inspectionId));
   const temuan = await tx
-    .select({ item: issues.item, severity: issues.severity, targetSelesai: issues.targetSelesai })
+    .select({ item: issues.item, severity: issues.severity, tindakan: issues.tindakanRekomendasi })
     .from(issues)
     .where(eq(issues.inspectionId, inspectionId))
     .orderBy(sql`case ${issues.severity} when 'berat' then 0 when 'sedang' then 1 else 2 end`, asc(issues.id));
@@ -364,6 +357,7 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       hasExpiry: i.hasExpiry,
       satuan: i.satuan,
       wajib: i.wajib,
+      tindakanBawaan: i.tindakanBawaan,
     }));
     // Kotak P3K: kedaluwarsa dinilai terhadap tanggal kirim di perangkat (WIB).
     const p3k = konteksP3k(tipe.slug, aset.attributes, hariIniJakarta(new Date(input.submittedAtDevice)));
@@ -462,16 +456,22 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
     }
 
     const tanggal = hariIniJakarta(waktu.inspectedAt);
-    await buatTemuan(tx, user, aset.id, inspectionId, tanggal, bangunTemuan(items, input.answers, p3k));
+    const lokasi = lokasiTemuan({
+      gedung: aset.gedung,
+      lantai: aset.lantai,
+      lokasiTeks: aset.lokasiTeks,
+      identitas: tipe.isMobile ? identitasDamkar(aset.attributes as AtributDamkar | null) : null,
+    });
+    await buatTemuan(tx, aset.id, inspectionId, lokasi, bangunTemuan(items, input.answers, p3k));
 
     await tx
       .update(assets)
       .set({ terakhirDicek: tanggal })
       .where(and(eq(assets.id, aset.id), sql`(${assets.terakhirDicek} is null or ${assets.terakhirDicek} <= ${tanggal})`));
 
-    // SPEC §3.9: satu jadwal per aset per periode; inspeksi terakhir yang ditunjuk.
-    const periode = periodeDari(tanggal);
-    const tempo = jatuhTempo(periode, tipe.periodeHari);
+    // SPEC §3.9: satu jadwal per aset per periode (minggu untuk mobil pemadam); inspeksi terakhir yang ditunjuk.
+    const periode = periodeUntuk(tanggal, tipe.periodeHari);
+    const tempo = jatuhTempoUntuk(periode, tipe.periodeHari);
     const status = tanggal <= tempo ? "selesai" : "telat";
     await tx
       .insert(schedules)
@@ -490,21 +490,22 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
   });
 }
 
-async function buatTemuan(tx: Tx, user: SessionUser, assetId: number, inspectionId: string, tanggal: string, temuan: Temuan[]) {
+/**
+ * Temuan sederhana (PRD "Temuan", ADR-4): satu per butir gagal, dengan lokasi yang disalin saat
+ * final dan tindakan yang direkomendasikan. Tanpa tenggat, PIC, atau jejak tindak lanjut.
+ */
+async function buatTemuan(tx: Tx, assetId: number, inspectionId: string, lokasi: string, temuan: Temuan[]) {
   await tx.delete(issues).where(eq(issues.inspectionId, inspectionId));
-  for (const t of temuan) {
-    const [issue] = await tx
-      .insert(issues)
-      .values({
-        assetId,
-        inspectionId,
-        checklistItemId: t.checklistItemId,
-        item: t.item,
-        severity: t.severity,
-        status: "terbuka",
-        targetSelesai: tenggatTemuan(tanggal, t.severity),
-      })
-      .returning({ id: issues.id });
-    await tx.insert(issueEvents).values({ issueId: issue!.id, userId: user.id, aksi: "dibuat", ke: { status: "terbuka", severity: t.severity } });
-  }
+  if (!temuan.length) return;
+  await tx.insert(issues).values(
+    temuan.map((t) => ({
+      assetId,
+      inspectionId,
+      checklistItemId: t.checklistItemId,
+      item: t.item,
+      severity: t.severity,
+      lokasi,
+      tindakanRekomendasi: t.tindakan,
+    })),
+  );
 }

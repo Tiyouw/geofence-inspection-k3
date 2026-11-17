@@ -5,7 +5,8 @@ import { db } from "@/db";
 import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
-import { jatuhTempo, periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
+import { periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
+import { jatuhTempoUntuk, periodeUntuk, rentangPeriode } from "@/lib/domain/jadwal";
 import type { Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
 import type { LangkahFoto } from "@/lib/domain/langkah-foto";
 import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
@@ -24,6 +25,8 @@ export type AsetPaket = {
   lat: number | null;
   lng: number | null;
   radiusM: number | null;
+  /** Objek bergerak (mobil pemadam): tanpa gerbang lokasi. Opsional: paket lama di perangkat belum memuatnya. */
+  bergerak?: boolean;
   media: string | null;
   /** Kotak P3K: tipe kotak penentu jumlah baku (bawaan A bila atribut kosong); null untuk modul lain. */
   tipeKotak?: TipeKotakP3k | null;
@@ -110,6 +113,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     lat: a.lat,
     lng: a.lng,
     radiusM: t.isMobile ? null : radiusEfektif({ radiusAset: a.radiusM, lokasiTipe: a.lokasiTipe }),
+    bergerak: t.isMobile,
     media: labelMedia(a.attributes ?? null),
     tipeKotak: t.slug === "p3k" ? (bacaTipeKotak(a.attributes) ?? "A") : null,
     areaTerbatas: terbatas === true,
@@ -117,8 +121,15 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
   }));
 
   const tipeIds = [...new Set(rows.map((r) => r.t.id))];
+  // Jatuh tempo dan awal periode per tipe aset: minggu berjalan untuk mobil pemadam, bulan untuk lainnya.
   const jt: Record<number, string> = {};
-  for (const { t } of rows) jt[t.id] = jatuhTempo(mulai, t.periodeHari);
+  const awalPeriode = new Map<number, Date>();
+  for (const { t } of rows) {
+    const p = periodeUntuk(hariIni, t.periodeHari);
+    jt[t.id] = jatuhTempoUntuk(p, t.periodeHari);
+    awalPeriode.set(t.id, rentangPeriode(p, t.periodeHari).awal);
+  }
+  const awalTerlama = new Date(Math.min(awalBulan.getTime(), ...[...awalPeriode.values()].map((d) => d.getTime())));
 
   const butir = tipeIds.length
     ? await db
@@ -152,10 +163,16 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
 
   const langkahFoto: Record<number, LangkahFoto[]> = Object.fromEntries(await langkahPerTipe(db, tipeIds));
 
-  const sudah = await db
-    .selectDistinct({ assetId: inspections.assetId })
+  const terakhir = await db
+    .select({ assetId: inspections.assetId, t: sql<Date>`max(${inspections.inspectedAt})`.mapWith(inspections.inspectedAt) })
     .from(inspections)
-    .where(and(eq(inspections.status, "final"), gte(inspections.inspectedAt, awalBulan)));
+    .where(and(eq(inspections.status, "final"), gte(inspections.inspectedAt, awalTerlama)))
+    .groupBy(inspections.assetId);
+  const tipePerAset = new Map(rows.map(({ a }) => [a.id, a.assetTypeId]));
+  const sudah = terakhir.filter((r) => {
+    const awal = awalPeriode.get(tipePerAset.get(r.assetId) ?? -1) ?? awalBulan;
+    return r.t != null && r.t >= awal;
+  });
 
   const batasTerkirim = new Date(`${tambahHari(hariIni, -30)}T00:00:00+07:00`);
   const milikSendiri = await db
