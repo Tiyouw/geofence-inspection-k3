@@ -10,7 +10,18 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { formatWaktu } from "@/lib/format";
 import { AREA_JENIS, LABEL_AREA_JENIS } from "@/lib/domain/constants";
 import { type GeometriArea, type LngLat, tutupCincin, validasiGeometri } from "@/lib/geo/geometri";
 import { bacaGeoJson, type FiturImpor } from "@/lib/geo/impor";
@@ -19,6 +30,7 @@ import {
     buangDrafPoligon,
     buatArea,
     hapusArea,
+    hapusDrafMassal,
     imporArea,
     jadikanKawasan,
     pasangkanAset,
@@ -224,7 +236,10 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 )}
 
                 {mode.jenis === "lihat" && !pilih && (
-                    <DaftarArea area={area} kawasan={kawasan} pilih={(id) => setPilihId(id)} />
+                    <>
+                        <DaftarArea area={area} kawasan={kawasan} pilih={(id) => setPilihId(id)} />
+                        <HapusDraf area={area} menunggu={menunggu} jalankan={jalankan} />
+                    </>
                 )}
             </div>
         </div>
@@ -291,6 +306,85 @@ function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: Are
                     </li>
                 ))}
             </ul>
+        </Kartu>
+    );
+}
+
+/** Draf yang boleh dihapus massal: belum pernah disetujui, bukan kawasan, tanpa aset. Peladen memeriksa ulang. */
+function drafTerhapus(a: AreaEditor) {
+    return !a.polygon && !!a.polygonDraf && a.jenis !== "kawasan" && a.jumlahAset === 0;
+}
+
+function HapusDraf({
+    area,
+    menunggu,
+    jalankan,
+}: {
+    area: AreaEditor[];
+    menunggu: boolean;
+    jalankan: (k: () => Promise<Hasil>, setelah?: () => void) => void;
+}) {
+    const [tanya, setTanya] = useState<{ judul: string; ids: number[] } | null>(null);
+    const draf = area.filter(drafTerhapus);
+    // Satu kali impor = satu transaksi = satu waktu dibuat.
+    const per = new Map<string, AreaEditor[]>();
+    for (const a of draf) per.set(a.dibuatPada, [...(per.get(a.dibuatPada) ?? []), a]);
+    const kumpulan = [...per.entries()].sort((x, y) => y[0].localeCompare(x[0])).map(([waktu, isi]) => ({ waktu, isi }));
+    if (draf.length === 0) return null;
+    return (
+        <Kartu judul="Hapus draf" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+            <div data-testid="hapus-draf">
+                <p className="mb-3 text-sm text-muted-foreground">
+                    Hanya draf yang belum pernah disetujui dan tidak berisi aset. Area disetujui dan batas kawasan tidak ikut terhapus.
+                </p>
+                <ul className="mb-3 space-y-1">
+                    {kumpulan.map((k) => (
+                        <li key={k.waktu} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
+                            <span className="min-w-0">
+                                <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                    {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}
+                                    {k.isi.length > 3 ? ", …" : ""}
+                                </span>
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={menunggu}
+                                onClick={() => setTanya({ judul: `kumpulan ${formatWaktu(k.waktu)}`, ids: k.isi.map((a) => a.id) })}
+                            >
+                                <Trash2 aria-hidden /> Hapus {k.isi.length}
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+                <Button variant="destructive" size="sm" disabled={menunggu} onClick={() => setTanya({ judul: "semua draf", ids: draf.map((a) => a.id) })}>
+                    <Trash2 aria-hidden /> Hapus semua draf ({draf.length})
+                </Button>
+            </div>
+            <AlertDialog open={!!tanya} onOpenChange={(b) => !b && setTanya(null)}>
+                <AlertDialogContent data-testid="dialog-hapus-draf">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus {tanya?.ids.length} draf area?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {tanya?.ids.length} draf dari {tanya?.judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => {
+                                const ids = tanya?.ids ?? [];
+                                setTanya(null);
+                                jalankan(() => hapusDrafMassal({ ids }));
+                            }}
+                        >
+                            Hapus {tanya?.ids.length} draf
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Kartu>
     );
 }

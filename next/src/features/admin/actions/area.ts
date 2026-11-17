@@ -5,11 +5,12 @@
  * (aksiAdmin), memakai JSON, dan memvalidasi ulang geometri di peladen. Poligon hasil impor
  * dan suntingan disimpan sebagai draf; gerbang hanya memakai poligon yang sudah disetujui.
  */
-import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, ne, notExists } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { areas, assets, assetTypes } from "@/db/schema";
+import { alias } from "drizzle-orm/pg-core";
+import { areas, assets, assetTypes, inspections } from "@/db/schema";
 import { AREA_JENIS } from "@/lib/domain/constants";
 import { type GeometriArea, normalkanGeometri, titikDalamPoligon, validasiGeometri } from "@/lib/geo/geometri";
 import { kodeDariLabel, MAKS_FITUR_IMPOR } from "@/lib/geo/impor";
@@ -82,6 +83,55 @@ export async function imporArea(masukan: z.input<typeof skemaImpor>): Promise<Ha
         });
         segarkan();
         return { ok: true, pesan: `${baru + diisi} poligon diimpor sebagai draf.`, data: { baru, diisi } };
+    });
+}
+
+/* ---------- hapus draf massal ---------- */
+
+/** Batas satu kali hapus massal; jauh di atas jumlah area satu denah. */
+export const MAKS_HAPUS_DRAF = 2000;
+
+const skemaHapusDraf = z.object({
+    ids: z.array(z.number().int().positive()).min(1, "Tidak ada draf yang dipilih.").max(MAKS_HAPUS_DRAF),
+});
+
+/**
+ * Menghapus banyak area DRAF sekaligus (mis. satu kumpulan impor yang salah berkas).
+ * Hanya area yang belum pernah disetujui (polygon null, ada polygon_draf), bukan kawasan,
+ * tanpa aset, tanpa inspeksi yang merujuknya, dan tanpa area anak. Syarat diperiksa lagi di
+ * dalam DELETE, jadi id yang tidak memenuhi syarat diabaikan, bukan dihapus.
+ */
+export async function hapusDrafMassal(masukan: z.input<typeof skemaHapusDraf>): Promise<HasilAksi<{ jumlah: number; dilewati: number }>> {
+    return aksiAdmin(skemaHapusDraf, masukan, async (d, user) => {
+        const ids = [...new Set(d.ids)];
+        const anak = alias(areas, "anak");
+        const jumlah = await db.transaction(async (tx) => {
+            const hapus = await tx
+                .delete(areas)
+                .where(
+                    and(
+                        inArray(areas.id, ids),
+                        isNull(areas.polygon),
+                        isNotNull(areas.polygonDraf),
+                        ne(areas.jenis, "kawasan"),
+                        notExists(tx.select({ x: assets.id }).from(assets).where(eq(assets.areaId, areas.id))),
+                        notExists(tx.select({ x: inspections.id }).from(inspections).where(eq(inspections.detectedAreaId, areas.id))),
+                        notExists(tx.select({ x: anak.id }).from(anak).where(eq(anak.parentId, areas.id))),
+                    ),
+                )
+                .returning({ id: areas.id });
+            // Isi poligon dan nama tidak dicatat: denah bersifat rahasia (ADR-10).
+            await catatAudit(tx, user, "area.hapus_draf_massal", "area", "-", { diminta: ids.length, dihapus: hapus.length });
+            return hapus.length;
+        });
+        segarkan();
+        const dilewati = ids.length - jumlah;
+        if (jumlah === 0) return { ok: false, status: 422, pesan: "Tidak ada draf yang dapat dihapus." };
+        return {
+            ok: true,
+            pesan: `${jumlah} draf area dihapus.${dilewati ? ` ${dilewati} dilewati karena sudah disetujui, berisi aset, atau dirujuk inspeksi.` : ""}`,
+            data: { jumlah, dilewati },
+        };
     });
 }
 

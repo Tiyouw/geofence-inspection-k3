@@ -17,6 +17,8 @@ export type AreaEditor = {
     parentId: number | null;
     divisionId: number | null;
     jumlahAset: number;
+    /** Waktu dibuat; satu kali impor berjalan dalam satu transaksi, jadi sama untuk satu kumpulan. */
+    dibuatPada: string;
 };
 
 export type AsetEditor = {
@@ -45,6 +47,7 @@ export async function dataEditorArea() {
                 restricted: areas.restricted,
                 parentId: areas.parentId,
                 divisionId: areas.divisionId,
+                dibuatPada: areas.createdAt,
             })
             .from(areas)
             .where(eq(areas.aktif, true))
@@ -75,6 +78,7 @@ export async function dataEditorArea() {
     const area: AreaEditor[] = daftar.map((a) => ({
         ...a,
         disetujuiPada: a.disetujuiPada?.toISOString() ?? null,
+        dibuatPada: a.dibuatPada.toISOString(),
         jumlahAset: per.get(a.id) ?? 0,
     }));
     // Objek bergerak (mobil pemadam) tidak punya area: tidak ditampilkan di editor.
