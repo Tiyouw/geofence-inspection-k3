@@ -3,11 +3,10 @@
  * Dipakai seed, formulir lapangan, dan laporan, supaya satu sumber untuk butir dan bakunya.
  * Sumber: PRD "Checklist per modul" dan "Aturan bukti" butir 3.
  */
-import type { AnswerType, Severity, TindakanRekomendasi } from "../constants";
+import type { AnswerType, Severity, TindakanRekomendasi, TipeKotakP3k } from "../constants";
 
 /** Tipe kotak P3K (Permenakertrans PER.15/MEN/VIII/2008 Lampiran II/III). */
-export const TIPE_KOTAK = ["A", "B", "C"] as const;
-export type TipeKotak = (typeof TIPE_KOTAK)[number];
+export type TipeKotak = TipeKotakP3k;
 
 /**
  * Satu langkah kamera terpandu. Bentuk disepakati dengan sesi C (kamera) dan E (damkar).

@@ -5,18 +5,15 @@
  * adalah {{Assumption}} sampai formulir asli perusahaan diterima (PRD pertanyaan 3.1).
  * Angka baku disalin dari Lampiran II {{Unverified}}: perlu dicocokkan dengan cetakan resmi.
  */
-import type { Severity, TindakanRekomendasi } from "../constants";
+import { KONDISI_ISI, SEGERA_KEDALUWARSA_HARI, type KondisiIsi, type Severity, type TindakanRekomendasi } from "../constants";
 import type { DefinisiButir, DefinisiModul, TipeKotak } from "./tipe";
 
-export const KONDISI_ISI = ["aman", "kedaluwarsa"] as const;
-export type KondisiIsi = (typeof KONDISI_ISI)[number];
+export { KONDISI_ISI, type KondisiIsi };
 export const LABEL_KONDISI_ISI: Record<KondisiIsi, string> = {
   aman: "Aman",
   kedaluwarsa: "Ada yang kedaluwarsa",
 };
 
-/** Tanggal kedaluwarsa terdekat ≤ 30 hari lagi: catatan "segera kedaluwarsa", bukan temuan. */
-export const HARI_SEGERA_KEDALUWARSA = 30;
 
 const PS10 = "Permenakertrans PER.15/MEN/VIII/2008 Pasal 10";
 const LAMP2 = "Permenakertrans PER.15/MEN/VIII/2008 Lampiran II";
@@ -181,7 +178,7 @@ export function nilaiIsi(butir: ButirIsiP3k, j: JawabanIsiP3k | undefined, ctx: 
   const tgl = !kosong && butir.hasExpiry ? (j?.tglKedaluwarsaTerdekat ?? null) : null;
   const sisaHari = tgl ? selisihHari(ctx.hariIni, tgl) : null;
   const kedaluwarsa = !kosong && (j?.kondisiIsi === "kedaluwarsa" || (sisaHari !== null && sisaHari < 0));
-  const segeraKedaluwarsa = !kedaluwarsa && sisaHari !== null && sisaHari <= HARI_SEGERA_KEDALUWARSA;
+  const segeraKedaluwarsa = !kedaluwarsa && sisaHari !== null && sisaHari <= SEGERA_KEDALUWARSA_HARI;
   return {
     baku,
     jumlah,
