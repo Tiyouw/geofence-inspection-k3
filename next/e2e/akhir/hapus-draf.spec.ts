@@ -57,7 +57,9 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
   await q("update assets set area_id = $1 where id = $2", [dua!.id, a.id]);
   try {
     await page.reload();
-    await expect(kumpulan).toContainText("2 draf");
+    // Kumpulan masih memuat 3 draf (area 2 berisi aset), tetapi hanya 2 yang boleh dihapus.
+    await expect(kumpulan).toContainText("3 draf");
+    await expect(kumpulan.getByRole("button", { name: "Hapus 2" })).toBeEnabled();
 
     await kumpulan.getByRole("button", { name: "Hapus 2" }).click();
     const dialog = page.getByTestId("dialog-konfirmasi");
@@ -69,7 +71,10 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
     await kumpulan.getByRole("button", { name: "Hapus 2" }).click();
     await dialog.getByRole("button", { name: "Hapus 2 draf" }).click();
     await expect(page.getByText("2 draf area dihapus.")).toBeVisible();
-    await expect(kumpulan).toHaveCount(0);
+    // Yang tersisa: draf berisi aset; masih bisa disetujui, tidak bisa dihapus massal.
+    await expect(kumpulan).toContainText("1 draf");
+    await expect(kumpulan.getByRole("button", { name: "Hapus 0" })).toBeDisabled();
+    await expect(kumpulan.getByRole("button", { name: "Setujui 1" })).toBeEnabled();
     expect((await q<{ nama: string }>("select nama from areas where nama like $1 order by nama", [`Hapus Uji ${unik} %`])).map((r) => r.nama)).toEqual([
       satu!.nama,
       dua!.nama,
