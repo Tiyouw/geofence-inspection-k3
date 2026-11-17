@@ -12,7 +12,6 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
             ["/admin/aset/baru", "Tambah aset"],
             ["/admin/tinjauan?tab=semua", "Tinjauan inspeksi"],
             ["/admin/temuan", "Temuan"],
-            ["/admin/temuan/baru", "Catat temuan"],
             ["/admin/pengguna", "Pengguna"],
             ["/admin/pengguna/baru", "Tambah petugas"],
             ["/admin/jadwal", "Jadwal"],

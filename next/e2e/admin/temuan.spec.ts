@@ -1,88 +1,55 @@
 import { expect, test } from "@playwright/test";
 import { masuk } from "../helpers";
-import { baris, buatTemuan } from "./data";
+import { buatTemuan } from "./data";
 
-test.describe("temuan dan tindak lanjut (H9, I2, I5)", () => {
+/** PRD "Temuan" dan ADR-4: temuan hanya dicatat; tanpa status, tenggat, PIC, atau penutupan. */
+test.describe("temuan tanpa tindak lanjut", () => {
     test.beforeEach(async ({ page }) => {
         await masuk(page, "admin");
     });
 
-    test("siklus terbuka → proses → selesai → dibuka kembali, dengan tenggat dan jejak", async ({ page }) => {
+    test("daftar dengan saringan; detail hanya dibaca, dengan lokasi dan tindakan", async ({ page }) => {
         const t = await buatTemuan("sedang");
-        await page.goto(`/admin/temuan/${t.id}`);
-        await expect(page.getByRole("heading", { name: new RegExp(t.item) })).toBeVisible();
-
-        // Tenggat sebelum hari ini ditolak peladen (min di klien dilepas untuk menguji peladen).
-        await page.getByRole("button", { name: "Tetapkan tenggat" }).click();
-        const tgl = page.getByLabel("Target penyelesaian");
-        await tgl.evaluate((el) => el.removeAttribute("min"));
-        await tgl.fill("2020-01-01");
-        await page.getByRole("button", { name: "Simpan" }).click();
-        await expect(page.getByRole("alert")).toContainText("Tenggat tidak boleh sebelum hari ini.");
-        await tgl.fill("2099-12-31");
-        await page.getByRole("button", { name: "Simpan" }).click();
-        await expect(page.getByText("Tenggat tersimpan.")).toBeVisible();
-
-        await page.getByRole("button", { name: "Mulai proses" }).click();
-        await page.getByRole("dialog").getByRole("button", { name: "Mulai proses" }).click();
-        await expect(page.getByText("Status temuan: Dalam proses.")).toBeVisible();
-
-        await page.getByRole("button", { name: "Tandai selesai" }).click();
-        const uraian = page.getByLabel("Tindakan yang sudah dilakukan");
-        await uraian.fill("kurang");
-        await uraian.evaluate((el) => el.removeAttribute("minlength"));
-        await page.getByRole("dialog").getByRole("button", { name: "Tandai selesai" }).click();
-        await expect(page.getByRole("alert")).toContainText("minimal 10 karakter");
-        await uraian.fill("Tabung diganti unit cadangan dari gudang.");
-        await page.getByRole("dialog").getByRole("button", { name: "Tandai selesai" }).click();
-        await expect(page.getByText("Status temuan: Selesai.")).toBeVisible();
-        await expect(page.getByText("Tabung diganti unit cadangan dari gudang.").first()).toBeVisible();
-
-        await page.getByRole("button", { name: "Buka kembali" }).click();
-        await page.getByLabel("Uraian").fill("Ditemukan bocor lagi saat inspeksi ulang.");
-        await page.getByRole("dialog").getByRole("button", { name: "Buka kembali" }).click();
-        await expect(page.getByText("Status temuan: Terbuka.")).toBeVisible();
-
-        const jejak = await baris<{ aksi: string }>("select aksi from issue_events where issue_id = $1 order by id", [
-            t.id,
+        await page.goto(`/admin/temuan?q=${encodeURIComponent(t.item)}`);
+        const tabel = page.getByRole("table", { name: "Daftar temuan" });
+        const baris = tabel.getByRole("row").filter({ hasText: t.item });
+        await expect(baris).toContainText("Gedung Uji · Lorong");
+        await expect(baris).toContainText("Sedang");
+        await expect(baris).toContainText("Ganti");
+        await expect(tabel.getByRole("columnheader")).toHaveText([
+            "Tanggal",
+            "Lokasi",
+            "Temuan",
+            "Tingkat",
+            "Tindakan yang direkomendasikan",
+            "Inspektur",
         ]);
-        expect(jejak.map((j) => j.aksi)).toEqual(["tenggat", "status", "status", "status"]);
-    });
 
-    test("dasbor: temuan berat selesai keluar dari antrean (I2)", async ({ page }) => {
-        const t = await buatTemuan("berat");
-        // Temuan terlama tampil dulu; cari halaman yang memuat temuan ini.
-        let ketemu = false;
-        for (let hal = 1; hal <= 20 && !ketemu; hal++) {
-            await page.goto(`/admin?hal=${hal}`);
-            // Isi dasbor menyusul di balik kerangka muat.
-            await expect(page.getByRole("heading", { name: /Perlu keputusan Anda/ })).toBeVisible();
-            ketemu = (await page.getByRole("link", { name: new RegExp(t.item) }).count()) > 0;
-            if (!ketemu && !(await page.getByRole("link", { name: "Berikutnya" }).count())) break;
+        await baris.getByRole("link", { name: t.item }).click();
+        await expect(page).toHaveURL(new RegExp(`/admin/temuan/${t.id}$`));
+        await expect(page.getByText("Pasang unit cadangan")).toBeVisible();
+        for (const kata of ["Tetapkan tenggat", "Tandai selesai", "Mulai proses", "Buka kembali"]) {
+            await expect(page.getByRole("button", { name: kata })).toHaveCount(0);
         }
-        expect(ketemu).toBe(true);
-        const item = page.getByRole("listitem").filter({ hasText: t.item });
-        await item.getByRole("button", { name: "Tandai selesai" }).click();
-        await page.getByLabel("Tindakan yang sudah dilakukan").fill("Diganti dengan unit cadangan.");
-        await page.getByRole("dialog").getByRole("button", { name: "Tandai selesai" }).click();
-        await expect(page.getByText("Status temuan: Selesai.")).toBeVisible();
-        await expect(page.getByRole("link", { name: new RegExp(t.item) })).toHaveCount(0);
+        await expect(page.getByText(/Tenggat|Penanggung jawab/)).toHaveCount(0);
     });
 
-    test("temuan manual memakai pilihan terkontrol", async ({ page }) => {
-        const item = `Manual ${Date.now().toString(36)}`;
-        await page.goto("/admin/temuan/baru");
-        await page.getByRole("button", { name: "Simpan temuan" }).click();
-        await expect(page.getByText("Aset wajib dipilih.")).toBeVisible();
-        await page.getByLabel("Aset").selectOption({ index: 1 });
-        await page.getByLabel("Uraian temuan").fill(item);
-        await page.getByLabel("Tingkat").selectOption("ringan");
-        await page.getByRole("button", { name: "Simpan temuan" }).click();
-        await expect(page).toHaveURL(/\/admin\/temuan\/\d+$/);
-        await expect(page.getByText("Dibenahi pada kunjungan berikutnya (baku)")).toBeVisible();
-        const [a] = await baris<{ aksi: string }>(
-            "select aksi from audit_logs where aksi = 'temuan.buat' order by id desc limit 1",
-        );
-        expect(a?.aksi).toBe("temuan.buat");
+    test("saringan tingkat; catat manual tidak ada lagi", async ({ page }) => {
+        await page.goto("/admin/temuan?tingkat=ringan");
+        const tingkat = await page
+            .getByRole("table", { name: "Daftar temuan" })
+            .locator("tbody tr td:nth-child(4)")
+            .allInnerTexts()
+            .catch(() => []);
+        expect(tingkat.every((x) => x.trim() === "Ringan")).toBe(true);
+        await expect(page.getByRole("link", { name: "Catat temuan" })).toHaveCount(0);
+        expect((await page.goto("/admin/temuan/baru"))?.status()).toBe(404);
+    });
+
+    test("rekap temuan PDF mengikuti saringan", async ({ page }) => {
+        const res = await page.request.get("/laporan/temuan?modul=apar&dari=2026-01-01&sampai=2026-12-31&foto=0");
+        expect(res.status()).toBe(200);
+        expect(res.headers()["content-type"]).toBe("application/pdf");
+        expect(res.headers()["content-disposition"]).toContain("Rekap-Temuan-2026-01-01_2026-12-31.pdf");
     });
 });

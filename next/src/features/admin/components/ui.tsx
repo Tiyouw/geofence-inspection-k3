@@ -63,10 +63,10 @@ export function Kartu({
 }
 
 /** Tabel data sederhana dengan gulir mendatar di layar sempit. */
-export function Tabel({ children, className }: { children: ReactNode; className?: string }) {
+export function Tabel({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
     return (
         <div className={cn("overflow-x-auto rounded-xl border bg-card", className)}>
-            <table className="w-full text-sm [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:whitespace-nowrap [&_th]:text-muted-foreground [&_thead]:border-b [&_thead]:bg-muted/60 [&_tbody_tr]:border-b [&_tbody_tr:last-child]:border-0 [&_tbody_tr:hover]:bg-muted/40">
+            <table aria-label={label} className="w-full text-sm [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:whitespace-nowrap [&_th]:text-muted-foreground [&_thead]:border-b [&_thead]:bg-muted/60 [&_tbody_tr]:border-b [&_tbody_tr:last-child]:border-0 [&_tbody_tr:hover]:bg-muted/40">
                 {children}
             </table>
         </div>

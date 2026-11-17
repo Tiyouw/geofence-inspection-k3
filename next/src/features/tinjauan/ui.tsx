@@ -93,7 +93,7 @@ export function TabelAntrean({
     }
     return (
         <>
-            <Tabel>
+            <Tabel label="Antrean tinjauan">
                 <thead>
                     <tr>
                         <th>Waktu inspeksi</th>

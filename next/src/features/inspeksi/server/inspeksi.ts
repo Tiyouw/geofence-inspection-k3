@@ -460,7 +460,9 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
     }
 
     const tanggal = hariIniJakarta(waktu.inspectedAt);
+    const [area] = aset.areaId ? await tx.select({ nama: areas.nama }).from(areas).where(eq(areas.id, aset.areaId)) : [];
     const lokasi = lokasiTemuan({
+      area: area?.nama,
       gedung: aset.gedung,
       lantai: aset.lantai,
       lokasiTeks: aset.lokasiTeks,

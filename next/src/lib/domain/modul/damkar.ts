@@ -13,6 +13,7 @@
  * informasi. Periode 7 hari (mingguan), juga asumsi.
  */
 import type { AnswerType, Severity, TindakanRekomendasi } from "../constants";
+import type { DefinisiLangkahFoto } from "../langkah-foto";
 
 export const SLUG_DAMKAR = "mobil_pemadam";
 
@@ -36,8 +37,8 @@ export type ButirModul = {
 
 export type GrupModul = { kode: string; nama: string; items: ButirModul[] };
 
-/** Bentuk langkah kamera terpandu, disepakati dengan sesi C (src/lib/domain/langkah-foto.ts). */
-export type LangkahFotoModul = { kode: string; judul: string; petunjuk?: string; butir: number[] };
+/** Bentuk langkah kamera terpandu, disepakati dengan sesi C. */
+export type LangkahFotoModul = DefinisiLangkahFoto;
 
 const BELUM_VERIFIKASI = "(belum terverifikasi)";
 const NFPA = `NFPA 1910:2024 ${BELUM_VERIFIKASI}`;

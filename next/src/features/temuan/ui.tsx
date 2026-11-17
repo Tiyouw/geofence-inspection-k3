@@ -113,7 +113,7 @@ export function TabelTemuan({
     if (rows.length === 0) return <Kosong>Tidak ada temuan untuk saringan ini.</Kosong>;
     return (
         <>
-            <Tabel>
+            <Tabel label="Daftar temuan">
                 <thead>
                     <tr>
                         <th>Tanggal</th>

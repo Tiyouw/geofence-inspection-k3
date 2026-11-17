@@ -8,6 +8,7 @@ import {
     periodeUntuk,
     rentangPeriode,
 } from "../jadwal";
+import { validasiDefinisiLangkah } from "../langkah-foto";
 import { CHECKLIST_DAMKAR, LANGKAH_FOTO_DAMKAR, identitasDamkar } from "../modul/damkar";
 import { hitungBerulang, lokasiTemuan, temuanInspeksi } from "../temuan";
 
@@ -37,6 +38,7 @@ describe("checklist mobil pemadam (PRD tab Mobil pemadam)", () => {
         expect([...dipakai].every((u) => u >= 1 && u <= 17)).toBe(true);
         expect(butirDamkar.filter((b) => !dipakai.has(b.id))).toEqual([]);
         expect(new Set(LANGKAH_FOTO_DAMKAR.map((l) => l.kode)).size).toBe(LANGKAH_FOTO_DAMKAR.length);
+        expect(validasiDefinisiLangkah(LANGKAH_FOTO_DAMKAR, butirDamkar.map((b) => b.id))).toEqual([]);
     });
 
     it("semua lulus: tanpa temuan; odometer tidak pernah menjadi temuan", () => {
