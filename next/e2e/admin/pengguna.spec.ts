@@ -57,9 +57,15 @@ test.describe("pengguna (H8, A11, B7, B9)", () => {
         await page.getByRole("link", { name: "Petugas Uji E2E" }).click();
         await page.getByRole("button", { name: "Terbitkan sandi baru" }).click();
         await page.getByRole("button", { name: "Terbitkan" }).click();
-        const sandi = (await page.getByLabel("Sandi baru", { exact: true }).textContent())!.trim();
+        // Tersamar sampai tombol mata ditekan.
+        const kolomSandi = page.getByLabel("Sandi baru", { exact: true });
+        await expect(kolomSandi).toHaveAttribute("type", "password");
+        await page.getByRole("dialog").getByRole("button", { name: "Tampilkan sandi" }).click();
+        await expect(kolomSandi).toHaveAttribute("type", "text");
+        const sandi = (await kolomSandi.inputValue()).trim();
         expect(sandi).toMatch(/^[A-Za-z0-9]{14}$/);
         await page.getByRole("button", { name: "Selesai" }).click();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.getByText(sandi)).toHaveCount(0);
         const [u] = await baris<{ password_hash: string }>("select password_hash from users where nip = $1", [nip]);
         expect(u!.password_hash).toMatch(/^\$2[aby]\$10\$/);

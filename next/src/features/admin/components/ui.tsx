@@ -4,6 +4,7 @@
  */
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { cn } from "@/lib/utils";
 import type { Nada } from "../lib/label";
 
@@ -120,11 +121,12 @@ export function Bidang({
                     {bantuan}
                 </p>
             )}
-            {galat?.length ? (
-                <p id={`${htmlFor}-galat`} className="text-xs font-medium text-danger">
-                    {galat.join(" ")}
-                </p>
-            ) : null}
+            <PesanMuncul
+                id={`${htmlFor}-galat`}
+                pesan={galat?.length ? galat.join(" ") : undefined}
+                celah="0.375rem"
+                isiClassName="text-xs font-medium text-danger"
+            />
         </div>
     );
 }

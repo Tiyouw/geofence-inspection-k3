@@ -14,6 +14,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { InputSandi } from "@/components/ui/input-sandi";
 import {
     Dialog,
     DialogContent,
@@ -47,7 +48,7 @@ export function TombolAktif({ id, aktif, nama }: { id: number; aktif: boolean; n
     );
 }
 
-/** "Terbitkan sandi baru" (A11): sandi tampil SEKALI di dialog ini, lalu hilang. */
+/** "Terbitkan sandi baru" (A11): sandi tampil SEKALI di dialog ini (tersamar sampai tombol mata ditekan), lalu hilang. */
 export function TerbitkanSandi({ id, nama }: { id: number; nama: string }) {
     const [menunggu, mulai] = useTransition();
     const [hasil, setHasil] = useState<{ sandi: string; nip: string } | null>(null);
@@ -89,12 +90,13 @@ export function TerbitkanSandi({ id, nama }: { id: number; nama: string }) {
                         <DialogTitle>Sandi baru untuk {hasil?.nip}</DialogTitle>
                         <DialogDescription>Catat sekarang. Sandi ini tidak akan ditampilkan lagi.</DialogDescription>
                     </DialogHeader>
-                    <output
+                    <InputSandi
                         aria-label="Sandi baru"
-                        className="block rounded-lg bg-muted px-4 py-3 text-center font-mono text-xl tracking-wider select-all"
-                    >
-                        {hasil?.sandi}
-                    </output>
+                        readOnly
+                        value={hasil?.sandi ?? ""}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="h-12 bg-muted pl-11 text-center font-mono text-xl tracking-wider"
+                    />
                     <DialogFooter>
                         <Button
                             type="button"

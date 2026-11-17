@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { Textarea } from "@/components/ui/textarea";
 import { SEVERITIES } from "@/lib/domain/constants";
 import { LABEL_SEVERITY } from "../lib/temuan";
@@ -32,11 +33,12 @@ export function FormTemuan({
 
     return (
         <form onSubmit={onSubmit} className="grid max-w-2xl gap-4 rounded-xl border bg-card p-5" noValidate>
-            {state && !state.ok && (
-                <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
-                    {state.pesan}
-                </p>
-            )}
+            <PesanMuncul
+                role="alert"
+                pesan={state && !state.ok ? state.pesan : undefined}
+                celah="1rem"
+                isiClassName="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
+            />
             <Bidang label="Aset" htmlFor="assetId" galat={g("assetId")}>
                 <Pilihan id="assetId" name="assetId" defaultValue="" required>
                     <option value="" disabled>

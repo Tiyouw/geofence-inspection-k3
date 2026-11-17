@@ -7,6 +7,10 @@ export const PERAN_MASUK: Record<Role, { peran: string; membuka: string }> = {
     inspektur: { peran: "Inspektur", membuka: "Membuka Aplikasi Petugas…" },
 };
 
-/** Lama tiap fase setelah peladen menjawab (ms). Fase "Memeriksa akun…" = lama autentikasi sebenarnya. */
-export const DURASI_TERDETEKSI_MS = 550;
+/**
+ * Lama tiap fase setelah peladen menjawab (ms). Fase "Memeriksa akun…" = lama autentikasi
+ * sebenarnya. "Peran terdeteksi" diberi waktu baca yang tenang; halaman tujuan sudah dimuat
+ * di belakang selama fase ini.
+ */
+export const DURASI_TERDETEKSI_MS = 900;
 export const DURASI_MEMBUKA_MS = 450;

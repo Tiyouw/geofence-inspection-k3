@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { LABEL_LOKASI, LOKASI_TIPE, RADIUS_PER_LOKASI, type LokasiTipe } from "@/lib/domain/constants";
 import { keteranganJenisLokasi } from "../lib/label";
 import type { HasilAksi } from "../server/aksi";
@@ -69,11 +70,12 @@ export function FormAset({
 
     return (
         <form onSubmit={onSubmit} className="grid gap-6" noValidate>
-            {state && !state.ok && (
-                <p role="alert" className="rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger">
-                    {state.pesan}
-                </p>
-            )}
+            <PesanMuncul
+                role="alert"
+                pesan={state && !state.ok ? state.pesan : undefined}
+                celah="1.5rem"
+                isiClassName="rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger"
+            />
 
             <fieldset className="grid gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2">
                 <legend className="px-1 text-sm font-semibold">Identitas</legend>

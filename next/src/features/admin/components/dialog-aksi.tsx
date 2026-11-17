@@ -12,6 +12,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import type { HasilAksi } from "../server/aksi";
 import { useFormAksi } from "./use-form-aksi";
 
@@ -67,15 +68,19 @@ export function DialogAksi({
                         <DialogTitle>{judul}</DialogTitle>
                         {deskripsi && <DialogDescription>{deskripsi}</DialogDescription>}
                     </DialogHeader>
-                    {state && !state.ok && (
-                        <div
-                            id={idGalat}
-                            role="alert"
-                            className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
-                        >
-                            {galat.length ? galat.map((g) => <p key={g}>{g}</p>) : <p>{state.pesan}</p>}
-                        </div>
-                    )}
+                    <PesanMuncul
+                        id={idGalat}
+                        role="alert"
+                        celah="1rem"
+                        pesan={
+                            state && !state.ok
+                                ? galat.length
+                                    ? galat.map((g) => <p key={g}>{g}</p>)
+                                    : <p>{state.pesan}</p>
+                                : undefined
+                        }
+                        isiClassName="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
+                    />
                     {Object.entries(tersembunyi ?? {}).map(([k, v]) => (
                         <input key={k} type="hidden" name={k} value={v} />
                     ))}
