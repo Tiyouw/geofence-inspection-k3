@@ -16,7 +16,8 @@ test.beforeAll(async () => {
   const { rows } = await pool.query<{ id: string; asset_id: number; kode: string }>(
     `select i.id, i.asset_id, a.kode from inspections i
        join assets a on a.id = i.asset_id
-      where i.status = 'final' and exists (select 1 from inspection_photos p where p.inspection_id = i.id)
+       join asset_types t on t.id = a.asset_type_id
+      where t.slug = 'apar' and i.status = 'final' and exists (select 1 from inspection_photos p where p.inspection_id = i.id)
       order by i.inspected_at desc limit 1`,
   );
   await pool.end();

@@ -114,6 +114,7 @@ export function IsianIsiP3k({
               <Input
                 id={`kedaluwarsa-${item.id}`}
                 type="date"
+                aria-label={`Kedaluwarsa terdekat ${item.label}`}
                 defaultValue={nilai?.tglKedaluwarsaTerdekat ?? ""}
                 disabled={!bisaUbah}
                 className="h-14 text-base"
