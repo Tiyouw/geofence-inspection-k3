@@ -18,7 +18,7 @@ import {
 } from "@/db/schema";
 import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
-import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
+import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, TINDAKAN_REKOMENDASI, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
 import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
 import { bangunTemuan, periksaKirim, waktuResmi, type ButirChecklist, type Temuan } from "@/lib/domain/inspeksi";
@@ -261,6 +261,8 @@ export const finalizeSchema = z.object({
         catatan: z.string().max(500).nullish(),
         kondisiIsi: z.enum(KONDISI_ISI).nullish(),
         tglKedaluwarsaTerdekat: z.iso.date().nullish(),
+        tindakanRekomendasi: z.enum(TINDAKAN_REKOMENDASI).nullish(),
+        uraianTindakan: z.string().max(500).nullish(),
         answeredAt: z.iso.datetime({ offset: true }).nullish(),
       }),
     )
@@ -450,6 +452,8 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
           kondisiIsi: j.kondisiIsi ?? null,
           tglKedaluwarsaTerdekat: j.tglKedaluwarsaTerdekat ?? null,
           catatan: j.catatan?.trim() || null,
+          tindakanRekomendasi: j.tindakanRekomendasi ?? null,
+          uraianTindakan: j.uraianTindakan?.trim() || null,
           answeredAtDevice: j.answeredAt ? new Date(j.answeredAt) : null,
         })),
       );
@@ -506,6 +510,7 @@ async function buatTemuan(tx: Tx, assetId: number, inspectionId: string, lokasi:
       severity: t.severity,
       lokasi,
       tindakanRekomendasi: t.tindakan,
+      uraianTindakan: t.uraian ?? null,
     })),
   );
 }

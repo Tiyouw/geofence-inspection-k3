@@ -31,6 +31,7 @@ import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
+import { TemuanDraf } from "./temuan-draf";
 
 type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
 
@@ -305,6 +306,15 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
             {temuan.length} temuan. Usulan: <b>{LABEL_KESIMPULAN[usulan]}</b>
           </p>
         )}
+        <TemuanDraf
+          temuan={temuan}
+          jawaban={draf.jawaban}
+          bisaUbah={bisaUbah}
+          onUbah={async (itemId, isi) => {
+            await simpanJawaban(db!, draf.inspectionId, itemId, isi, items);
+            berubah();
+          }}
+        />
         <div className="grid gap-2" role="radiogroup" aria-label="Kesimpulan">
           {KESIMPULAN.map((k) => (
             <button

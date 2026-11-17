@@ -292,6 +292,8 @@ export async function kirimInspeksi(
     ...(j.kondisiIsi !== undefined || j.tglKedaluwarsaTerdekat !== undefined
       ? { kondisiIsi: j.kondisiIsi ?? null, tglKedaluwarsaTerdekat: j.tglKedaluwarsaTerdekat ?? null }
       : {}),
+    tindakanRekomendasi: j.tindakanRekomendasi ?? null,
+    uraianTindakan: j.uraianTindakan ?? null,
     answeredAt: j.answeredAt,
   }));
   const galat = periksaKirim(

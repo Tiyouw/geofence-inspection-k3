@@ -39,6 +39,9 @@ export type Jawaban = {
   /** Isi kotak P3K. */
   kondisiIsi?: KondisiIsi | null;
   tglKedaluwarsaTerdekat?: string | null;
+  /** Pilihan inspektur yang menggantikan tindakan bawaan butir (PRD Temuan). */
+  tindakanRekomendasi?: TindakanRekomendasi | null;
+  uraianTindakan?: string | null;
 };
 
 const DUA_NILAI: AnswerType[] = ["fungsi", "kondisi", "boolean"];
@@ -116,7 +119,14 @@ export const TINDAKAN_BAKU: Record<Severity, string> = {
   ringan: "Dibenahi pada kunjungan berikutnya",
 };
 
-export type Temuan = { checklistItemId: number; item: string; severity: Severity; tindakan: TindakanRekomendasi };
+export type Temuan = {
+  checklistItemId: number;
+  item: string;
+  severity: Severity;
+  tindakan: TindakanRekomendasi;
+  /** Uraian bebas tindakan dari inspektur, bila ada. */
+  uraian?: string | null;
+};
 
 /** Tindakan bawaan bila butir tidak menyebutnya: berat → ganti, lainnya → perbaiki ({{Assumption}}). */
 export function tindakanBawaan(item: Pick<ButirChecklist, "tindakanBawaan">, severity: Severity): TindakanRekomendasi {
@@ -135,11 +145,28 @@ export function bangunTemuan(items: ButirChecklist[], jawaban: Jawaban[], p3k?: 
   for (const item of items) {
     const j = map.get(item.id);
     const sev = severityJawaban(item, j);
-    if (sev) out.push({ checklistItemId: item.id, item: kalimatTemuan(item, j!), severity: sev, tindakan: tindakanBawaan(item, sev) });
+    if (!sev) continue;
+    const t: Temuan = {
+      checklistItemId: item.id,
+      // PRD Temuan: "{butir}: {jawaban}" ditambah catatan inspektur.
+      item: j!.catatan?.trim() ? `${kalimatTemuan(item, j!)}. Catatan: ${j!.catatan.trim()}` : kalimatTemuan(item, j!),
+      severity: sev,
+      tindakan: j!.tindakanRekomendasi ?? tindakanBawaan(item, sev),
+    };
+    if (j!.uraianTindakan?.trim()) t.uraian = j!.uraianTindakan.trim();
+    out.push(t);
   }
   if (p3k) {
     for (const t of temuanIsiP3k(butirIsiDari(items), jawaban, p3k)) {
-      out.push({ checklistItemId: t.checklistItemId, item: t.item, severity: t.severity, tindakan: t.tindakan });
+      const pilihan = map.get(t.checklistItemId);
+      const temuan: Temuan = {
+        checklistItemId: t.checklistItemId,
+        item: t.item,
+        severity: t.severity,
+        tindakan: pilihan?.tindakanRekomendasi ?? t.tindakan,
+      };
+      if (pilihan?.uraianTindakan?.trim()) temuan.uraian = pilihan.uraianTindakan.trim();
+      out.push(temuan);
     }
   }
   return out.sort((a, b) => URUT_SEVERITY[a.severity] - URUT_SEVERITY[b.severity]);
