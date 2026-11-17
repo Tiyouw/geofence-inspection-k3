@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { masuk } from "../helpers";
+import { masuk, setujuiDialog } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
 
 /**
@@ -14,7 +14,6 @@ test.afterAll(tutup);
 const M = 111_195;
 
 test("impor batas kawasan lalu jadikan kawasan, dengan aset di dalam poligon", async ({ page }) => {
-  page.on("dialog", (d) => void d.accept());
   const a = await aset("29D");
   const unik = Date.now().toString(36).slice(-5).toUpperCase();
   const nama = `Kawasan Uji ${unik}`;
@@ -58,6 +57,7 @@ test("impor batas kawasan lalu jadikan kawasan, dengan aset di dalam poligon", a
     await page.getByLabel("Cari area").fill(nama);
     await page.getByTestId("daftar-area").getByRole("button", { name: new RegExp(nama) }).click();
     await page.getByTestId("panel-area").getByRole("button", { name: "Jadikan batas kawasan" }).click();
+    await setujuiDialog(page, "Jadikan batas kawasan");
     await expect(page.getByText("Batas kawasan galangan diperbarui.")).toBeVisible();
     await expect(page.getByText("Area ini masih memiliki aset")).toHaveCount(0);
 

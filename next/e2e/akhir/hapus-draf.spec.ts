@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { masuk } from "../helpers";
+import { masuk, setujuiDialog } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
 
 /**
@@ -50,6 +50,7 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
   };
   await bukaArea(satu!.nama);
   await page.getByTestId("panel-area").getByRole("button", { name: "Setujui poligon" }).click();
+  await setujuiDialog(page, "Setujui poligon");
   await expect(page.getByTestId("panel-area")).toContainText("Poligon disetujui");
   await page.getByRole("button", { name: "Tutup" }).click();
   const [awal] = await q<{ area_id: number | null }>("select area_id from assets where id = $1", [a.id]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Camera, Check, RotateCcw, ShieldOff, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,7 @@ export function BuktiFoto({
   const [versi, setVersi] = useState(0);
   const fotos = useFotoTersimpan(draf.inspectionId, `${data.fotoPerInspeksi[draf.inspectionId]?.total}-${versi}`);
   const [kamera, setKamera] = useState<number | null>(null);
+  const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
 
   if (areaTerbatas) {
     return (
@@ -78,7 +80,8 @@ export function BuktiFoto({
   const pertamaKosong = Math.max(0, langkah.findIndex((l) => perLangkah(l.kode).length === 0));
 
   const hapus = async (photoId: string) => {
-    if (!confirm("Hapus foto ini?")) return;
+    if (!(await konfirmasi({ judul: "Hapus foto ini?", isi: "Foto dihapus dari draf. Langkahnya perlu difoto ulang sebelum dikirim.", tombol: "Hapus foto", bahaya: true })))
+      return;
     await hapusFotoLokal(db!, draf.inspectionId, photoId);
     setVersi((v) => v + 1);
     berubah();
@@ -168,6 +171,7 @@ export function BuktiFoto({
           }}
         />
       )}
+      {dialogKonfirmasi}
     </section>
   );
 }

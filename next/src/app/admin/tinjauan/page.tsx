@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { PageHeader } from "@/components/shell/app-shell";
@@ -109,13 +110,7 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
                     </Pilihan>
                 </label>
                 <label className="flex items-center gap-2 self-end pb-1.5 text-sm">
-                    <input
-                        type="checkbox"
-                        name="durasi"
-                        value="1"
-                        defaultChecked={f.durasiTakWajar}
-                        className="size-4 accent-primary"
-                    />
+                    <Checkbox name="durasi" value="1" defaultChecked={f.durasiTakWajar} />
                     Durasi tak wajar (&lt; {DURASI_WAJAR_DETIK} dtk)
                 </label>
                 <div className="flex items-end justify-end gap-2">

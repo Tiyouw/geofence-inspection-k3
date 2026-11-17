@@ -1,5 +1,6 @@
 "use client";
 
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { CloudOff, LogOut, Wifi } from "lucide-react";
 import { useTransition } from "react";
 import { keluar } from "@/app/(publik)/masuk/actions";
@@ -27,13 +28,26 @@ export function TombolKeluar() {
   const { data, userId } = useInspektur();
   const [pending, start] = useTransition();
   const belum = data.drafts.filter((d) => d.status !== "draf").length;
+  const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
   return (
+    <>
     <button
       type="button"
       disabled={pending}
       className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white"
-      onClick={() => {
-        if (belum > 0 && !confirm(`Ada ${belum} inspeksi belum terkirim. Keluar akan menghapusnya dari perangkat ini.`)) return;
+      onClick={async () => {
+        if (
+          belum > 0 &&
+          !(await konfirmasi({
+            judul: "Keluar dari akun?",
+            jumlah: `${belum} inspeksi belum terkirim`,
+            isi: "Keluar menghapus inspeksi itu dari ponsel ini. Tunggu sampai ada sinyal dan semuanya terkirim bila ingin menyimpannya.",
+            tombol: "Keluar dan hapus",
+            batal: "Tetap masuk",
+            bahaya: true,
+          }))
+        )
+          return;
         start(async () => {
           await bersihkanPerangkat(userId);
           await keluar();
@@ -43,5 +57,7 @@ export function TombolKeluar() {
       <LogOut className="size-4" aria-hidden />
       <span className="sr-only min-[420px]:not-sr-only">Keluar</span>
     </button>
+    {dialogKonfirmasi}
+    </>
   );
 }

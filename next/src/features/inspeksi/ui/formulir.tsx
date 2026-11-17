@@ -1,5 +1,6 @@
 "use client";
 
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Check } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
@@ -126,6 +127,7 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
   const labelButir = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i.label])), [items]);
   const [galat, setGalat] = useState<string[]>([]);
   const [mengirim, setMengirim] = useState(false);
+  const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
   const bisaUbah = draf.status === "draf";
 
   const jawaban = Object.entries(draf.jawaban).map(([id, j]) => ({ ...j, checklistItemId: Number(id) }));
@@ -325,7 +327,13 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
           variant="ghost"
           className="text-danger"
           onClick={async () => {
-            if (!confirm("Buang draf ini beserta foto dan jawabannya?")) return;
+            const ya = await konfirmasi({
+              judul: "Buang draf ini?",
+              isi: "Semua jawaban dan foto draf ini dihapus dari ponsel. Inspeksi belum terkirim, jadi tidak ada yang tercatat.",
+              tombol: "Buang draf",
+              bahaya: true,
+            });
+            if (!ya) return;
             await buangDraf(db!, draf.inspectionId);
             berubah();
             // navigasi penuh: halaman lapangan dilayani service worker saat luring
@@ -375,6 +383,7 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {dialogKonfirmasi}
     </div>
   );
 }

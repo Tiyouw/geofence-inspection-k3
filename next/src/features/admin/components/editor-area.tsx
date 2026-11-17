@@ -5,6 +5,8 @@
  * nama, jenis, unit, area terbatas; tetapkan batas kawasan; setujui poligon; pasangkan aset.
  * Denah asli bersifat rahasia: berkas dibaca di peramban, hanya poligon yang dipilih dikirim.
  */
+import { Checkbox } from "@/components/ui/checkbox";
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Check, FileUp, MapPinned, PenLine, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
@@ -422,6 +424,7 @@ function PanelArea({
     const diArea = aset.filter((x) => x.areaId === a.id);
     const tanpaArea = aset.filter((x) => x.areaId !== a.id && x.aktif);
     const isKawasan = a.jenis === "kawasan";
+    const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
 
     return (
         <Kartu
@@ -449,7 +452,19 @@ function PanelArea({
                         )}
                         {a.polygonDraf && (
                             <>
-                                <Button variant="brand" size="sm" disabled={menunggu} onClick={() => jalankan(() => setujuiPoligon({ id: a.id }))}>
+                                <Button
+                                    variant="brand"
+                                    size="sm"
+                                    disabled={menunggu}
+                                    onClick={async () => {
+                                        const ya = await konfirmasi({
+                                            judul: `Setujui poligon "${a.nama}"?`,
+                                            isi: "Mulai inspeksi berikutnya, gerbang lokasi memakai poligon ini untuk aset di area ini. Poligon lama (bila ada) diganti.",
+                                            tombol: "Setujui poligon",
+                                        });
+                                        if (ya) jalankan(() => setujuiPoligon({ id: a.id }));
+                                    }}
+                                >
                                     <Check aria-hidden /> Setujui poligon
                                 </Button>
                                 <Button variant="ghost" size="sm" disabled={menunggu} onClick={() => jalankan(() => buangDrafPoligon({ id: a.id }))}>
@@ -463,10 +478,13 @@ function PanelArea({
                             variant="outline"
                             size="sm"
                             disabled={menunggu}
-                            onClick={() => {
-                                if (confirm(`Jadikan "${a.nama}" batas kawasan galangan? Kawasan lama dinonaktifkan.`)) {
-                                    jalankan(() => jadikanKawasan({ id: a.id }));
-                                }
+                            onClick={async () => {
+                                const ya = await konfirmasi({
+                                    judul: `Jadikan "${a.nama}" batas kawasan galangan?`,
+                                    isi: "Kiriman inspeksi dari luar batas ini akan ditolak. Batas kawasan yang lama dinonaktifkan (tidak dihapus).",
+                                    tombol: "Jadikan batas kawasan",
+                                });
+                                if (ya) jalankan(() => jadikanKawasan({ id: a.id }));
                             }}
                         >
                             <MapPinned aria-hidden /> Jadikan batas kawasan
@@ -511,7 +529,7 @@ function PanelArea({
                     </Bidang>
                     {!isKawasan && (
                         <label className="flex items-start gap-2 text-sm">
-                            <input type="checkbox" className="mt-0.5 size-4 accent-danger" checked={restricted} onChange={(e) => setRestricted(e.target.checked)} />
+                            <Checkbox className="mt-0.5" checked={restricted} onCheckedChange={(v) => setRestricted(v === true)} />
                             <span>
                                 Area terbatas
                                 <span className="block text-xs text-muted-foreground">Foto tidak diminta; inspeksi otomatis masuk antrean tinjauan.</span>
@@ -574,13 +592,21 @@ function PanelArea({
                     variant="destructive"
                     size="sm"
                     disabled={menunggu}
-                    onClick={() => {
-                        if (confirm(`Hapus area "${a.nama}"? Aset di dalamnya dilepas dari area.`)) jalankan(() => hapusArea({ id: a.id }), tutup);
+                    onClick={async () => {
+                        const ya = await konfirmasi({
+                            judul: `Hapus area "${a.nama}"?`,
+                            jumlah: diArea.length ? `${diArea.length} aset akan dilepas dari area ini` : undefined,
+                            isi: "Area dan poligonnya dihapus permanen. Aset di dalamnya tidak terhapus, hanya menjadi belum berarea.",
+                            tombol: "Hapus area",
+                            bahaya: true,
+                        });
+                        if (ya) jalankan(() => hapusArea({ id: a.id }), tutup);
                     }}
                 >
                     <Trash2 aria-hidden /> Hapus area
                 </Button>
             </div>
+            {dialogKonfirmasi}
         </Kartu>
     );
 }

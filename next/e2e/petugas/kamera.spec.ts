@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { masuk } from "../helpers";
+import { masuk, setujuiDialog } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
 import { KAMERA_PALSU, LANGKAH_APAR } from "../kamera-uji";
 
@@ -166,8 +166,8 @@ test("menutup kamera tanpa menyimpan membuang jepretan; kirim tanpa foto ditolak
   const kamera = page.getByTestId("kamera-terpandu");
   await kamera.getByRole("button", { name: "Jepret" }).click();
   await expect(kamera.getByTestId("penghitung-jepretan")).toContainText("1/5 foto");
-  page.once("dialog", (d) => void d.accept());
   await kamera.getByRole("button", { name: "Tutup kamera" }).click();
+  await setujuiDialog(page, "Tutup dan buang");
   await expect(kamera).toHaveCount(0);
   await expect(page.getByTestId("progres-foto")).toHaveText("0/5 langkah");
 
