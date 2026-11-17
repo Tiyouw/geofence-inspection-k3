@@ -95,7 +95,8 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         return f;
     };
 
-    const semuaAksi = () => [
+    /** Aksi tulis data induk dan tinjauan; `tanpaTinjau` untuk Pemantau, yang boleh meninjau (ADR-9). */
+    const semuaAksi = (tanpaTinjau = false) => [
         () =>
             aset.buatAset(
                 null,
@@ -109,7 +110,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
             ),
         () => aset.gantiTokenAset(asetId),
         () => aset.lihatTokenAset(asetId),
-        () => insp.tandaiDitinjau(null, fd({ id: inspeksiId, catatanReview: "Alasan cukup panjang" })),
+        ...(tanpaTinjau ? [] : [() => insp.tandaiDitinjau(null, fd({ id: inspeksiId, catatanReview: "Alasan cukup panjang" }))]),
         () => insp.simpanCatatanReview(null, fd({ id: inspeksiId, catatanReview: "x" })),
         () => temuan.tetapkanTenggat(null, fd({ id: String(issueId), targetSelesai: "2099-01-01" })),
         () => temuan.ubahStatusTemuan(null, fd({ id: String(issueId), ke: "selesai", uraian: "Uraian cukup panjang" })),
@@ -133,7 +134,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         (select count(*) from audit_logs)::int a, (select count(*) from issue_events)::int e,
         (select qr_token from assets where id = ${asetId}) t, (select status from issues where id = ${issueId}) s,
         (select ditinjau_pada from inspections where id = ${inspeksiId}) d`);
-            for (const aksi of semuaAksi()) {
+            for (const aksi of semuaAksi(peran === "pemantau")) {
                 const r = await aksi();
                 expect(r.ok).toBe(false);
                 expect(r.ok === false && r.status).toBe(status);
@@ -163,17 +164,24 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         expect(u).toEqual({ role: "admin", aktif: true });
     });
 
-    it("tandai ditinjau hanya untuk yang masih di antrean; tidak mengubah GPS (H6)", async () => {
-        sesi.user = akun.admin!;
+    it("pemantau meninjau; peninjau pertama tercatat, admin lalu 409; GPS tidak berubah (H6, ADR-9)", async () => {
+        sesi.user = akun.pemantau!;
         const r = await insp.tandaiDitinjau(null, fd({ id: inspeksiId, catatanReview: "Diverifikasi lewat CCTV." }));
         expect(r.ok).toBe(true);
+        sesi.user = akun.admin!;
         const ulang = await insp.tandaiDitinjau(
             null,
             fd({ id: inspeksiId, catatanReview: "Diverifikasi lewat CCTV." }),
         );
         expect(ulang.ok === false && ulang.status).toBe(409);
         const [i] = await db.select().from(s.inspections).where(eq(s.inspections.id, inspeksiId));
-        expect(i).toMatchObject({ jarakM: 500, gateStatus: "jauh", ditinjauOleh: akun.admin!.id });
+        expect(i).toMatchObject({ jarakM: 500, gateStatus: "jauh", ditinjauOleh: akun.pemantau!.id });
+    });
+
+    it("pemantau tidak boleh mengubah catatan tinjauan sesudahnya (hanya admin)", async () => {
+        sesi.user = akun.pemantau!;
+        const r = await insp.simpanCatatanReview(null, fd({ id: inspeksiId, catatanReview: "ubah" }));
+        expect(r.ok === false && r.status).toBe(403);
     });
 
     it("transisi temuan yang tidak sah ditolak (H9)", async () => {

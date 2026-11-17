@@ -17,7 +17,7 @@ import {
   butirUntuk,
 } from "../aksi";
 import { BACKOFF_MAKS_MS, jedaBackoff, klasifikasi, kuras, majukanSemua, opsInspeksi, pengirimHttp } from "../outbox";
-import { fetchPalsu, paketContoh, TOKEN, TOKEN_LAIN } from "./helpers";
+import { fetchPalsu, paketContoh, TOKEN, TOKEN_LAIN, TOKEN_UNIT_LAIN } from "./helpers";
 
 let db: DbAkun;
 let uid = 1;
@@ -89,6 +89,16 @@ describe("pindai luring dengan cache HMAC (SPEC §7.7)", () => {
     const c = await mulaiDariTeks(db, "PAL-K3-" + "0".repeat(32), { daring: false });
     expect(c).toEqual({ ok: false, pesan: PESAN.tidakDikenaliLuring });
     expect(await mulaiDariTeks(db, "https://promo.example/x", { daring: false })).toEqual({ ok: false, pesan: PESAN.bukanStiker });
+  });
+
+  it("stiker aset unit lain: ditolak dengan nama unit pemilik, tanpa draf (PRD F2)", async () => {
+    const r = await mulaiDariTeks(db, TOKEN_UNIT_LAIN, { daring: false });
+    expect(r).toEqual({
+      ok: false,
+      pesan: "Aset ini milik Divisi Matra & K3LH. Anda hanya dapat menginspeksi aset SAT. PK.",
+    });
+    expect(await db.count("drafts")).toBe(0);
+    expect(JSON.stringify(paket)).not.toContain(TOKEN_UNIT_LAIN);
   });
 });
 
