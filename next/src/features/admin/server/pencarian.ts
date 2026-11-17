@@ -16,7 +16,7 @@ import {
     type HasilCari,
     type KelompokCari,
 } from "../lib/pencarian";
-import { LABEL_SEVERITY, LABEL_STATUS_TEMUAN } from "../lib/temuan";
+import { LABEL_SEVERITY } from "../lib/temuan";
 
 /**
  * Pencarian Ctrl+K (SPEC §4.8). Hanya membaca. qr_token TIDAK PERNAH dipilih, dicari,
@@ -91,18 +91,17 @@ async function cariTemuan(pola: string, role: Role): Promise<HasilCari[]> {
             id: issues.id,
             item: issues.item,
             severity: issues.severity,
-            status: issues.status,
             kode: assets.kode,
         })
         .from(issues)
         .innerJoin(assets, eq(assets.id, issues.assetId))
         .where(sql`(${issues.item} ilike ${pola} escape '!' or ${assets.kode} ilike ${pola} escape '!')`)
-        .orderBy(sql`case ${issues.status} when 'selesai' then 1 else 0 end`, desc(issues.createdAt))
+        .orderBy(desc(issues.createdAt))
         .limit(MAKS_PER_KELOMPOK);
     return rows.map((t) => ({
         judul: `${t.kode}: ${t.item}`,
-        rincian: `${LABEL_SEVERITY[t.severity]} · ${LABEL_STATUS_TEMUAN[t.status]}`,
-        href: role === "admin" ? `/admin/temuan/${t.id}` : "/pemantau/temuan",
+        rincian: `Temuan ${LABEL_SEVERITY[t.severity].toLowerCase()}`,
+        href: role === "admin" ? `/admin/temuan/${t.id}` : `/pemantau/temuan/${t.id}`,
     }));
 }
 

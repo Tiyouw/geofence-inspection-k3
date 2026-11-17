@@ -2,11 +2,11 @@ import "server-only";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { bacaFoto } from "@/lib/storage/photos";
 import { ambilKartu, fotoUntukTemuan, type DataPeriodeLengkap } from "../queries";
-import { rakitKartu, rakitRekap } from "../rakit";
+import { rakitKartu } from "../rakit";
 import { daftarkanFont } from "./dasar";
 import { DokumenKartu } from "./kartu";
 import { DokumenPms } from "./pms";
-import { DokumenRekap, type FotoLampiran } from "./rekap";
+import { DokumenRekap, type FotoLampiran, type IsiRekap } from "./rekap";
 import { DokumenRekapP3k } from "./rekap-p3k";
 import type { rakitRekapP3k } from "../rekap-p3k";
 
@@ -22,15 +22,15 @@ async function keBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
   return Buffer.from(await new Response(stream).arrayBuffer());
 }
 
-export async function renderRekap(data: DataPeriodeLengkap, dicetak: Date, denganFoto: boolean): Promise<Buffer> {
+export async function renderRekap(isi: IsiRekap, dicetak: Date, denganFoto: boolean): Promise<Buffer> {
   daftarkanFont();
-  const rekap = rakitRekap(data, dicetak);
+  const { baris } = isi.rekap;
   let foto: Map<number, FotoLampiran[]> | null = null;
-  if (denganFoto && rekap.baris.length) {
+  if (denganFoto && baris.length) {
     foto = new Map();
-    const sumber = await fotoUntukTemuan(rekap.baris.map((b) => b.temuan.id));
+    const sumber = await fotoUntukTemuan(baris.map((b) => b.temuan.id));
     let sisa = MAKS_FOTO_LAMPIRAN;
-    for (const b of rekap.baris) {
+    for (const b of baris) {
       for (const f of sumber.get(b.temuan.id) ?? []) {
         // react-pdf hanya membaca JPEG dan PNG; foto lain dilewati.
         const format = f.contentType === "image/png" ? "png" : f.contentType === "image/jpeg" ? "jpg" : null;
@@ -44,7 +44,7 @@ export async function renderRekap(data: DataPeriodeLengkap, dicetak: Date, denga
       }
     }
   }
-  return renderToBuffer(<DokumenRekap data={data} rekap={rekap} dicetak={dicetak} foto={foto} />);
+  return renderToBuffer(<DokumenRekap isi={isi} dicetak={dicetak} foto={foto} />);
 }
 
 export async function renderKartu(assetId: number, tahun: number, dicetak: Date): Promise<{ buffer: Buffer; kode: string } | null> {

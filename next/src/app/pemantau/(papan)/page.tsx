@@ -4,12 +4,14 @@ import { Download, FileText, IdCard } from "lucide-react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
+import { periodeJakarta } from "@/features/admin/lib/periode";
+import { progresSemuaModul, temuanSejak } from "@/features/dasbor/server";
 import { NAMA_BULAN, persen1, tanggalIso } from "@/features/laporan/format";
 import { pengingatTerakhir } from "@/features/laporan/jadwal";
-import { ambilPapanPantau } from "@/features/laporan/queries";
-import { labelLokasi, lewatTenggat, narasiPemantau, sisaHariBulan, urutRisiko } from "@/features/laporan/rakit";
+import { narasiPemantau } from "@/features/laporan/rakit";
 import { Bilah, Lencana } from "@/features/laporan/ui";
-import { labelLantai } from "@/lib/domain/asset";
+import { daftarTemuan } from "@/features/temuan/server";
+import { hitungTinjauan } from "@/features/tinjauan/server";
 import { requireRole } from "@/lib/auth/guards";
 import { formatTanggal } from "@/lib/format";
 
@@ -26,6 +28,7 @@ function PapanAdmin() {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["/admin", "Dasbor admin"],
+          ["/pemantau/tinjauan", "Antrean tinjauan"],
           ["/pemantau/inspeksi", "Inspeksi dan foto bukti"],
           ["/pemantau/temuan", "Temuan"],
           ["/pemantau/laporan", "Laporan bulanan (PDF)"],
@@ -42,44 +45,43 @@ function PapanAdmin() {
 }
 
 /**
- * Ringkasan untuk manajemen (SPEC §5, ACCEPTANCE J1-J4). Hanya baca: tidak ada
- * antrean keputusan dan tidak ada tombol tulis. Admin tidak melihat ringkasan ini
- * (dasbornya sendiri di /admin).
+ * Ringkasan untuk manajemen lintas empat modul (PRD F14): progres per modul pada periodenya,
+ * per gedung, temuan berat bulan ini, dan antrean tinjauan. Admin melihat dasbornya di /admin.
  */
 export default async function PemantauHome() {
   const user = await requireRole("admin", "pemantau");
   if (user.role === "admin") return <PapanAdmin />;
 
   const now = new Date();
-  const p = await ambilPapanPantau(now);
-  const total = p.aset.length;
-  const diperiksa = p.kondisiPer.size;
-  const persen = total ? Math.round((diperiksa / total) * 1000) / 10 : 0;
-  const tidakLayak = [...p.kondisiPer.values()].filter((k) => k === "tidak_layak").length;
-  const berat = p.temuanTerbuka.filter((t) => t.severity === "berat").length;
-  const lewat = p.temuanTerbuka.filter((t) => lewatTenggat(t, p.hariIni)).length;
-  const hari = sisaHariBulan(now);
-  const narasi = narasiPemantau({ total, diperiksa, persen, tidakLayak, berat, lewat, posisi: p.posisi, hari }, persen1);
-  const risiko = urutRisiko(p.temuanTerbuka, p.hariIni);
-  const bulan = NAMA_BULAN[p.periode.bulan - 1]!;
-
-  const area = new Map<string, { sudah: number; total: number }>();
-  for (const a of p.aset) {
-    const nama = [a.gedung || "Area belum diisi", labelLantai(a.lantai)].filter(Boolean).join(" · ");
-    const v = area.get(nama) ?? { sudah: 0, total: 0 };
-    v.total++;
-    if (p.kondisiPer.has(a.id)) v.sudah++;
-    area.set(nama, v);
-  }
-  const maksTren = Math.max(1, ...p.tren.map((t) => t.jumlah));
-  const pengingat = await pengingatTerakhir(db);
+  const p = periodeJakarta(now);
+  const [progres, temuan, tinjauan, berat, pengingat] = await Promise.all([
+    progresSemuaModul(now),
+    temuanSejak(p.awal),
+    hitungTinjauan(p.awal),
+    daftarTemuan({ tingkat: "berat", dari: tanggalIso(p.awal) }, 1),
+    pengingatTerakhir(db),
+  ]);
+  const narasi = narasiPemantau(
+    {
+      total: progres.total,
+      diperiksa: progres.sudah,
+      persen: progres.persen,
+      tidakLayak: progres.kondisi.tidak_layak,
+      berat: temuan.berat,
+      tinjauan: tinjauan.menunggu,
+      perModul: progres.perModul,
+    },
+    persen1,
+  );
+  const bulan = NAMA_BULAN[p.bulan - 1]!;
   const dataPengingat = pengingat?.data as { terlewat?: number; segera?: number } | undefined;
+  const risiko = berat.rows.slice(0, 5);
 
   return (
     <>
       <PageHeader
         title="Papan pantau"
-        description={`Halo, ${user.name}. ${formatTanggal(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Periode ${bulan} ${p.periode.tahun} · Akses hanya baca`}
+        description={`Halo, ${user.name}. ${formatTanggal(now, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · Periode ${bulan} ${p.tahun}`}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -91,11 +93,12 @@ export default async function PemantauHome() {
             <p data-testid="narasi" className="leading-relaxed">
               {narasi}
             </p>
-            <dl className="grid grid-cols-3 gap-3">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                [`${persen1(persen)}%`, "kepatuhan"],
-                [String(tidakLayak), "unit tidak layak"],
-                [String(lewat), "temuan lewat tenggat"],
+                [`${persen1(progres.persen)}%`, "kepatuhan semua modul"],
+                [String(progres.kondisi.tidak_layak), "unit tidak layak"],
+                [String(temuan.berat), "temuan berat bulan ini"],
+                [String(tinjauan.menunggu), "menunggu tinjauan"],
               ].map(([angka, label]) => (
                 <div key={label} className="rounded-lg bg-muted/60 p-3">
                   <dt className="sr-only">{label}</dt>
@@ -105,26 +108,24 @@ export default async function PemantauHome() {
               ))}
             </dl>
             <div>
-              <h3 className="mb-2 text-sm font-semibold">Risiko terbuka</h3>
+              <h3 className="mb-2 text-sm font-semibold">Temuan berat bulan ini</h3>
               {risiko.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Tidak ada temuan terbuka.</p>
+                <p className="text-sm text-muted-foreground">Tidak ada temuan berat bulan ini.</p>
               ) : (
                 <ul className="divide-y rounded-lg border" data-testid="risiko">
                   {risiko.map((r) => (
                     <li key={r.id} className="flex items-start gap-3 p-3">
-                      <span className="mt-0.5 rounded-md bg-danger-soft px-2 py-1 text-xs font-bold text-danger">{r.kode}</span>
+                      <span className="mt-0.5 rounded-md bg-danger-soft px-2 py-1 text-xs font-bold text-danger">{r.asetKode}</span>
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                          <span>
-                            {r.kode} · {labelLokasi(r)}
-                          </span>
-                          {r.tanda.map((t) => (
-                            <Lencana key={t} nada={t === "Berat" ? "bahaya" : t === "Lewat tenggat" ? "bahaya" : "waspada"}>
-                              {t}
-                            </Lencana>
-                          ))}
+                          <Link href={`/pemantau/temuan/${r.id}`} className="underline-offset-4 hover:underline">
+                            {r.item}
+                          </Link>
+                          <Lencana nada="bahaya">Berat</Lencana>
                         </p>
-                        <p className="text-sm text-muted-foreground">{r.item}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {r.modul} · {r.lokasi}
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -138,6 +139,29 @@ export default async function PemantauHome() {
         </Card>
 
         <div className="space-y-4">
+          <Card aria-labelledby="judul-tinjauan">
+            <CardHeader>
+              <CardTitle id="judul-tinjauan">Tinjauan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-4xl font-semibold tabular-nums" data-testid="jumlah-tinjauan">
+                {tinjauan.menunggu}
+              </p>
+              <p className="text-muted-foreground">
+                inspeksi menunggu tinjauan · {tinjauan.gpsLemah} GPS lemah · {tinjauan.areaTerbatas} area terbatas
+              </p>
+              <p className="text-muted-foreground">
+                Bulan ini: {tinjauan.diterima} diterima, {tinjauan.ditolak} ditolak
+              </p>
+              <Link
+                href="/pemantau/tinjauan"
+                className="inline-flex items-center rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-brand-foreground transition-colors duration-200 hover:bg-brand-hover"
+              >
+                Buka antrean
+              </Link>
+            </CardContent>
+          </Card>
+
           <Card aria-labelledby="judul-lap">
             <CardHeader>
               <CardTitle id="judul-lap">Laporan siap cetak</CardTitle>
@@ -150,24 +174,19 @@ export default async function PemantauHome() {
                       <FileText className="size-4" aria-hidden /> Laporan PMS bulanan
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Matriks ✓ X O Ø · {bulan} {p.periode.tahun}
+                      Per modul · {bulan} {p.tahun}
                     </p>
                   </div>
-                  <a
-                    href="/laporan/pms"
-                    target="_blank"
-                    rel="noopener"
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
-                  >
-                    <Download className="size-4" aria-hidden /> Unduh PDF
-                  </a>
+                  <Link href="/pemantau/laporan" className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted">
+                    <Download className="size-4" aria-hidden /> Pilih
+                  </Link>
                 </li>
                 <li className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-sm font-medium">
                       <FileText className="size-4" aria-hidden /> Rekap temuan
                     </p>
-                    <p className="text-xs text-muted-foreground">{risiko.length ? "Temuan yang belum selesai, dengan foto bukti" : "Belum ada temuan terbuka"}</p>
+                    <p className="text-xs text-muted-foreground">Semua modul bulan ini, dengan foto bukti</p>
                   </div>
                   <a href="/laporan/temuan" target="_blank" rel="noopener" className="shrink-0 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted">
                     Unduh
@@ -178,7 +197,7 @@ export default async function PemantauHome() {
                     <p className="flex items-center gap-2 text-sm font-medium">
                       <IdCard className="size-4" aria-hidden /> Kartu kontrol per unit
                     </p>
-                    <p className="text-xs text-muted-foreground">Pengganti kartu gantung, {total} unit</p>
+                    <p className="text-xs text-muted-foreground">Pengganti kartu gantung, {progres.total} unit</p>
                   </div>
                   <Link href="/pemantau/laporan#kartu" className="shrink-0 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted">
                     Pilih unit
@@ -187,41 +206,21 @@ export default async function PemantauHome() {
               </ul>
             </CardContent>
           </Card>
-
-          <Card aria-labelledby="judul-kepatuhan">
-            <CardHeader>
-              <CardTitle id="judul-kepatuhan">Kepatuhan {bulan}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-semibold tabular-nums">{persen1(persen)}%</p>
-              <p className="mb-4 text-sm text-muted-foreground">
-                {diperiksa} dari {total} unit · sisa {hari} hari
-              </p>
-              <div className="space-y-3">
-                {area.size === 0 ? (
-                  <p className="text-sm text-muted-foreground">Belum ada APAR aktif.</p>
-                ) : (
-                  [...area.entries()].map(([nama, v]) => <Bilah key={nama} label={nama} nilai={v.sudah} total={v.total} />)
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        <Card className="lg:col-span-2" aria-labelledby="judul-tren">
+        <Card className="lg:col-span-2" aria-labelledby="judul-modul">
           <CardHeader>
-            <CardTitle id="judul-tren">Tren 6 bulan</CardTitle>
+            <CardTitle id="judul-modul">Progres per modul</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ol className="flex h-40 items-end gap-3" aria-label="Jumlah unit yang diinspeksi per bulan">
-              {p.tren.map((t) => (
-                <li key={t.label} className="flex flex-1 flex-col items-center gap-1">
-                  <span className="text-xs font-medium tabular-nums">{t.jumlah}</span>
-                  <span className="w-full rounded-t-md bg-chart-1/80" style={{ height: `${(t.jumlah / maksTren) * 110}px` }} />
-                  <span className="text-xs text-muted-foreground">{t.label}</span>
-                </li>
-              ))}
-            </ol>
+          <CardContent className="space-y-3" data-testid="progres-modul">
+            {progres.perModul.map((m) => (
+              <Bilah
+                key={m.slug}
+                label={`${m.nama} · ${m.mingguan ? "minggu ini" : "bulan ini"}`}
+                nilai={m.sudah}
+                total={m.total}
+              />
+            ))}
           </CardContent>
         </Card>
 
@@ -240,6 +239,32 @@ export default async function PemantauHome() {
               </>
             ) : (
               <p className="text-muted-foreground">Jadwal harian belum pernah berjalan ({tanggalIso(now)}).</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3" aria-labelledby="judul-gedung">
+          <CardHeader>
+            <CardTitle id="judul-gedung">Progres per gedung</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {progres.perArea.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Belum ada aset aktif.</p>
+            ) : (
+              <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="progres-gedung">
+                {progres.perArea.map((a) => (
+                  <li key={a.nama} className="space-y-2">
+                    <Bilah label={a.nama} nilai={a.sudah} total={a.total} />
+                    <p className="text-xs text-muted-foreground">{a.modul.map((m) => `${m.nama} ${m.sudah}/${m.total}`).join(" · ")}</p>
+                    {a.belum.length > 0 && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground">Belum dicek ({a.belum.length})</summary>
+                        <p className="mt-1">{a.belum.map((b) => b.kode).join(", ")}</p>
+                      </details>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>

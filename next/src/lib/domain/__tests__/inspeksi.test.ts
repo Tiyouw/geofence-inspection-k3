@@ -51,7 +51,7 @@ describe("severity dan temuan (SPEC §3.4)", () => {
 
   it("number: kurang dari baku jadi temuan dengan kalimat kekurangan", () => {
     const t = bangunTemuan([kotak], [{ checklistItemId: 4, nilaiAngka: 7 }]);
-    expect(t).toEqual([{ checklistItemId: 4, item: "Kasa: 7 dari 10 lembar, kurang 3", severity: "sedang" }]);
+    expect(t).toEqual([{ checklistItemId: 4, item: "Kasa: 7 dari 10 lembar, kurang 3", severity: "sedang", tindakan: "perbaiki" }]);
     expect(bangunTemuan([kotak], [{ checklistItemId: 4, nilaiAngka: 10 }])).toEqual([]);
   });
 

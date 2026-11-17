@@ -10,7 +10,8 @@ import { daftarkanFont } from "../pdf/dasar";
 import { DokumenKartu } from "../pdf/kartu";
 import { DokumenPms } from "../pdf/pms";
 import { DokumenRekap } from "../pdf/rekap";
-import { rakitKartu, rakitPeriode, rakitRekap } from "../rakit";
+import { kolomTandaTangan, rakitRekapTemuan } from "@/features/temuan/rekap";
+import { rakitKartu, rakitPeriode } from "../rakit";
 import { ASET, BUTIR, DICETAK, INSPEKSI, TEMUAN, asetKode } from "./contoh-oktober";
 
 daftarkanFont();
@@ -36,8 +37,26 @@ describe("PDF laporan", { timeout: 60_000 }, () => {
   });
 
   it("rekap temuan: satu halaman tanpa lampiran foto, satu halaman lagi dengan foto", async () => {
-    const rekap = rakitRekap(data, DICETAK);
-    const tanpa = await renderToBuffer(<DokumenRekap data={data} rekap={rekap} dicetak={DICETAK} foto={null} />);
+    const asetPer = new Map(ASET.map((a) => [a.id, a]));
+    const rekap = rakitRekapTemuan(
+      TEMUAN.map((t) => ({
+        id: t.id,
+        asetId: t.assetId,
+        asetKode: asetPer.get(t.assetId)!.kode,
+        modul: "APAR",
+        lokasi: asetPer.get(t.assetId)!.lokasiTeks,
+        item: t.item,
+        severity: t.severity,
+        tindakan: t.severity === "berat" ? "isi_ulang" : "lengkapi",
+        uraianTindakan: null,
+        waktu: t.createdAt,
+        inspektur: "Inspektur Workshop",
+        berulang: 1,
+      })),
+      ASET.length,
+    );
+    const isi = { judulModul: "APAR", lingkup: "periode 1 Oktober 2026 s.d. 31 Oktober 2026", rekap, tandaTangan: kolomTandaTangan(["SAT. PK"]) };
+    const tanpa = await renderToBuffer(<DokumenRekap isi={isi} dicetak={DICETAK} foto={null} />);
     simpan("Rekap-Temuan-2026-10.pdf", tanpa);
     expect(halaman(tanpa)).toBe(1);
 
@@ -47,7 +66,7 @@ describe("PDF laporan", { timeout: 60_000 }, () => {
       "base64",
     );
     const foto = new Map([[rekap.baris[0]!.temuan.id, [{ data: png, format: "png" as const, diunggah: DICETAK }]]]);
-    const dengan = await renderToBuffer(<DokumenRekap data={data} rekap={rekap} dicetak={DICETAK} foto={foto} />);
+    const dengan = await renderToBuffer(<DokumenRekap isi={isi} dicetak={DICETAK} foto={foto} />);
     simpan("Rekap-Temuan-2026-10-foto.pdf", dengan);
     expect(halaman(dengan)).toBe(2);
   });

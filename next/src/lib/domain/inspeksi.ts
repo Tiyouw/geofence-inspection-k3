@@ -10,6 +10,7 @@ import {
   type KondisiIsi,
   type Severity,
   type TipeKotakP3k,
+  type TindakanRekomendasi,
 } from "./constants";
 import { periksaIsiP3k, temuanIsiP3k, butirIsiDari, type KonteksP3k } from "./modul/p3k";
 
@@ -26,6 +27,8 @@ export type ButirChecklist = {
   /** Isi kotak P3K: baku per tipe kotak dan pencatatan kedaluwarsa. */
   jumlahBakuPerTipe?: Partial<Record<TipeKotakP3k, number>> | null;
   hasExpiry?: boolean;
+  /** Tindakan bawaan bila butir menjadi temuan (PRD Temuan); kosong = menurut tingkat. */
+  tindakanBawaan?: TindakanRekomendasi | null;
 };
 
 export type Jawaban = {
@@ -36,6 +39,9 @@ export type Jawaban = {
   /** Isi kotak P3K. */
   kondisiIsi?: KondisiIsi | null;
   tglKedaluwarsaTerdekat?: string | null;
+  /** Pilihan inspektur yang menggantikan tindakan bawaan butir (PRD Temuan). */
+  tindakanRekomendasi?: TindakanRekomendasi | null;
+  uraianTindakan?: string | null;
 };
 
 const DUA_NILAI: AnswerType[] = ["fungsi", "kondisi", "boolean"];
@@ -59,7 +65,9 @@ export function validasiJawaban(item: ButirChecklist, j: Jawaban): string | null
   if (item.answerType === "number") {
     if (nilai !== null && nilai !== "") return `Isian "${item.label}" harus berupa angka.`;
     if (angka === null) return null;
-    if (!Number.isInteger(angka) || angka < 0 || angka > 100000) return `Angka "${item.label}" tidak sah.`;
+    // Butir tanpa baku adalah catatan (mis. odometer mobil pemadam), boleh angka besar.
+    const maks = item.jumlahBaku === null ? 9_999_999 : 100000;
+    if (!Number.isInteger(angka) || angka < 0 || angka > maks) return `Angka "${item.label}" tidak sah.`;
     return null;
   }
   if (angka !== null) return `Isian "${item.label}" tidak menerima angka.`;
@@ -111,7 +119,19 @@ export const TINDAKAN_BAKU: Record<Severity, string> = {
   ringan: "Dibenahi pada kunjungan berikutnya",
 };
 
-export type Temuan = { checklistItemId: number; item: string; severity: Severity };
+export type Temuan = {
+  checklistItemId: number;
+  item: string;
+  severity: Severity;
+  tindakan: TindakanRekomendasi;
+  /** Uraian bebas tindakan dari inspektur, bila ada. */
+  uraian?: string | null;
+};
+
+/** Tindakan bawaan bila butir tidak menyebutnya: berat → ganti, lainnya → perbaiki ({{Assumption}}). */
+export function tindakanBawaan(item: Pick<ButirChecklist, "tindakanBawaan">, severity: Severity): TindakanRekomendasi {
+  return item.tindakanBawaan ?? (severity === "berat" ? "ganti" : "perbaiki");
+}
 
 const URUT_SEVERITY: Record<Severity, number> = { berat: 0, sedang: 1, ringan: 2 };
 
@@ -125,11 +145,28 @@ export function bangunTemuan(items: ButirChecklist[], jawaban: Jawaban[], p3k?: 
   for (const item of items) {
     const j = map.get(item.id);
     const sev = severityJawaban(item, j);
-    if (sev) out.push({ checklistItemId: item.id, item: kalimatTemuan(item, j!), severity: sev });
+    if (!sev) continue;
+    const t: Temuan = {
+      checklistItemId: item.id,
+      // PRD Temuan: "{butir}: {jawaban}" ditambah catatan inspektur.
+      item: j!.catatan?.trim() ? `${kalimatTemuan(item, j!)}. Catatan: ${j!.catatan.trim()}` : kalimatTemuan(item, j!),
+      severity: sev,
+      tindakan: j!.tindakanRekomendasi ?? tindakanBawaan(item, sev),
+    };
+    if (j!.uraianTindakan?.trim()) t.uraian = j!.uraianTindakan.trim();
+    out.push(t);
   }
   if (p3k) {
     for (const t of temuanIsiP3k(butirIsiDari(items), jawaban, p3k)) {
-      out.push({ checklistItemId: t.checklistItemId, item: t.item, severity: t.severity });
+      const pilihan = map.get(t.checklistItemId);
+      const temuan: Temuan = {
+        checklistItemId: t.checklistItemId,
+        item: t.item,
+        severity: t.severity,
+        tindakan: pilihan?.tindakanRekomendasi ?? t.tindakan,
+      };
+      if (pilihan?.uraianTindakan?.trim()) temuan.uraian = pilihan.uraianTindakan.trim();
+      out.push(temuan);
     }
   }
   return out.sort((a, b) => URUT_SEVERITY[a.severity] - URUT_SEVERITY[b.severity]);

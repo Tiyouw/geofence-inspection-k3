@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { namaPeriode, persen1, tglDm, tglDmy2, tglPanjang, tglSingkat, waktuCetak } from "../format";
+import { namaPeriode, persen1, tglDm, tglPanjang, tglSingkat, waktuCetak } from "../format";
 import {
   labelMedia,
   narasiPemantau,
   rakitKartu,
   rakitPeriode,
-  rakitRekap,
   sisaHariBulan,
-  urutRisiko,
   type AngkaPantau,
-  type TemuanLaporan,
 } from "../rakit";
 import { ASET, BUTIR, DICETAK, INSPEKSI, TEMUAN, asetKode } from "./contoh-oktober";
 
@@ -88,35 +85,6 @@ describe("lembar PMS (SPEC §4.9, ACCEPTANCE L1-L2)", () => {
   });
 });
 
-describe("rekap temuan (ACCEPTANCE L4)", () => {
-  const rekap = rakitRekap(data, DICETAK);
-
-  it("ringkasan dan urutan sama dengan samples/contoh-rekap-temuan-2026-10.pdf", () => {
-    expect(rekap.ringkas).toEqual({ terbuka: 6, berat: 3, lewat: 3, unitTerdampak: 6, totalUnit: 35 });
-    expect(rekap.baris.map((b) => b.aset!.kode)).toEqual(["31D", "26C", "16D", "01D", "11D", "21D"]);
-  });
-
-  it("tindakan baku bila tindak lanjut kosong, umur, dan tanda lewat", () => {
-    const [satu, , , empat] = rekap.baris;
-    expect(satu!.tindakan).toBe("Tabung diturunkan dari layanan, diganti unit cadangan");
-    expect(satu!.lewat).toBe(true);
-    expect(satu!.umur).toBe(32);
-    expect(tglDmy2(satu!.temuan.targetSelesai!)).toBe("04/10/26");
-    expect(tglSingkat(satu!.temuan.createdAt)).toBe("01 Okt 2026");
-    expect(empat!.tindakan).toBe("Dibenahi pada kunjungan berikutnya");
-    expect(empat!.lewat).toBe(false);
-    expect(empat!.lokasi).toEqual({ utama: "Lorong Timur titik 1", lantai: "Lt. 1" });
-  });
-
-  it("tenggat hari ini belum dihitung lewat; temuan selesai tidak masuk", () => {
-    const t = { ...TEMUAN[0]!, targetSelesai: "2026-11-02" };
-    const selesai = { ...TEMUAN[1]!, status: "selesai" as const };
-    const r = rakitRekap(rakitPeriode({ aset: ASET, butir: BUTIR, inspeksi: [], temuan: [t, selesai] }), DICETAK);
-    expect(r.baris).toHaveLength(1);
-    expect(r.baris[0]!.lewat).toBe(false);
-  });
-});
-
 describe("kartu kontrol (ACCEPTANCE L5)", () => {
   const a = asetKode("31D");
   const ins = INSPEKSI.filter((i) => i.assetId === a.id).map((i) => ({ ...i, jumlahTemuan: 1 }));
@@ -152,45 +120,31 @@ describe("kartu kontrol (ACCEPTANCE L5)", () => {
 });
 
 describe("ringkasan pemantau (ACCEPTANCE J2-J3)", () => {
-  const dasar: AngkaPantau = { total: 35, diperiksa: 30, persen: 85.7, tidakLayak: 3, berat: 3, lewat: 3, posisi: 4, hari: 14 };
+  const dasar: AngkaPantau = {
+    total: 37,
+    diperiksa: 31,
+    persen: 83.8,
+    tidakLayak: 3,
+    berat: 3,
+    tinjauan: 4,
+    perModul: [
+      { nama: "APAR", sudah: 30, total: 35, mingguan: false },
+      { nama: "Kotak P3K", sudah: 0, total: 0, mingguan: false },
+      { nama: "Mobil Pemadam", sudah: 1, total: 2, mingguan: true },
+    ],
+  };
 
-  it("narasi tiga keadaan", () => {
+  it("narasi tiga keadaan, lintas modul (PRD F14)", () => {
     expect(narasiPemantau({ ...dasar, total: 0 }, persen1)).toBe(
-      "Belum ada APAR aktif. Ringkasan akan terisi setelah aset dan inspeksi tersedia.",
+      "Belum ada aset aktif. Ringkasan akan terisi setelah aset dan inspeksi tersedia.",
     );
     expect(narasiPemantau({ ...dasar, diperiksa: 0 }, persen1)).toBe(
-      "Belum ada inspeksi bulan ini. 35 APAR aktif menunggu pemeriksaan sebelum akhir bulan (sisa 14 hari).",
+      "Belum ada inspeksi pada periode ini. 37 aset aktif menunggu pemeriksaan (APAR 30/35, Mobil Pemadam 1/2 minggu ini).",
     );
     expect(narasiPemantau(dasar, persen1)).toBe(
-      "30 dari 35 APAR sudah diperiksa bulan ini (85,7%). 3 unit dinyatakan tidak layak pakai. " +
-        "Ada 3 temuan berat dan 3 temuan lewat tenggat yang belum selesai, serta 4 inspeksi yang menunggu tinjauan posisi.",
+      "31 dari 37 aset sudah diperiksa pada periodenya (83,8%): APAR 30/35, Mobil Pemadam 1/2 minggu ini. " +
+        "3 unit dinyatakan tidak layak pakai. Bulan ini tercatat 3 temuan berat, dan 4 inspeksi menunggu tinjauan.",
     );
-  });
-
-  it("risiko: 5 teratas, berat dulu, tenggat terdekat, tanpa tenggat terakhir", () => {
-    const t = (id: number, severity: TemuanLaporan["severity"], targetSelesai: string | null, status: TemuanLaporan["status"] = "terbuka") => ({
-      id,
-      severity,
-      targetSelesai,
-      status,
-    });
-    const r = urutRisiko(
-      [
-        t(1, "ringan", null),
-        t(2, "sedang", "2026-11-20"),
-        t(3, "berat", null),
-        t(4, "berat", "2026-11-01"),
-        t(5, "ringan", "2026-10-30"),
-        t(6, "berat", "2026-11-05", "selesai"),
-        t(7, "sedang", "2026-11-03"),
-      ],
-      "2026-11-02",
-    );
-    expect(r.map((x) => x.id)).toEqual([4, 3, 5, 7, 2]);
-    expect(r[0]!.tanda).toEqual(["Berat", "Lewat tenggat"]);
-    expect(r[1]!.tanda).toEqual(["Berat"]);
-    expect(r[2]!.tanda).toEqual(["Lewat tenggat"]);
-    expect(r[3]!.tanda).toEqual(["Perlu perhatian"]);
   });
 
   it("sisa hari bulan ini", () => {

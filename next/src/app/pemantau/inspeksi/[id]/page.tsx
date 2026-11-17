@@ -4,15 +4,15 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { tanggalIso, tglDmy, waktuDmyHm } from "@/features/laporan/format";
+import { tanggalIso, waktuDmyHm } from "@/features/laporan/format";
 import { detailInspeksi } from "@/features/laporan/queries";
 import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
 import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { labelLokasi, perluTinjauan } from "@/features/laporan/rakit";
-import { Lencana, LencanaGerbang, LencanaKesimpulan, LABEL_STATUS_TEMUAN, NADA_TINGKAT, Tabel, labelNilai } from "@/features/laporan/ui";
+import { Lencana, LencanaGerbang, LencanaKesimpulan, NADA_TINGKAT, Tabel, labelNilai } from "@/features/laporan/ui";
 import { requireRole } from "@/lib/auth/guards";
 import { radiusEfektif } from "@/lib/domain/asset";
-import { DURASI_WAJAR_DETIK } from "@/lib/domain/constants";
+import { DURASI_WAJAR_DETIK, LABEL_HASIL_TINJAUAN, LABEL_TINDAKAN } from "@/lib/domain/constants";
 import { severityJawaban, simbolJawaban } from "@/lib/domain/jawaban";
 
 export const metadata: Metadata = { title: "Detail inspeksi" };
@@ -106,14 +106,16 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
               </Baris>
               <Baris label="Catatan">{i.catatan || "-"}</Baris>
               <Baris label="Rekomendasi">{i.rekomendasi || "-"}</Baris>
-              <Baris label="Tinjauan posisi">
+              <Baris label="Tinjauan">
                 {i.ditinjauPada ? (
                   <>
-                    Ditinjau {d.peninjau ?? "admin"} pada {waktuDmyHm(i.ditinjauPada)} WIB
+                    {i.hasilTinjauan ? LABEL_HASIL_TINJAUAN[i.hasilTinjauan] : "Ditinjau"} oleh {d.peninjau ?? "-"} pada {waktuDmyHm(i.ditinjauPada)} WIB
                     {i.catatanReview && <span className="block text-muted-foreground">{i.catatanReview}</span>}
                   </>
-                ) : perluTinjauan(i) ? (
-                  <Lencana nada="waspada">Menunggu tinjauan Admin K3</Lencana>
+                ) : perluTinjauan(i) || i.restrictedArea ? (
+                  <Link href={`/pemantau/tinjauan/${i.id}`} className="font-medium underline-offset-4 hover:underline">
+                    Menunggu tinjauan: buka antrean
+                  </Link>
                 ) : (
                   "Tidak perlu"
                 )}
@@ -199,10 +201,10 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
             {d.temuan.map((t) => (
               <li key={t.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
                 <Lencana nada={NADA_TINGKAT[t.severity]}>{t.severity}</Lencana>
-                <span className="flex-1">{t.item}</span>
-                <span className="text-muted-foreground">
-                  {LABEL_STATUS_TEMUAN[t.status]} · tenggat {t.targetSelesai ? tglDmy(t.targetSelesai) : "-"}
-                </span>
+                <Link href={`/pemantau/temuan/${t.id}`} className="flex-1 underline-offset-4 hover:underline">
+                  {t.item}
+                </Link>
+                {t.tindakan && <span className="text-muted-foreground">{LABEL_TINDAKAN[t.tindakan]}</span>}
               </li>
             ))}
           </ul>

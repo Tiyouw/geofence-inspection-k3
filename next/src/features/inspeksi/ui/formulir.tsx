@@ -31,6 +31,7 @@ import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
+import { TemuanDraf } from "./temuan-draf";
 
 type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
 
@@ -235,10 +236,12 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
         <CardContent className="space-y-2 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold">Lokasi</p>
-            {draf.gps && <LencanaGerbang status={gerbang} />}
+            {aset.bergerak ? <LencanaGerbang status="tidak_berlaku" /> : draf.gps && <LencanaGerbang status={gerbang} />}
           </div>
           <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
-            {statusGps === "mencari" && !draf.gps
+            {aset.bergerak
+              ? "Objek bergerak: lokasi tidak diperiksa. Posisi tetap direkam sebagai informasi."
+              : statusGps === "mencari" && !draf.gps
               ? "Mencari posisi…"
               : statusGps === "ditolak" && !draf.gps
                 ? "Izin lokasi ditolak. Inspeksi tetap dapat dikirim, namun akan ditandai untuk ditinjau Admin K3."
@@ -303,6 +306,15 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
             {temuan.length} temuan. Usulan: <b>{LABEL_KESIMPULAN[usulan]}</b>
           </p>
         )}
+        <TemuanDraf
+          temuan={temuan}
+          jawaban={draf.jawaban}
+          bisaUbah={bisaUbah}
+          onUbah={async (itemId, isi) => {
+            await simpanJawaban(db!, draf.inspectionId, itemId, isi, items);
+            berubah();
+          }}
+        />
         <div className="grid gap-2" role="radiogroup" aria-label="Kesimpulan">
           {KESIMPULAN.map((k) => (
             <button

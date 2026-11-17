@@ -196,3 +196,4 @@ export const TENGGAT_HARI: Record<Severity, number> = { berat: 3, sedang: 14, ri
 
 /** SPEC §3.1: pola token stiker. */
 export const POLA_TOKEN_QR = /^PAL-K3-[0-9a-f]{32}$/i;
+

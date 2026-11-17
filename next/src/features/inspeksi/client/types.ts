@@ -1,6 +1,6 @@
 import type { AsetPaket, GrupPaket, PaketKerja, TerkirimPaket } from "../server/bundle";
 import type { HasilFinal } from "../server/inspeksi";
-import type { Kesimpulan, KondisiIsi } from "@/lib/domain/constants";
+import type { Kesimpulan, KondisiIsi, TindakanRekomendasi } from "@/lib/domain/constants";
 
 export type { AsetPaket, GrupPaket, PaketKerja, TerkirimPaket, HasilFinal };
 
@@ -13,6 +13,9 @@ export type JawabanLokal = {
   /** Isi kotak P3K. */
   kondisiIsi?: KondisiIsi | null;
   tglKedaluwarsaTerdekat?: string | null;
+  /** Tindakan yang direkomendasikan bila butir ini menjadi temuan; kosong = bawaan butir. */
+  tindakanRekomendasi?: TindakanRekomendasi | null;
+  uraianTindakan?: string | null;
   answeredAt: string;
 };
 

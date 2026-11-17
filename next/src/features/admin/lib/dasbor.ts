@@ -2,15 +2,14 @@
 import type { Kesimpulan } from "@/lib/domain/constants";
 import { labelLokasi, namaArea } from "@/lib/domain/label-aset";
 
-/** Hanya empat nilai ini yang diterima (Dasbor.php #[Locked]). */
-export const TAB_ANTREAN = ["berat", "lewat", "posisi", "belum"] as const;
+/** Hanya tiga nilai ini yang diterima. Temuan tidak punya tenggat lagi (ADR-4). */
+export const TAB_ANTREAN = ["berat", "tinjauan", "belum"] as const;
 export type TabAntrean = (typeof TAB_ANTREAN)[number];
 export const PER_HALAMAN_ANTREAN = 6;
 
 export const LABEL_TAB: Record<TabAntrean, string> = {
-    berat: "Temuan berat",
-    lewat: "Lewat tenggat",
-    posisi: "Tinjauan posisi",
+    berat: "Temuan berat bulan ini",
+    tinjauan: "Perlu tinjauan",
     belum: "Belum diperiksa",
 };
 

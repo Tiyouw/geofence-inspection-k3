@@ -46,7 +46,7 @@ async function tanpaKendaliTulis(page: Page) {
   // Formulir "Keluar" di bilah samping bukan bagian halaman.
   await expect(page.locator('main form[method="post" i]')).toHaveCount(0);
   const tombol = await page.locator("main button, main [role=button]").allInnerTexts();
-  expect(tombol.filter((t) => !/Tampilkan/.test(t))).toEqual([]);
+  expect(tombol.filter((t) => !/Tampilkan|Terapkan/.test(t))).toEqual([]);
 }
 
 // PDF dirender di peladen; di mesin lambat (dev server) bisa beberapa detik.
@@ -57,21 +57,21 @@ test.describe("pemantau", () => {
     await masuk(page, "pemantau");
   });
 
-  test("ringkasan manajemen tanpa antrean dan tanpa aksi tulis (J1-J3)", async ({ page }) => {
+  test("ringkasan manajemen lintas modul tanpa aksi tulis (J1-J3, PRD F14)", async ({ page }) => {
     await expect(page).toHaveURL(/\/pemantau$/);
     await expect(page.getByRole("heading", { name: "Papan pantau" })).toBeVisible();
     await expect(page.getByText("Ringkasan untuk manajemen")).toBeVisible();
-    await expect(page.getByTestId("hanya-lihat")).toHaveText("Hanya lihat");
-    await expect(page.getByTestId("narasi")).toContainText(/APAR sudah diperiksa bulan ini \(\d+,\d%\)/);
+    await expect(page.getByTestId("hanya-lihat")).toHaveText("Hanya lihat dan tinjau");
+    await expect(page.getByTestId("narasi")).toContainText(/aset sudah diperiksa pada periodenya \(\d+,\d%\): APAR \d+\/\d+/);
     await expect(page.getByTestId("risiko").getByText("Berat").first()).toBeVisible();
+    await expect(page.getByTestId("progres-modul")).toContainText("Mobil Pemadam · minggu ini");
+    await expect(page.getByTestId("progres-gedung")).toBeVisible();
     await expect(page.getByText("Laporan siap cetak")).toBeVisible();
     await tanpaKendaliTulis(page);
   });
 
   test("tautan laporan siap cetak menghasilkan PDF (J4, L3)", async ({ page }) => {
     const { tahun, bulan } = bulanIni();
-    const pms = page.getByRole("link", { name: /Unduh PDF/ });
-    await expect(pms).toHaveAttribute("href", "/laporan/pms");
     await harusPdf(await page.request.get("/laporan/pms"), new RegExp(`filename="PMS-APAR-${tahun}-${bulan}\\.pdf"`));
     await harusPdf(await page.request.get("/laporan/temuan"), new RegExp(`filename="Rekap-Temuan-${tahun}-${bulan}\\.pdf"`));
     await page.getByRole("link", { name: "Pilih unit" }).click();
@@ -124,15 +124,16 @@ test.describe("pemantau", () => {
     await page.goto("/pemantau/temuan");
     await expect(page.getByRole("heading", { name: "Temuan" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Daftar temuan" })).toContainText("Tekanan manometer: Kurang");
-    await page.getByRole("link", { name: "Ringan" }).click();
+    await page.getByLabel("Tingkat").selectOption("ringan");
+    await page.getByRole("button", { name: "Terapkan" }).click();
     await expect(page).toHaveURL(/tingkat=ringan/);
     // Hanya temuan ringan yang tampil (uji Admin boleh menambah temuan ringan).
     const tabel = page.getByRole("table", { name: "Daftar temuan" });
     if (await tabel.count()) {
-      const tingkat = await tabel.locator("tbody tr td:nth-child(3)").allInnerTexts();
+      const tingkat = await tabel.locator("tbody tr td:nth-child(4)").allInnerTexts();
       expect(tingkat.every((t) => t.trim() === "Ringan")).toBe(true);
     } else {
-      await expect(page.getByText("Tidak ada temuan dengan saringan ini.")).toBeVisible();
+      await expect(page.getByText("Tidak ada temuan untuk saringan ini.")).toBeVisible();
     }
     await tanpaKendaliTulis(page);
   });
@@ -177,12 +178,14 @@ test.describe("cron jadwal (G14)", () => {
     const pertama = await request.get("/api/cron/jadwal", { headers });
     expect(pertama.status()).toBe(200);
     const kedua = await (await request.get("/api/cron/jadwal", { headers })).json();
-    expect(Object.values(kedua.jadwalBaru)).toEqual([0, 0]);
+    // Satu kunci per periode: bulan ini dan lalu, ditambah minggu ini dan lalu untuk mobil pemadam (PRD F16).
+    expect(Object.values(kedua.jadwalBaru).every((n) => n === 0)).toBe(true);
     expect(kedua.ditautkan).toBe(0);
 
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const { rows } = await pool.query<{ aset: number; jadwal: number }>(
-      `select (select count(*)::int from assets where aktif) as aset,
+      `select (select count(*)::int from assets a join asset_types t on t.id = a.asset_type_id
+                where a.aktif and t.aktif and t.periode_hari <> 7) as aset,
               (select count(*)::int from schedules where periode = $1::date) as jadwal`,
       [kedua.periode],
     );

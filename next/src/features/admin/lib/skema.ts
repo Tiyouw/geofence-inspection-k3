@@ -3,7 +3,7 @@
  * Masukan formulir datang sebagai string; kosong berarti null.
  */
 import { z } from "zod";
-import { ISSUE_STATUSES, LOKASI_TIPE, ROLES, SEVERITIES } from "@/lib/domain/constants";
+import { LOKASI_TIPE, ROLES } from "@/lib/domain/constants";
 
 const kosongJadiNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
 const teks = (label: string, maks: number) =>
@@ -109,37 +109,6 @@ export const skemaPengguna = z.object({
     password: z.preprocess(kosongJadiNull, sandi.nullable().optional()).transform((v) => v ?? null),
 });
 export type MasukanPengguna = z.infer<typeof skemaPengguna>;
-
-const alasan = (label: string) =>
-    z.preprocess(
-        (v) => (typeof v === "string" ? v.trim() : v),
-        z
-            .string({ error: `${label} wajib diisi.` })
-            .min(10, `${label} minimal 10 karakter.`)
-            .max(2000, `${label} maksimal 2000 karakter.`),
-    );
-
-export const skemaTinjau = z.object({ id: z.uuid(), catatanReview: alasan("Alasan atau hasil verifikasi") });
-export const skemaCatatanReview = z.object({ id: z.uuid(), catatanReview: teksOpsional("Catatan tinjauan", 2000) });
-
-export const skemaTenggat = z.object({
-    id: idWajib("Temuan"),
-    targetSelesai: z.iso.date({ error: "Tanggal tenggat tidak sah." }),
-});
-export const skemaStatusTemuan = z.object({
-    id: idWajib("Temuan"),
-    ke: z.enum(ISSUE_STATUSES, { error: "Status tidak dikenal." }),
-    uraian: teksOpsional("Uraian", 2000),
-});
-export const skemaPicTemuan = z.object({ id: idWajib("Temuan"), picUserId: idOpsional });
-export const skemaTemuanBaru = z.object({
-    assetId: idWajib("Aset"),
-    item: teks("Uraian temuan", 500),
-    severity: z.enum(SEVERITIES, { error: "Tingkat wajib dipilih." }),
-    tindakLanjut: teksOpsional("Tindakan yang diminta", 2000),
-    targetSelesai: tanggalOpsional("Tenggat"),
-    picUserId: idOpsional,
-});
 
 export const skemaPeriodeTipe = z.object({
     id: idWajib("Tipe objek"),

@@ -22,6 +22,7 @@ export const NAV_ADMIN: NavItem[] = [
 
 export const NAV_PEMANTAU: NavItem[] = [
   { href: "/pemantau", label: "Papan pantau", icon: "grafik" },
+  { href: "/pemantau/tinjauan", label: "Tinjauan", icon: "tinjauan" },
   { href: "/pemantau/inspeksi", label: "Inspeksi", icon: "checklist" },
   { href: "/pemantau/temuan", label: "Temuan", icon: "temuan" },
   { href: "/pemantau/laporan", label: "Laporan", icon: "laporan" },

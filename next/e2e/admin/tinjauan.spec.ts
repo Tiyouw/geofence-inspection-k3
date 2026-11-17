@@ -2,71 +2,69 @@ import { expect, test } from "@playwright/test";
 import { masuk } from "../helpers";
 import { baris, buatInspeksiAntre } from "./data";
 
-test.describe("tinjauan inspeksi (E7, H5-H7, F5)", () => {
-    test("antrean, foto bersesi, tandai ditinjau dengan alasan, GPS tetap", async ({ page, playwright, baseURL }) => {
-        const insp = await buatInspeksiAntre("perlu_review");
+/** PRD F13 dan ADR-9: antrean bersama Administrator K3 dan Pemantau, satu tinjauan per inspeksi. */
+test.describe("tinjauan inspeksi oleh Administrator K3", () => {
+    test("bukti, foto per butir, alasan; Diterima dengan catatan; peninjau dan waktu tercatat", async ({
+        page,
+        playwright,
+        baseURL,
+    }) => {
+        const insp = await buatInspeksiAntre("perlu_tinjauan", { alasan: "gps_lemah" });
         await masuk(page, "admin");
 
-        // Tab bawaan = Antre ditinjau bila ada antrean; lencana menu menunjukkan jumlahnya.
         await page.goto("/admin/tinjauan");
-        await expect(page.getByRole("link", { name: /Antre ditinjau/ })).toHaveAttribute("aria-current", "page");
+        await expect(page.getByRole("link", { name: /Perlu tinjauan/ })).toHaveAttribute("aria-current", "page");
         await expect(page.getByRole("link", { name: /^Tinjauan \(\d+\)$/ })).toBeVisible();
 
-        // E7: jumlah antrean dasbor (APAR) sama dengan lencana tab.
+        // Angka antrean di dasbor = lencana tab.
         const lencanaTab = Number(
             await page
-                .getByRole("link", { name: /Antre ditinjau/ })
+                .getByRole("link", { name: /Perlu tinjauan/ })
                 .locator("span")
                 .textContent(),
         );
-        await page.goto("/admin?tab=posisi");
-        const kartuPosisi = page
-            .getByRole("navigation", { name: "Antrean keputusan" })
-            .getByRole("link", { name: /Tinjauan posisi/ });
-        await expect(kartuPosisi).toContainText(String(lencanaTab));
+        await page.goto("/admin?tab=tinjauan");
+        await expect(
+            page.getByRole("navigation", { name: "Antrean keputusan" }).getByRole("link", { name: /Perlu tinjauan/ }),
+        ).toContainText(String(lencanaTab));
 
         await page.goto(`/admin/tinjauan/${insp.id}`);
         await expect(page.getByRole("heading", { name: `Inspeksi ${insp.kode}` })).toBeVisible();
-        await expect(page.getByText("Bukti lapangan (tidak dapat diubah)")).toBeVisible();
+        await expect(page.getByText("GPS lemah").first()).toBeVisible();
+        await expect(page.getByText("±15 m").first()).toBeVisible();
+        await expect(page.locator(".leaflet-container")).toBeVisible();
 
-        // F5: foto tampil lewat /api/foto dan tidak bisa dibuka tanpa sesi.
-        const img = page.getByRole("img", { name: /Foto bukti 1/ });
-        await expect(img).toHaveAttribute("src", `/api/foto/${insp.fotoId}`);
-        const res = await page.request.get(`/api/foto/${insp.fotoId}`);
-        expect(res.status()).toBe(200);
-        expect(res.headers()["content-type"]).toBe("image/jpeg");
+        // Foto ditautkan ke butirnya dan disajikan lewat rute bersesi.
+        const foto = page.getByTestId("foto-per-butir").getByRole("img", { name: `Foto ${insp.butir} 1` });
+        await expect(foto).toHaveAttribute("src", `/api/foto/${insp.fotoId}`);
         const tamu = await playwright.request.newContext({ baseURL });
         expect((await tamu.get(`/api/foto/${insp.fotoId}`, { maxRedirects: 0 })).status()).not.toBe(200);
         await tamu.dispose();
         expect(await page.content()).not.toMatch(/blob\.vercel-storage\.com|PAL-K3-[0-9a-f]{32}/i);
 
-        // H6: alasan < 10 karakter ditolak; input dipertahankan.
-        await page.getByRole("button", { name: "Tinjau posisi" }).click();
-        const alasan = page.getByLabel("Alasan atau hasil verifikasi");
-        await alasan.fill("pendek");
-        await alasan.evaluate((el) => el.removeAttribute("minlength"));
-        await page.getByRole("button", { name: "Tandai ditinjau" }).click();
-        await expect(page.getByRole("alert")).toContainText("minimal 10 karakter");
-        await expect(alasan).toHaveValue("pendek");
-        await alasan.fill("Dicek lewat CCTV, petugas hadir di lokasi.");
-        await page.getByRole("button", { name: "Tandai ditinjau" }).click();
-        await expect(page.getByText("Tinjauan posisi tersimpan.")).toBeVisible();
-        await expect(page.getByText(/oleh Administrator/)).toBeVisible();
-        await expect(page.getByRole("button", { name: "Tinjau posisi" })).toHaveCount(0);
+        // Catatan pendek ditolak peladen; isian dipertahankan.
+        await page.getByText("Diterima", { exact: true }).click();
+        const catatan = page.getByLabel("Catatan tinjauan");
+        await catatan.fill("pendek");
+        await catatan.evaluate((el) => el.removeAttribute("minlength"));
+        await page.getByRole("button", { name: "Simpan tinjauan" }).click();
+        await expect(page.getByText("Catatan tinjauan minimal 10 karakter.")).toBeVisible();
+        await expect(catatan).toHaveValue("pendek");
+        await catatan.fill("Petugas di pintu bengkel, sinyal terhalang atap baja.");
+        await page.getByRole("button", { name: "Simpan tinjauan" }).click();
+        await expect(page.getByText("Inspeksi diterima.")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Hasil tinjauan" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Simpan tinjauan" })).toHaveCount(0);
 
         const [r] = await baris<{
-            jarak_m: number;
-            gps_lat: string;
-            gate_status: string;
+            hasil_tinjauan: string;
             ditinjau_oleh: number | null;
-        }>("select jarak_m, gps_lat, gate_status, ditinjau_oleh from inspections where id = $1", [insp.id]);
-        expect(r).toMatchObject({ jarak_m: 140, gps_lat: "-7.2000000", gate_status: "perlu_review" });
+            ditinjau_pada: Date | null;
+            jarak_m: number;
+        }>("select hasil_tinjauan, ditinjau_oleh, ditinjau_pada, jarak_m from inspections where id = $1", [insp.id]);
+        expect(r).toMatchObject({ hasil_tinjauan: "diterima", jarak_m: 140 });
         expect(r!.ditinjau_oleh).not.toBeNull();
-
-        // H5: catatan tinjauan tetap bisa diperbarui; bukti tidak punya kolom isian.
-        await page.getByLabel("Catatan tinjauan").fill("Catatan tambahan admin.");
-        await page.getByRole("button", { name: "Simpan catatan" }).click();
-        await expect(page.getByText("Catatan tinjauan tersimpan.")).toBeVisible();
+        expect(r!.ditinjau_pada).not.toBeNull();
     });
 
     test("tab lain dan filter durasi tak wajar merender", async ({ page }) => {

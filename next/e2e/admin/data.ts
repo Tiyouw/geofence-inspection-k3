@@ -24,8 +24,11 @@ export async function idPengguna(nip: string): Promise<number> {
     return r.rows[0]!.id;
 }
 
-/** Inspeksi final di antrean tinjauan (gerbang menyimpang, belum ditinjau), dengan satu foto. */
-export async function buatInspeksiAntre(gate: "perlu_review" | "jauh" | "gps_lemah" | "tanpa_gps" = "perlu_review") {
+/** Inspeksi final di antrean tinjauan (perlu tinjauan, belum ditinjau), dengan satu foto yang ditautkan ke butir 1. */
+export async function buatInspeksiAntre(
+    gate: "perlu_tinjauan" | "perlu_review" | "jauh" | "gps_lemah" | "tanpa_gps" | "sesuai" = "perlu_tinjauan",
+    opsi: { alasan?: "di_luar_gedung" | "gps_lemah"; terbatas?: boolean } = { alasan: "di_luar_gedung" },
+) {
     const c = db();
     const inspektur = await idPengguna("inspektur");
     const aset = await c.query<{ id: number; kode: string }>(
@@ -38,23 +41,47 @@ export async function buatInspeksiAntre(gate: "perlu_review" | "jauh" | "gps_lem
     const sekarang = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
     await c.query(
         `insert into inspections (id, asset_id, user_id, status, inspected_at, mulai_pada, durasi_detik, gps_lat, gps_lng, gps_accuracy,
-       jarak_m, gate_status, qr_verified, kesimpulan, received_at)
-     values ($1, $2, $3, 'final', $4, $5, 30, -7.2, 112.7, 15, 140, $6, true, 'layak', $4)`,
-        [id, assetId, inspektur, sekarang, new Date(sekarang.getTime() - 30_000), gate],
+       jarak_m, gate_status, gate_alasan, restricted_area, qr_verified, kesimpulan, received_at)
+     values ($1, $2, $3, 'final', $4, $5, 30, -7.2, 112.7, 15, 140, $6, $7, $8, true, 'layak', $4)`,
+        [
+            id,
+            assetId,
+            inspektur,
+            sekarang,
+            new Date(sekarang.getTime() - 30_000),
+            gate,
+            opsi.alasan ?? null,
+            opsi.terbatas ?? false,
+        ],
     );
+    // Langkah foto pertama tipe aset ini dan butir pertamanya (kamera terpandu, ADR-8).
+    const langkah = await c.query<{ step_id: number; item_id: number; label: string }>(
+        `select s.id step_id, ci.id item_id, ci.label from photo_steps s
+           join photo_step_items psi on psi.step_id = s.id
+           join checklist_items ci on ci.id = psi.checklist_item_id
+           join assets a on a.asset_type_id = s.asset_type_id
+          where a.id = $1 and s.aktif order by s.urut, ci.urut limit 1`,
+        [assetId],
+    );
+    const { step_id: stepId, item_id: itemId, label } = langkah.rows[0]!;
     const fotoId = randomUUID();
     const key = `inspeksi/${id}/${fotoId}.jpg`;
     const path = join(process.cwd(), ".data", "foto", key);
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, JPEG);
     await c.query(
-        "insert into inspection_photos (id, inspection_id, storage_key, sha256, content_type, bytes) values ($1, $2, $3, $4, 'image/jpeg', $5)",
-        [fotoId, id, key, "0".repeat(64), JPEG.byteLength],
+        "insert into inspection_photos (id, inspection_id, storage_key, sha256, content_type, bytes, step_id) values ($1, $2, $3, $4, 'image/jpeg', $5, $6)",
+        [fotoId, id, key, "0".repeat(64), JPEG.byteLength, stepId],
     );
-    return { id, kode, fotoId };
+    await c.query("insert into inspection_answers (inspection_id, checklist_item_id, nilai) values ($1, $2, 'ok')", [
+        id,
+        itemId,
+    ]);
+    const butir = { rows: [{ label }] };
+    return { id, kode, fotoId, butir: butir.rows[0]!.label };
 }
 
-/** Temuan terbuka baru pada aset APAR acak. */
+/** Temuan baru (bentuk v2: lokasi dan tindakan) pada aset APAR acak, lahir dari inspeksi final. */
 export async function buatTemuan(
     severity: "berat" | "sedang" | "ringan" = "berat",
     item = `Temuan uji ${Date.now().toString(36)}`,
@@ -63,9 +90,16 @@ export async function buatTemuan(
     const aset = await c.query<{ id: number; kode: string }>(
         "select a.id, a.kode from assets a join asset_types t on t.id = a.asset_type_id where t.slug = 'apar' and a.aktif order by random() limit 1",
     );
+    const inspId = randomUUID();
+    await c.query(
+        `insert into inspections (id, asset_id, user_id, status, inspected_at, gate_status, qr_verified, kesimpulan)
+         values ($1, $2, $3, 'final', now() - interval '60 days', 'sesuai', true, 'layak_catatan')`,
+        [inspId, aset.rows[0]!.id, await idPengguna("inspektur")],
+    );
     const r = await c.query<{ id: number }>(
-        "insert into issues (asset_id, item, severity, status) values ($1, $2, $3, 'terbuka') returning id",
-        [aset.rows[0]!.id, item, severity],
+        `insert into issues (asset_id, inspection_id, item, severity, lokasi, tindakan_rekomendasi, uraian_tindakan)
+         values ($1, $2, $3, $4, 'Gedung Uji · Lorong', 'ganti', 'Pasang unit cadangan') returning id`,
+        [aset.rows[0]!.id, inspId, item, severity],
     );
     return { id: r.rows[0]!.id, item, kode: aset.rows[0]!.kode };
 }

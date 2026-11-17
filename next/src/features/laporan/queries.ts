@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lt, ne, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   assetTypes,
@@ -10,12 +10,12 @@ import {
   inspectionAnswers,
   inspectionPhotos,
   inspections,
-  issueEvents,
   issues,
   users,
 } from "@/db/schema";
-import { GATE_PERLU_TINJAUAN, type Kesimpulan, type Severity, type IssueStatus } from "@/lib/domain/constants";
-import { NAMA_BULAN, tanggalIso } from "./format";
+import type { Kesimpulan } from "@/lib/domain/constants";
+import { syaratAntreanTinjauan } from "@/features/tinjauan/server";
+import { tanggalIso } from "./format";
 import { rakitPeriode, type AsetLaporan, type ButirLaporan, type InspeksiKartu, type TemuanLaporan } from "./rakit";
 
 /** Batas bulan kalender WIB sebagai instan UTC: [awal, akhir). */
@@ -240,81 +240,9 @@ export async function daftarAsetKartu(tipe: string, gedung: string | null) {
     .orderBy(asc(assets.kode));
 }
 
-/* ------------------------------------------------------------------ */
-/* Papan pantau (SPEC §5): angka hanya APAR aktif, bulan berjalan WIB. */
-/* ------------------------------------------------------------------ */
-
-const asetAparAktif = and(eq(assetTypes.slug, "apar"), eq(assets.aktif, true));
-
-export async function ambilPapanPantau(now = new Date()) {
-  const iso = tanggalIso(now);
-  const tahun = Number(iso.slice(0, 4));
-  const bulan = Number(iso.slice(5, 7));
-  const { awal, akhir } = rentangBulan(tahun, bulan);
-
-  const aset = await db
-    .select({ id: assets.id, kode: assets.kode, gedung: assets.gedung, lantai: assets.lantai })
-    .from(assets)
-    .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
-    .where(asetAparAktif);
-
-  // Inspeksi final terakhir bulan ini per aset (kondisi = kesimpulan terbaru, ACCEPTANCE I1).
-  const terakhir = await db
-    .selectDistinctOn([inspections.assetId], { assetId: inspections.assetId, kesimpulan: inspections.kesimpulan })
-    .from(inspections)
-    .where(and(eq(inspections.status, "final"), gte(inspections.inspectedAt, awal), lt(inspections.inspectedAt, akhir)))
-    .orderBy(inspections.assetId, desc(inspections.inspectedAt));
-  const idAktif = new Set(aset.map((a) => a.id));
-  const kondisiPer = new Map(terakhir.filter((t) => idAktif.has(t.assetId)).map((t) => [t.assetId, t.kesimpulan]));
-
-  const temuanTerbuka = await db
-    .select({
-      id: issues.id,
-      item: issues.item,
-      severity: issues.severity,
-      status: issues.status,
-      targetSelesai: issues.targetSelesai,
-      kode: assets.kode,
-      gedung: assets.gedung,
-      lantai: assets.lantai,
-      lokasiTeks: assets.lokasiTeks,
-    })
-    .from(issues)
-    .innerJoin(assets, eq(assets.id, issues.assetId))
-    .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
-    .where(and(eq(assetTypes.slug, "apar"), ne(issues.status, "selesai")));
-
-  const [posisi] = await db
-    .select({ n: count() })
-    .from(inspections)
-    .innerJoin(assets, eq(assets.id, inspections.assetId))
-    .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
-    .where(and(eq(assetTypes.slug, "apar"), ...antreanTinjauan()));
-
-  // Tren 6 bulan: aset unik yang diinspeksi per bulan (ACCEPTANCE I7).
-  const tren: { label: string; jumlah: number }[] = [];
-  for (let off = 5; off >= 0; off--) {
-    const d = new Date(Date.UTC(tahun, bulan - 1 - off, 1));
-    const r = rentangBulan(d.getUTCFullYear(), d.getUTCMonth() + 1);
-    const [row] = await db
-      .select({ n: countDistinct(inspections.assetId) })
-      .from(inspections)
-      .innerJoin(assets, eq(assets.id, inspections.assetId))
-      .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
-      .where(and(asetAparAktif, eq(inspections.status, "final"), gte(inspections.inspectedAt, r.awal), lt(inspections.inspectedAt, r.akhir)));
-    tren.push({ label: NAMA_BULAN[d.getUTCMonth()]!.slice(0, 3), jumlah: row?.n ?? 0 });
-  }
-
-  return { periode: { tahun, bulan }, aset, kondisiPer, temuanTerbuka, posisi: posisi?.n ?? 0, tren, hariIni: iso };
-}
-
-/** Kondisi antrean tinjauan (SPEC §3.5). */
+/** Kondisi antrean tinjauan bersama Admin K3 dan Pemantau (features/tinjauan). */
 export function antreanTinjauan(): SQL[] {
-  return [
-    eq(inspections.status, "final"),
-    or(inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), eq(inspections.restrictedArea, true))!,
-    isNull(inspections.ditinjauPada),
-  ];
+  return [syaratAntreanTinjauan!];
 }
 
 /* ------------------------------------------------------------------ */
@@ -435,61 +363,11 @@ export async function detailInspeksi(id: string) {
     .where(eq(inspectionPhotos.inspectionId, id))
     .orderBy(asc(inspectionPhotos.uploadedAt));
   const temuan = await db
-    .select({ id: issues.id, item: issues.item, severity: issues.severity, status: issues.status, targetSelesai: issues.targetSelesai })
+    .select({ id: issues.id, item: issues.item, severity: issues.severity, tindakan: issues.tindakanRekomendasi })
     .from(issues)
     .where(eq(issues.inspectionId, id))
     .orderBy(asc(issues.id));
   return { ...row, peninjau: peninjau?.name ?? null, jawaban, foto, temuan };
-}
-
-export const STATUS_FILTER = ["belum_selesai", "terbuka", "proses", "selesai", "semua"] as const;
-export type FilterStatusTemuan = (typeof STATUS_FILTER)[number];
-
-export async function daftarTemuan(f: { status: FilterStatusTemuan; tingkat: Severity | null; lewat: boolean; halaman: number }, hariIni: string) {
-  const kondisi: (SQL | undefined)[] = [
-    f.status === "belum_selesai" ? ne(issues.status, "selesai") : f.status === "semua" ? undefined : eq(issues.status, f.status as IssueStatus),
-    f.tingkat ? eq(issues.severity, f.tingkat) : undefined,
-    f.lewat ? and(ne(issues.status, "selesai"), lt(issues.targetSelesai, hariIni)) : undefined,
-  ];
-  const where = and(...kondisi);
-  const [total] = await db.select({ n: count() }).from(issues).where(where);
-  const rows = await db
-    .select({
-      id: issues.id,
-      item: issues.item,
-      severity: issues.severity,
-      status: issues.status,
-      tindakLanjut: issues.tindakLanjut,
-      targetSelesai: issues.targetSelesai,
-      selesaiPada: issues.selesaiPada,
-      createdAt: issues.createdAt,
-      inspectionId: issues.inspectionId,
-      kode: assets.kode,
-      gedung: assets.gedung,
-      lantai: assets.lantai,
-      lokasiTeks: assets.lokasiTeks,
-      pic: users.name,
-    })
-    .from(issues)
-    .innerJoin(assets, eq(assets.id, issues.assetId))
-    .leftJoin(users, eq(users.id, issues.picUserId))
-    .where(where)
-    .orderBy(sql`case ${issues.severity} when 'berat' then 0 when 'sedang' then 1 else 2 end`, asc(issues.createdAt), asc(issues.id))
-    .limit(PER_HALAMAN)
-    .offset((f.halaman - 1) * PER_HALAMAN);
-  return { total: total?.n ?? 0, rows };
-}
-
-/** Jejak tindak lanjut (issue_events) untuk temuan pada halaman ini. */
-export async function jejakTemuan(idTemuan: number[]) {
-  if (!idTemuan.length) return new Map<number, { aksi: string; ke: unknown; createdAt: Date; oleh: string | null }[]>();
-  const rows = await db
-    .select({ issueId: issueEvents.issueId, aksi: issueEvents.aksi, ke: issueEvents.ke, createdAt: issueEvents.createdAt, oleh: users.name })
-    .from(issueEvents)
-    .leftJoin(users, eq(users.id, issueEvents.userId))
-    .where(inArray(issueEvents.issueId, idTemuan))
-    .orderBy(asc(issueEvents.createdAt));
-  return Map.groupBy(rows, (r) => r.issueId);
 }
 
 export type { Kesimpulan };
