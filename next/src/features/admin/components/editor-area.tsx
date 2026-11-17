@@ -12,16 +12,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { formatWaktu } from "@/lib/format";
 import { AREA_JENIS, LABEL_AREA_JENIS } from "@/lib/domain/constants";
@@ -37,10 +27,12 @@ import {
     jadikanKawasan,
     pasangkanAset,
     pasangkanAsetDalamPoligon,
+    setujuiDrafMassal,
     setujuiPoligon,
     simpanDrafPoligon,
     ubahArea,
 } from "../actions/area";
+import { kalimatDilewati, pilahSetujuiMassal, type PilahSetujui } from "../lib/draf-massal";
 import type { AreaEditor, AsetEditor } from "../server/area";
 import { PetaArea, type PoligonTampil } from "./peta-area";
 import { Bidang, Kartu, Lencana, Pilihan } from "./ui";
@@ -240,7 +232,7 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 {mode.jenis === "lihat" && !pilih && (
                     <>
                         <DaftarArea area={area} kawasan={kawasan} pilih={(id) => setPilihId(id)} />
-                        <HapusDraf area={area} menunggu={menunggu} jalankan={jalankan} />
+                        <DrafMassal area={area} menunggu={menunggu} jalankan={jalankan} />
                     </>
                 )}
             </div>
@@ -324,7 +316,12 @@ function drafTerhapus(a: AreaEditor) {
     return !a.polygon && !!a.polygonDraf && a.jenis !== "kawasan" && a.jumlahAset === 0;
 }
 
-function HapusDraf({
+/**
+ * Kartu "Draf massal": per kumpulan impor (satu impor = satu transaksi = satu waktu dibuat)
+ * dan untuk semua draf, setujui atau hapus sekaligus. Angka dihitung dengan aturan yang sama
+ * dengan peladen (pilahSetujuiMassal, drafTerhapus); peladen memeriksa ulang.
+ */
+function DrafMassal({
     area,
     menunggu,
     jalankan,
@@ -333,67 +330,101 @@ function HapusDraf({
     menunggu: boolean;
     jalankan: (k: () => Promise<Hasil>, setelah?: () => void) => void;
 }) {
-    const [tanya, setTanya] = useState<{ judul: string; ids: number[] } | null>(null);
-    const draf = area.filter(drafTerhapus);
-    // Satu kali impor = satu transaksi = satu waktu dibuat.
-    const per = new Map<string, AreaEditor[]>();
-    for (const a of draf) per.set(a.dibuatPada, [...(per.get(a.dibuatPada) ?? []), a]);
-    const kumpulan = [...per.entries()].sort((x, y) => y[0].localeCompare(x[0])).map(([waktu, isi]) => ({ waktu, isi }));
-    if (draf.length === 0) return null;
+    const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
+    const ringkas = useMemo(() => {
+        const draf = area.filter((a) => a.polygonDraf);
+        const pilah = (isi: AreaEditor[]) => ({ setujui: pilahSetujuiMassal(isi, area), hapus: isi.filter(drafTerhapus).map((a) => a.id) });
+        const per = new Map<string, AreaEditor[]>();
+        for (const a of draf) {
+            const isi = per.get(a.dibuatPada);
+            if (isi) isi.push(a);
+            else per.set(a.dibuatPada, [a]);
+        }
+        const kumpulan = [...per.entries()]
+            .sort((x, y) => y[0].localeCompare(x[0]))
+            .map(([waktu, isi]) => ({ waktu, isi, ...pilah(isi) }));
+        return { jumlah: draf.length, kumpulan, semua: pilah(draf) };
+    }, [area]);
+    if (ringkas.jumlah === 0) return null;
+    const { semua } = ringkas;
+    const setujui = async (judul: string, p: PilahSetujui) => {
+        const n = p.setujui.length;
+        const lewat = kalimatDilewati(p);
+        const ya = await konfirmasi({
+            judul: `Setujui ${n} poligon?`,
+            jumlah: `${n} poligon`,
+            isi: (
+                <>
+                    <p>{`Draf dari ${judul} menjadi poligon resmi dan langsung dipakai gerbang lokasi.`}</p>
+                    {lewat && <p data-testid="dilewati">{lewat}</p>}
+                </>
+            ),
+            tombol: `Setujui ${n} poligon`,
+        });
+        if (ya) jalankan(() => setujuiDrafMassal({ ids: p.setujui }));
+    };
+    const hapus = async (judul: string, ids: number[]) => {
+        const n = ids.length;
+        const ya = await konfirmasi({
+            judul: `Hapus ${n} draf area?`,
+            jumlah: `${n} draf`,
+            isi: `Draf dari ${judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.`,
+            tombol: `Hapus ${n} draf`,
+            bahaya: true,
+        });
+        if (ya) jalankan(() => hapusDrafMassal({ ids }));
+    };
     return (
-        <Kartu judul="Hapus draf" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
-            <div data-testid="hapus-draf">
+        <Kartu judul="Draf massal" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+            <div data-testid="draf-massal">
                 <p className="mb-3 text-sm text-muted-foreground">
-                    Hanya draf yang belum pernah disetujui dan tidak berisi aset. Area disetujui dan batas kawasan tidak ikut terhapus.
+                    Setujui atau hapus draf per kumpulan impor. Calon batas kawasan dan poligon tidak sah tidak ikut disetujui. Hapus hanya
+                    berlaku untuk draf yang belum pernah disetujui dan tidak berisi aset.
                 </p>
                 <ul className="mb-3 space-y-1">
-                    {kumpulan.map((k) => (
-                        <li key={k.waktu} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
-                            <span className="min-w-0">
-                                <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
-                                <span className="block truncate text-xs text-muted-foreground">
-                                    {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}
-                                    {k.isi.length > 3 ? ", …" : ""}
-                                </span>
+                    {ringkas.kumpulan.map((k) => (
+                        <li key={k.waktu} className="rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
+                            <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                                {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}
+                                {k.isi.length > 3 ? ", …" : ""}
                             </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={menunggu}
-                                onClick={() => setTanya({ judul: `kumpulan ${formatWaktu(k.waktu)}`, ids: k.isi.map((a) => a.id) })}
-                            >
-                                <Trash2 aria-hidden /> Hapus {k.isi.length}
-                            </Button>
+                            <span className="mt-1.5 flex flex-wrap gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={menunggu || k.setujui.setujui.length === 0}
+                                    onClick={() => setujui(`kumpulan ${formatWaktu(k.waktu)}`, k.setujui)}
+                                >
+                                    <Check aria-hidden /> Setujui {k.setujui.setujui.length}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={menunggu || k.hapus.length === 0}
+                                    onClick={() => hapus(`kumpulan ${formatWaktu(k.waktu)}`, k.hapus)}
+                                >
+                                    <Trash2 aria-hidden /> Hapus {k.hapus.length}
+                                </Button>
+                            </span>
                         </li>
                     ))}
                 </ul>
-                <Button variant="destructive" size="sm" disabled={menunggu} onClick={() => setTanya({ judul: "semua draf", ids: draf.map((a) => a.id) })}>
-                    <Trash2 aria-hidden /> Hapus semua draf ({draf.length})
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="brand" size="sm" disabled={menunggu || semua.setujui.setujui.length === 0} onClick={() => setujui("semua kumpulan", semua.setujui)}>
+                        <Check aria-hidden /> Setujui semua draf ({semua.setujui.setujui.length})
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={menunggu || semua.hapus.length === 0}
+                        onClick={() => hapus("semua draf", semua.hapus)}
+                    >
+                        <Trash2 aria-hidden /> Hapus semua draf ({semua.hapus.length})
+                    </Button>
+                </div>
             </div>
-            <AlertDialog open={!!tanya} onOpenChange={(b) => !b && setTanya(null)}>
-                <AlertDialogContent data-testid="dialog-hapus-draf">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus {tanya?.ids.length} draf area?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {tanya?.ids.length} draf dari {tanya?.judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction
-                            variant="destructive"
-                            onClick={() => {
-                                const ids = tanya?.ids ?? [];
-                                setTanya(null);
-                                jalankan(() => hapusDrafMassal({ ids }));
-                            }}
-                        >
-                            Hapus {tanya?.ids.length} draf
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {dialogKonfirmasi}
         </Kartu>
     );
 }
