@@ -66,7 +66,7 @@ export async function daftarTipe() {
             periodeHari: assetTypes.periodeHari,
             isMobile: assetTypes.isMobile,
             aktif: assetTypes.aktif,
-            jumlahAset: sql<number>`(select count(*)::int from ${assets} where ${assets.assetTypeId} = ${assetTypes.id} and ${assets.aktif})`,
+            jumlahAset: sql<number>`(select count(*)::int from ${assets} a where a.asset_type_id = ${assetTypes}.id and a.aktif)`,
         })
         .from(assetTypes)
         .orderBy(asc(assetTypes.urut));

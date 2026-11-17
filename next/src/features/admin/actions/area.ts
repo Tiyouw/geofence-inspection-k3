@@ -5,7 +5,7 @@
  * (aksiAdmin), memakai JSON, dan memvalidasi ulang geometri di peladen. Poligon hasil impor
  * dan suntingan disimpan sebagai draf; gerbang hanya memakai poligon yang sudah disetujui.
  */
-import { and, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -214,9 +214,12 @@ export async function buatArea(masukan: z.input<typeof skemaBaru>): Promise<Hasi
  */
 export async function jadikanKawasan(masukan: z.input<typeof skemaId>): Promise<HasilAksi> {
     return aksiAdmin(skemaId, masukan, async (d, user) => {
-        const [a] = await db.select({ id: areas.id, jumlah: sql<number>`(select count(*)::int from ${assets} where ${assets.areaId} = ${areas.id})` }).from(areas).where(eq(areas.id, d.id));
+        const [a] = await db.select({ id: areas.id }).from(areas).where(eq(areas.id, d.id));
         if (!a) return { ok: false, status: 404, pesan: "Area tidak ditemukan." };
-        if (a.jumlah > 0) {
+        // Hitung terpisah dengan eq(): subkueri sql`` di select satu tabel membuat kolom tanpa
+        // nama tabel, sehingga "id" terikat ke assets.id, bukan ke area ini (bug impor kawasan).
+        const [{ jumlah } = { jumlah: 0 }] = await db.select({ jumlah: count() }).from(assets).where(eq(assets.areaId, d.id));
+        if (jumlah > 0) {
             return { ok: false, status: 422, pesan: "Area ini masih memiliki aset. Pindahkan asetnya ke gedung lebih dulu." };
         }
         await db.transaction(async (tx) => {
