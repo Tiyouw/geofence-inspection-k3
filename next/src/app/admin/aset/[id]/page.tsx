@@ -41,7 +41,7 @@ export default async function UbahAset({ params }: PageProps<"/admin/aset/[id]">
                     }}
                     tipe={p.tipe}
                     divisi={p.divisi}
-                    gedung={p.gedung}
+                    area={p.area}
                     labelKirim="Simpan perubahan"
                     terakhirDicekLabel={
                         a.terakhirDicek ? formatTanggal(a.terakhirDicek + "T00:00:00+07:00") : "Belum pernah"

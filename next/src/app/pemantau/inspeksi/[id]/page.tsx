@@ -11,8 +11,8 @@ import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { labelLokasi, perluTinjauan } from "@/features/laporan/rakit";
 import { Lencana, LencanaGerbang, LencanaKesimpulan, NADA_TINGKAT, Tabel, labelNilai } from "@/features/laporan/ui";
 import { requireRole } from "@/lib/auth/guards";
-import { radiusEfektif } from "@/lib/domain/asset";
-import { DURASI_WAJAR_DETIK, LABEL_HASIL_TINJAUAN, LABEL_TINDAKAN } from "@/lib/domain/constants";
+import { Peta, type TitikTampil } from "@/features/admin/components/peta";
+import { DURASI_WAJAR_DETIK, LABEL_GATE_ALASAN, LABEL_HASIL_TINJAUAN, LABEL_TINDAKAN } from "@/lib/domain/constants";
 import { severityJawaban, simbolJawaban } from "@/lib/domain/jawaban";
 
 export const metadata: Metadata = { title: "Detail inspeksi" };
@@ -38,7 +38,10 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
   const [d, perButir] = await Promise.all([detailInspeksi(id), fotoPerButir(id)]);
   if (!d || d.ins.status !== "final") notFound();
   const i = d.ins;
-  const radius = radiusEfektif({ radiusAset: d.aset.radiusM, lokasiTipe: d.aset.lokasiTipe });
+  const titik: TitikTampil[] = [];
+  if (d.aset.lat != null && d.aset.lng != null) titik.push({ id: 1, lat: d.aset.lat, lng: d.aset.lng, judul: `Titik aset ${d.aset.kode}`, warna: "primary" });
+  if (i.gpsLat != null && i.gpsLng != null)
+    titik.push({ id: 2, lat: i.gpsLat, lng: i.gpsLng, judul: "Posisi inspektur", rincian: `akurasi ±${i.gpsAccuracy ?? "-"} m`, warna: "info", cincin: true });
   const tahun = i.inspectedAt ? tanggalIso(i.inspectedAt).slice(0, 4) : "";
 
   return (
@@ -84,10 +87,10 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
               <Baris label="Pengiriman">{i.offline ? "Lewat antrean luring" : "Daring"}</Baris>
               <Baris label="Gerbang lokasi">
                 <LencanaGerbang status={i.gateStatus} />
+                {i.gateAlasan && <span className="ml-2 text-muted-foreground">{LABEL_GATE_ALASAN[i.gateAlasan]}</span>}
               </Baris>
-              <Baris label="Jarak ke titik aset">
-                {i.jarakM != null ? `${i.jarakM} m` : "-"}
-                {radius != null && <span className="text-muted-foreground"> (batas {radius} m)</span>}
+              <Baris label="Jarak ke area">
+                {i.jarakKeAreaM != null ? `${i.jarakKeAreaM} m dari tepi ${d.area?.nama ?? "area"}` : "-"}
               </Baris>
               <Baris label="Akurasi GPS">{i.gpsAccuracy != null ? `±${i.gpsAccuracy} m` : "-"}</Baris>
               <Baris label="Koordinat">{i.gpsLat != null && i.gpsLng != null ? `${i.gpsLat}, ${i.gpsLng}` : "-"}</Baris>
@@ -124,6 +127,20 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
           </CardContent>
         </Card>
       </div>
+
+      {titik.length > 0 && (
+        <section aria-labelledby="judul-peta" className="mt-6">
+          <h2 id="judul-peta" className="mb-3 text-lg font-semibold">
+            Poligon area dan posisi inspektur
+          </h2>
+          <Peta
+            titik={titik}
+            poligon={d.area?.polygon ? [{ geojson: d.area.polygon, judul: d.area.nama ?? "Area aset", warna: "info" }] : []}
+            tinggi={300}
+            label="Peta posisi inspeksi"
+          />
+        </section>
+      )}
 
       <section aria-labelledby="judul-foto" className="mt-6">
         <h2 id="judul-foto" className="mb-3 text-lg font-semibold">

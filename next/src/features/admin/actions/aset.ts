@@ -4,12 +4,19 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { assets } from "@/db/schema";
+import { areas, assets } from "@/db/schema";
 import { buatTokenQr } from "@/lib/domain/asset";
 import { skemaAset, type MasukanAset } from "../lib/skema";
 import { aksiAdmin, catatAudit, dariForm, langgarUnik, type HasilAksi } from "../server/aksi";
 
-function nilaiKolom(d: MasukanAset) {
+/** Nama gedung lama (teks) disalin dari area supaya tampilan lama tetap terisi. */
+async function namaArea(areaId: number | null): Promise<string | null> {
+    if (!areaId) return null;
+    const [a] = await db.select({ nama: areas.nama }).from(areas).where(eq(areas.id, areaId));
+    return a?.nama ?? null;
+}
+
+function nilaiKolom(d: MasukanAset, gedung: string | null) {
     const attributes: Record<string, unknown> = {};
     if (d.jenis) attributes.jenis = d.jenis;
     if (d.kapasitasKg !== null) attributes.kapasitas_kg = d.kapasitasKg;
@@ -18,13 +25,12 @@ function nilaiKolom(d: MasukanAset) {
         kode: d.kode,
         divisionId: d.divisionId,
         aktif: d.aktif,
-        gedung: d.gedung,
+        areaId: d.areaId,
+        gedung,
         lantai: d.lantai,
         lokasiTeks: d.lokasiTeks,
-        lokasiTipe: d.lokasiTipe,
         lat: d.lat,
         lng: d.lng,
-        radiusM: d.radiusM,
         tglExpired: d.tglExpired,
         attributes,
     };
@@ -44,7 +50,7 @@ export async function buatAset(_prev: unknown, fd: FormData): Promise<HasilAksi<
             const id = await db.transaction(async (tx) => {
                 const [baru] = await tx
                     .insert(assets)
-                    .values({ ...nilaiKolom(d), qrToken: buatTokenQr() })
+                    .values({ ...nilaiKolom(d, await namaArea(d.areaId)), qrToken: buatTokenQr() })
                     .returning({ id: assets.id });
                 await catatAudit(tx, user, "aset.buat", "asset", baru!.id, { kode: d.kode });
                 return baru!.id;
@@ -64,7 +70,7 @@ export async function ubahAset(id: number, _prev: unknown, fd: FormData): Promis
             const ada = await db.transaction(async (tx) => {
                 const [lama] = await tx.select().from(assets).where(eq(assets.id, id)).for("update");
                 if (!lama) return false;
-                const baru = nilaiKolom(d);
+                const baru = nilaiKolom(d, d.areaId ? await namaArea(d.areaId) : lama.gedung);
                 await tx.update(assets).set(baru).where(eq(assets.id, id));
                 const berubah = Object.fromEntries(
                     Object.entries(baru)

@@ -281,27 +281,11 @@ export function tenggatTemuan(tanggalInspeksi: string, severity: Severity): stri
   return tambahHari(tanggalInspeksi, TENGGAT_HARI[severity]);
 }
 
-/* ---------- pesan gerbang (SPEC §3.5) ---------- */
-
-export function pesanGerbang(status: string, jarak: number | null, radius: number | null): string {
-  switch (status) {
-    case "sesuai":
-      return "Lokasi sesuai.";
-    case "perlu_review":
-      return `Anda berjarak ${jarak} m dari titik aset (batas ${radius} m). Inspeksi tetap dapat dikirim dan akan ditinjau Admin K3.`;
-    case "jauh":
-      return `Anda berjarak ${jarak} m dari titik aset, jauh di luar batas ${radius} m. Pastikan stiker yang dipindai benar.`;
-    case "gps_lemah":
-      return "Sinyal GPS lemah, posisi tidak dapat dipastikan. Ini tidak dihitung sebagai pelanggaran.";
-    case "tidak_berlaku":
-      return "Objek bergerak, pemeriksaan lokasi tidak diberlakukan.";
-    default:
-      return "Lokasi tidak terdeteksi. Inspeksi tetap dapat dikirim.";
-  }
-}
+/* ---------- label gerbang (pesan gerbang v2 ada di src/lib/geo/gerbang.ts) ---------- */
 
 export const LABEL_GERBANG: Record<string, string> = {
   sesuai: "Lokasi sesuai",
+  perlu_tinjauan: "Perlu tinjauan",
   perlu_review: "Perlu ditinjau",
   jauh: "Jauh dari aset",
   gps_lemah: "GPS lemah",

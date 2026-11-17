@@ -17,7 +17,6 @@ import {
   schedules,
 } from "@/db/schema";
 import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
-import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
 import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, TINDAKAN_REKOMENDASI, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
 import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
@@ -25,6 +24,8 @@ import { bangunTemuan, periksaKirim, waktuResmi, type ButirChecklist, type Temua
 import { jatuhTempoUntuk, periodeUntuk } from "@/lib/domain/jadwal";
 import { identitasDamkar, type AtributDamkar } from "@/lib/domain/modul/damkar";
 import { lokasiTemuan } from "@/lib/domain/temuan";
+import { nilaiGerbangAset } from "@/lib/geo/data";
+import { PESAN_LOKASI_MATI, pesanDitolak, type HasilGerbang } from "@/lib/geo/gerbang";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
@@ -326,8 +327,19 @@ async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
  * Inspeksi yang sudah final mengembalikan hasil yang sama (idempoten).
  */
 export async function finalisasi(user: SessionUser, inspectionId: string, input: z.infer<typeof finalizeSchema>): Promise<HasilFinal> {
+  const hasil = await finalisasiTx(user, inspectionId, input);
+  if ("ditolak" in hasil) {
+    // Dilempar SETELAH transaksi selesai supaya baris audit penolakan tetap tersimpan.
+    throw new GalatApi(422, "di_luar_kawasan", pesanDitolak(hasil.ditolak.jarakKeKawasanM), {
+      jarakKeKawasanM: hasil.ditolak.jarakKeKawasanM,
+    });
+  }
+  return hasil;
+}
+
+async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.infer<typeof finalizeSchema>) {
   const receivedAt = new Date();
-  return db.transaction(async (tx) => {
+  return db.transaction(async (tx): Promise<HasilFinal | { ditolak: HasilGerbang }> => {
     const ins = await drafMilik(tx, user, inspectionId, true);
     if (!ins) throw new GalatApi(409, "draf_tidak_ada", "Draf belum ada di peladen.");
     if (ins.status === "final") return ringkasan(tx, inspectionId);
@@ -396,11 +408,31 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       input.token === aset.qrToken ||
       (!!aset.qrTokenRotatedAt && !!scannedTerkoreksi && scannedTerkoreksi < aset.qrTokenRotatedAt && ins.qrVerified);
 
-    // Gerbang GPS dihitung ulang dari nilai mentah (SPEC §7.3 butir 3).
-    const radius = tipe.isMobile ? null : radiusEfektif({ radiusAset: aset.radiusM, lokasiTipe: aset.lokasiTipe });
-    const jarak = input.gps ? jarakMeter(input.gps, aset) : null;
-    const akurasi = input.gps ? Math.round(input.gps.accuracy) : null;
-    const gateStatus = evaluasiGerbang({ radius, jarak, akurasi });
+    // Gerbang lokasi poligon (PRD "Aturan gerbang lokasi", ADR-2/7). Peladen adalah otoritas:
+    // dihitung ulang dari posisi mentah dengan poligon yang sudah disetujui.
+    const gerbang = await nilaiGerbangAset(tx, { areaId: aset.areaId, bergerak: tipe.isMobile }, input.gps ?? null);
+    if (gerbang.hasil === "diblokir") throw new GalatApi(422, "lokasi_wajib", PESAN_LOKASI_MATI);
+    if (gerbang.hasil === "ditolak") {
+      // Penolakan tidak menjadi inspeksi; dicatat di jejak audit dengan koordinat dan jarak.
+      await tx.insert(auditLogs).values({
+        userId: user.id,
+        aksi: "inspeksi.ditolak_lokasi",
+        entitas: "inspection",
+        entitasId: inspectionId,
+        data: {
+          assetId: aset.id,
+          lat: input.gps!.lat,
+          lng: input.gps!.lng,
+          akurasi: input.gps!.accuracy,
+          jarakKeKawasanM: gerbang.jarakKeKawasanM,
+          jarakKeAreaM: gerbang.jarakKeAreaM,
+        },
+      });
+      return { ditolak: gerbang } as const;
+    }
+    const gateStatus = gerbang.status!;
+    const jarak = gerbang.jarakKeAreaM;
+    const akurasi = input.gps ? Math.min(Math.round(input.gps.accuracy), 32767) : null;
 
     const waktu = waktuResmi({
       receivedAt,
@@ -430,9 +462,12 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
         gpsAccuracy: akurasi,
         gpsCapturedAt: input.gps?.capturedAt ? new Date(input.gps.capturedAt) : null,
         jarakM: jarak,
+        jarakKeAreaM: jarak,
         gateStatus,
+        gateAlasan: gerbang.alasan,
+        detectedAreaId: gerbang.areaTerdeteksiId,
         // PRD Aturan bukti 4: area terbatas otomatis ditandai dan masuk antrean tinjauan.
-        restrictedArea: areaTerbatas,
+        restrictedArea: areaTerbatas || gerbang.areaTerbatas,
         qrVerified,
         qrVerification: input.qrVerification,
         kesimpulan: input.kesimpulan,
@@ -489,7 +524,7 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       aksi: "inspeksi.final",
       entitas: "inspection",
       entitasId: inspectionId,
-      data: { gateStatus, offline: waktu.offline, qrVerified },
+      data: { gateStatus, gateAlasan: gerbang.alasan, restrictedArea: areaTerbatas || gerbang.areaTerbatas, offline: waktu.offline, qrVerified },
     });
 
     return ringkasan(tx, inspectionId);

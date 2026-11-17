@@ -57,7 +57,6 @@ export default function PetaLeaflet({
     tinggi = 360,
     pilih,
     onPilih,
-    radius,
     poligon,
     lingkaran,
     label = "Peta lokasi aset",
@@ -67,8 +66,6 @@ export default function PetaLeaflet({
     /** Mode pemilih: titik terpilih saat ini (atau null). */
     pilih?: { lat: number; lng: number } | null;
     onPilih?: (p: { lat: number; lng: number }) => void;
-    /** Lingkaran radius gerbang di sekitar titik terpilih (meter). */
-    radius?: number | null;
     poligon?: PoligonTampil[];
     lingkaran?: LingkaranTampil[];
     label?: string;
@@ -164,17 +161,9 @@ export default function PetaLeaflet({
             fillColor: warnaToken("brand"),
             fillOpacity: 1,
         }).addTo(g);
-        if (radius) {
-            L.circle([pilih.lat, pilih.lng], {
-                radius,
-                color: warnaToken("brand"),
-                weight: 1.5,
-                fillOpacity: 0.08,
-            }).addTo(g);
-        }
         if (!m.getBounds().contains([pilih.lat, pilih.lng]))
             m.setView([pilih.lat, pilih.lng], Math.max(m.getZoom(), 17));
-    }, [pilih, radius]);
+    }, [pilih]);
 
     return (
         <div

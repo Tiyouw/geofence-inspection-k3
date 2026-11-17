@@ -39,7 +39,7 @@ test.describe("daring", () => {
     const id = new URL(page.url()).searchParams.get("id")!;
     await expect(page.getByRole("heading", { name: "20D" })).toBeVisible();
     await expect(page.getByText("Permenaker 4/1980 Pasal 12(1)a").first()).toBeVisible();
-    await expect(page.getByTestId("pesan-gps")).toHaveText("Lokasi sesuai.");
+    await expect(page.getByTestId("pesan-gps")).toContainText("Posisi Anda di");
 
     // Tanpa foto belum bisa dikirim (F1)
     await isiSemua(page, { volume: "Tidak penuh" });
@@ -72,22 +72,7 @@ test.describe("daring", () => {
     expect((await q("select 1 from inspection_answers where inspection_id = $1", [id])).length).toBe(10);
   });
 
-  test("posisi jauh tetap bisa dikirim dan ditandai", async ({ page, context }) => {
-    const a = await aset("21D");
-    await context.grantPermissions(["geolocation"]);
-    await context.setGeolocation({ latitude: a.lat + 0.01, longitude: a.lng, accuracy: 10 });
-    await masuk(page, "inspektur");
-    await page.goto("/petugas/pindai");
-    await page.getByLabel(/Kode cadangan/).fill(`https://stiker-lama.example/i/${a.token}`);
-    await page.getByRole("button", { name: "Buka" }).click();
-    await expect(page).toHaveURL(/\/petugas\/isi\?id=/);
-    await expect(page.getByTestId("pesan-gps")).toContainText("jauh di luar batas 75 m");
-    await isiSemua(page, { volume: "Penuh" });
-    await fotoSemuaLangkah(page);
-    await page.getByRole("button", { name: "Kirim", exact: true }).click();
-    await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId("hasil-terkirim")).toContainText("Jauh dari aset");
-  });
+  // Penolakan di luar galangan, perlu tinjauan, GPS lemah, dan lokasi mati: lihat gerbang.spec.ts.
 
   test("QR lain ditolak; admin yang membuka stiker tidak membuat draf", async ({ page }) => {
     await masuk(page, "inspektur");

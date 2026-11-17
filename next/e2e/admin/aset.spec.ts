@@ -6,10 +6,11 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         await masuk(page, "admin");
     });
 
-    test("daftar aset merender dengan radius efektif dan filter yang saling menghormati", async ({ page }) => {
+    test("daftar aset merender dengan area dan filter yang saling menghormati", async ({ page }) => {
         await page.goto("/admin/aset");
         await expect(page.getByRole("heading", { name: "Aset & APAR" })).toBeVisible();
-        await expect(page.getByRole("cell", { name: /m \(bawaan\)|tanpa gerbang|m \(khusus\)/ }).first()).toBeVisible();
+        await expect(page.getByRole("columnheader", { name: "Area" })).toBeVisible();
+        await expect(page.getByRole("cell", { name: "Gedung PIP" }).first()).toBeVisible();
         await page.goto("/admin/aset?gedung=Area%20Terbuka&tanpa_koordinat=1");
         // Seed: semua aset Area Terbuka berkoordinat, jadi gabungan filter kosong.
         await expect(page.getByText("Tidak ada aset yang cocok")).toBeVisible();
@@ -20,21 +21,16 @@ test.describe("aset (H1-H3, C1, C7)", () => {
     test("formulir menolak koordinat tak sah, lalu menyimpan, mengubah, dan mengganti token", async ({ page }) => {
         const kode = `E2E-${Date.now().toString(36)}`;
         await page.goto("/admin/aset/baru");
-        await expect(page.getByText("radius bawaan 75 m")).toBeVisible();
-        await page.getByLabel("Jenis lokasi").selectOption("kendaraan");
-        await expect(page.getByText("gerbang GPS tidak diberlakukan")).toBeVisible();
-        await page.getByLabel("Jenis lokasi").selectOption("bengkel");
+        await expect(page.getByLabel("Radius khusus (m)")).toHaveCount(0);
+        await page.getByLabel("Area", { exact: true }).selectOption({ label: "Gedung PIP" });
         await page.getByLabel("Nomor aset").fill(kode);
         await page.getByLabel("Uraian lokasi").fill("Uji otomatis dinding utara");
         await page.getByLabel("Lintang").fill("95");
         await page.getByLabel("Bujur").fill("112.7");
-        await page.getByLabel("Radius khusus (m)").fill("3");
         await page.getByRole("button", { name: "Simpan aset" }).click();
         await expect(page.getByText("Lintang maksimal 90.")).toBeVisible();
-        await expect(page.getByText("Radius khusus minimal 5.")).toBeVisible();
 
         await page.getByLabel("Lintang").fill("-7,2051");
-        await page.getByLabel("Radius khusus (m)").fill("");
         await page.getByRole("button", { name: "Simpan aset" }).click();
         await expect(page).toHaveURL(/\/admin\/aset\/\d+$/);
         await expect(page.getByRole("heading", { name: `Aset ${kode}` })).toBeVisible();
@@ -48,7 +44,8 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         expect(token1).not.toContain(kode);
 
         // Ubah tanpa menyentuh token.
-        await page.getByLabel("Gedung").fill("Gedung Uji");
+        await expect(page.getByLabel("Area", { exact: true })).toHaveValue(/\d+/);
+        await page.getByLabel("Area", { exact: true }).selectOption("");
         await page.getByRole("button", { name: "Simpan perubahan" }).click();
         await expect(page.getByText("Perubahan tersimpan.")).toBeVisible();
 

@@ -61,7 +61,13 @@ test("Idempotency-Key: ulangan sama → respons tersimpan; isi berbeda → 422; 
     answers: items.map((i) => ({ checklistItemId: i.id, nilai: i.answer_type === "select" ? i.options![0] : "ok" })),
     photoIds: [fotoId],
     kesimpulan: "layak",
+    // Gerbang lokasi: posisi wajib (ADR-7); titik aset ada di dalam poligon contoh.
+    gps: { lat: a.lat, lng: a.lng, accuracy: 10 },
   };
+  // Tanpa posisi → 422 lokasi_wajib, draf tetap.
+  const tanpaGps = await api.post(`/api/inspections/${id}/finalize`, { data: { ...body, gps: undefined } });
+  expect(tanpaGps.status()).toBe(422);
+  expect((await tanpaGps.json()).kode).toBe("lokasi_wajib");
   // Kesimpulan "layak" tanpa satu butir wajib → 422 dengan pesan peladen
   const kurang = await api.post(`/api/inspections/${id}/finalize`, { data: { ...body, answers: body.answers.slice(1) } });
   expect(kurang.status()).toBe(422);

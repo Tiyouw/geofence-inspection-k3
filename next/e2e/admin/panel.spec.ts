@@ -15,7 +15,7 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
             ["/admin/pengguna", "Pengguna"],
             ["/admin/pengguna/baru", "Tambah petugas"],
             ["/admin/jadwal", "Jadwal"],
-            ["/admin/lokasi", "Lokasi"],
+            ["/admin/lokasi", "Area dan poligon"],
             ["/admin/checklist", "Checklist"],
             ["/admin/audit", "Jejak audit"],
         ] as const) {

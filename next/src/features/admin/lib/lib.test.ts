@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { batasPeta, halamanAman, parseTab, persen, titikPeta, type AsetPeta } from "./dasbor";
-import { jatuhTempoPeriode, labelJadwal, labelRadius } from "./label";
+import { jatuhTempoPeriode, labelJadwal } from "./label";
 import { escapeLike, halamanUntuk, polaMengandung, tindakanUntuk } from "./pencarian";
 import { mundurBulan, parsePeriode, periodeDari, periodeJakarta, sisaHariBulan } from "./periode";
 import { buatSandiAcak } from "./sandi";
@@ -114,12 +114,6 @@ describe("dasbor (I3, I4, I6)", () => {
 });
 
 describe("label (H3, G10)", () => {
-    it("radius efektif bawaan, khusus, tanpa gerbang", () => {
-        expect(labelRadius(null, "dalam_gedung")).toBe("75 m (bawaan)");
-        expect(labelRadius(40, "dalam_gedung")).toBe("40 m (khusus)");
-        expect(labelRadius(null, "kendaraan")).toBe("tanpa gerbang");
-    });
-
     it("label jadwal", () => {
         expect(labelJadwal("selesai", "2026-11-30", "2026-12-05").label).toBe("Terlaksana");
         expect(labelJadwal("telat", "2026-11-30", "2026-12-05").label).toBe("Terlaksana (telat)");
@@ -166,16 +160,17 @@ describe("stiker (L7)", () => {
 });
 
 describe("skema masukan (H2, H8, H6, M3)", () => {
-    const asetSah = { assetTypeId: "1", kode: "01D", lokasiTeks: "Lorong", lokasiTipe: "dalam_gedung" };
+    const asetSah = { assetTypeId: "1", kode: "01D", lokasiTeks: "Lorong" };
 
-    it("aset: lat/lng/radius divalidasi dengan pesan Indonesia", () => {
+    it("aset: lat/lng divalidasi dengan pesan Indonesia; area opsional", () => {
         expect(skemaAset.safeParse(asetSah).success).toBe(true);
-        const r = skemaAset.safeParse({ ...asetSah, lat: "95", lng: "200", radiusM: "3" });
+        expect(skemaAset.parse({ ...asetSah, areaId: "4" }).areaId).toBe(4);
+        expect(skemaAset.parse({ ...asetSah, areaId: "" }).areaId).toBeNull();
+        const r = skemaAset.safeParse({ ...asetSah, lat: "95", lng: "200" });
         expect(r.success).toBe(false);
         const g = galatKolom(r.error!);
         expect(g.lat?.[0]).toBe("Lintang maksimal 90.");
         expect(g.lng?.[0]).toBe("Bujur maksimal 180.");
-        expect(g.radiusM?.[0]).toBe("Radius khusus minimal 5.");
     });
 
     it("aset: lintang tanpa bujur ditolak; koma desimal dibaca; token tidak diterima", () => {

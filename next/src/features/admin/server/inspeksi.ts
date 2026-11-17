@@ -2,7 +2,7 @@ import "server-only";
 import { alias } from "drizzle-orm/pg-core";
 import { and, asc, count, desc, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import {
+import { areas,
     assets,
     assetTypes,
     checklistGroups,
@@ -191,14 +191,16 @@ export async function detailInspeksi(id: string) {
             asetLantai: assets.lantai,
             asetLat: assets.lat,
             asetLng: assets.lng,
-            asetRadius: assets.radiusM,
-            asetLokasiTipe: assets.lokasiTipe,
+            jarakKeAreaM: inspections.jarakKeAreaM,
+            areaNama: areas.nama,
+            areaPolygon: areas.polygon,
             tipe: assetTypes.nama,
         })
         .from(inspections)
         .innerJoin(assets, eq(assets.id, inspections.assetId))
         .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
         .innerJoin(users, eq(users.id, inspections.userId))
+        .leftJoin(areas, eq(areas.id, assets.areaId))
         .leftJoin(peninjau, eq(peninjau.id, inspections.ditinjauOleh))
         .where(eq(inspections.id, id));
     if (!i) return null;

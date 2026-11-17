@@ -19,8 +19,8 @@ export function paketContoh(): PaketKerja {
     hmacKey: key.toString("base64"),
     periode: { mulai: "2026-11-01", hariIni: "2026-11-16", jatuhTempo: { 1: "2026-11-30" } },
     aset: [
-      { id: 10, kode: "01D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, areaTerbatas: false, qrTokenHash: h(TOKEN) },
-      { id: 11, kode: "02D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, radiusM: 75, media: null, areaTerbatas: true, qrTokenHash: h(TOKEN_LAIN) },
+      { id: 10, kode: "01D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, areaId: null, bergerak: false, media: null, areaTerbatas: false, qrTokenHash: h(TOKEN) },
+      { id: 11, kode: "02D", assetTypeId: 1, tipe: "APAR", gedung: "Gedung PIP", lantai: "Lt. 1", lokasiTeks: "Lorong", lat: -8.18, lng: 113.7, areaId: null, bergerak: false, media: null, areaTerbatas: true, qrTokenHash: h(TOKEN_LAIN) },
     ],
     checklist: { 1: [{ kode: "A", nama: "Isi", items }] },
     langkahFoto: {
@@ -33,6 +33,7 @@ export function paketContoh(): PaketKerja {
     terkirim: [],
     unit: "SAT. PK",
     asetUnitLain: [{ qrTokenHash: h(TOKEN_UNIT_LAIN), unit: "Divisi Matra & K3LH" }],
+    gerbang: { pengaturan: { toleransiGedungM: 30, toleransiKawasanM: 50, akurasiLemahM: 100 }, kawasan: null, area: {} },
   };
 }
 

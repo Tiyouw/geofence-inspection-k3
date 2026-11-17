@@ -16,7 +16,7 @@ export default async function AsetBaru() {
                 title="Tambah aset"
                 description="Token stiker QR dibuat otomatis dan acak; cetak stiker setelah aset tersimpan."
             />
-            <FormAset aksi={buatAset} tipe={p.tipe} divisi={p.divisi} gedung={p.gedung} labelKirim="Simpan aset" />
+            <FormAset aksi={buatAset} tipe={p.tipe} divisi={p.divisi} area={p.area} labelKirim="Simpan aset" />
         </>
     );
 }
