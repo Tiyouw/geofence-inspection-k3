@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { validasiDefinisiLangkah } from "../langkah-foto";
 import { bangunTemuan, periksaKirim, usulanKesimpulan, type ButirChecklist } from "../inspeksi";
 import { DEFINISI_HYDRANT_BOX, DEFINISI_HYDRANT_PILAR } from "../modul/hydrant";
 import {
@@ -206,5 +207,11 @@ describe("P3K lewat aturan umum (bangunTemuan, periksaKirim)", () => {
     expect(konteksP3k("p3k", {}, "2026-11-17")).toEqual({ tipeKotak: "A", hariIni: "2026-11-17" });
     expect(konteksP3k("p3k", { tipe_kotak: "C" }, "2026-11-17")?.tipeKotak).toBe("C");
     expect(konteksP3k("apar", { tipe_kotak: "C" }, "2026-11-17")).toBeNull();
+  });
+});
+
+describe("langkah foto sah menurut validator sesi C", () => {
+  it.each([DEFINISI_P3K, DEFINISI_HYDRANT_BOX, DEFINISI_HYDRANT_PILAR])("$slug", (m) => {
+    expect(validasiDefinisiLangkah(m.langkahFoto, semuaButir(m).map((b) => b.urut))).toEqual([]);
   });
 });

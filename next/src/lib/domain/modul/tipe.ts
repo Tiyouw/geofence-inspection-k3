@@ -4,16 +4,13 @@
  * Sumber: PRD "Checklist per modul" dan "Aturan bukti" butir 3.
  */
 import type { AnswerType, Severity, TindakanRekomendasi, TipeKotakP3k } from "../constants";
+import type { DefinisiLangkahFoto } from "../langkah-foto";
+
+export type { DefinisiLangkahFoto };
 
 /** Tipe kotak P3K (Permenakertrans PER.15/MEN/VIII/2008 Lampiran II/III). */
 export type TipeKotak = TipeKotakP3k;
 
-/**
- * Satu langkah kamera terpandu. Bentuk disepakati dengan sesi C (kamera) dan E (damkar).
- * `butir` berisi nilai `urut` butir checklist per tipe aset; urutan larik = urutan langkah.
- * TODO saat sesi C merge: ganti dengan impor dari ../langkah-foto.
- */
-export type DefinisiLangkahFoto = { kode: string; judul: string; petunjuk?: string; butir: number[] };
 
 export type DefinisiButir = {
   /** Urut global per tipe aset: kunci seed yang stabil. */
