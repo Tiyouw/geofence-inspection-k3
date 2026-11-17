@@ -17,6 +17,7 @@ import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as s from "../schema";
+import { seedP3kHydrant } from "./modul-p3k-hydrant";
 import { buatTokenQr, tebakLokasiTipe } from "../../lib/domain/asset";
 import { hariIniJakarta } from "../../lib/format";
 import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
@@ -463,6 +464,9 @@ async function main() {
     await apar(tx, aparId, div[DIVISI.satPk]!);
     await areaDariGedung(tx);
     await contohOperasional(tx);
+    // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
+    await seedP3kHydrant(tx);
+    await areaDariGedung(tx);
   });
 }
 
