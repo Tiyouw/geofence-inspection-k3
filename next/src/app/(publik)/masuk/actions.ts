@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { signIn } from "@/lib/auth";
+import { masukDenganPeran } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -29,8 +29,9 @@ export async function masuk(_prev: MasukState, formData: FormData): Promise<Masu
     const nip = String(formData.get("nip") ?? "");
     if (!parsed.success) return { error: parsed.error.issues[0]?.message, nip };
 
+    let role: Role | null;
     try {
-        await signIn("credentials", { nip: parsed.data.nip, password: parsed.data.password, redirect: false });
+        role = await masukDenganPeran(parsed.data.nip, parsed.data.password);
     } catch (e) {
         if (e instanceof AuthError) {
             const code = (e as AuthError & { code?: string }).code ?? "";
@@ -43,15 +44,19 @@ export async function masuk(_prev: MasukState, formData: FormData): Promise<Masu
         throw e;
     }
 
-    // Cookie sesi baru belum terbaca pada permintaan ini, jadi peran diambil langsung dari DB.
-    const [user] = await db
-        .select({ role: users.role })
-        .from(users)
-        .where(eq(users.nip, parsed.data.nip.toLowerCase()))
-        .limit(1);
-    if (!user) redirect("/masuk");
-    const tujuan = safeRedirect(user.role, parsed.data.callbackUrl);
-    if (parsed.data.js === "1") return { role: user.role, tujuan };
+    // Cookie sesi baru belum terbaca pada permintaan ini. Peran dari authorize pada permintaan
+    // yang sama; bila tidak tersedia, dibaca dari DB.
+    if (!role) {
+        const [user] = await db
+            .select({ role: users.role })
+            .from(users)
+            .where(eq(users.nip, parsed.data.nip.toLowerCase()))
+            .limit(1);
+        if (!user) redirect("/masuk");
+        role = user.role;
+    }
+    const tujuan = safeRedirect(role, parsed.data.callbackUrl);
+    if (parsed.data.js === "1") return { role, tujuan };
     redirect(tujuan);
 }
 
