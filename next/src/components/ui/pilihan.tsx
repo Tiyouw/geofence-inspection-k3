@@ -47,8 +47,8 @@ export function bacaOpsi(children: React.ReactNode, grup?: string): OpsiPilihan[
   return hasil;
 }
 
-/** Kunci unik item cmdk (juga bahan pencarian): label lalu nilai. */
-const kunciItem = (o: OpsiPilihan) => `${o.label} | ${o.value}`;
+/** Kunci unik item cmdk (juga bahan pencarian): label lalu nilai, tanpa spasi tepi (cmdk memangkas kunci item, tidak memangkas defaultValue). */
+const kunciItem = (o: OpsiPilihan) => `${o.label.trim()}|${o.value.trim()}`;
 
 type PerubahanPilihan = { target: { value: string; name?: string }; currentTarget: { value: string; name?: string } };
 
