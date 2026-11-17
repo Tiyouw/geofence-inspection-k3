@@ -9,4 +9,4 @@ export const Peta = dynamic(() => import("./peta-leaflet"), {
     loading: () => <Skeleton className="h-[360px] w-full rounded-lg" />,
 });
 
-export type { TitikTampil } from "./peta-leaflet";
+export type { LingkaranTampil, PoligonTampil, TitikTampil } from "./peta-leaflet";

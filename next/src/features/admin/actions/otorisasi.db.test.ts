@@ -45,8 +45,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
     const s = await import("@/db/schema");
     const { sql, eq } = await import("drizzle-orm");
     const aset = await import("./aset");
-    const insp = await import("./inspeksi");
-    const temuan = await import("./temuan");
+    const { putuskanTinjauan } = await import("@/features/tinjauan/aksi");
     const peng = await import("./pengguna");
     const jadwal = await import("./jadwal");
     const { cari } = await import("./pencarian");
@@ -95,8 +94,8 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         return f;
     };
 
-    /** Aksi tulis data induk dan tinjauan; `tanpaTinjau` untuk Pemantau, yang boleh meninjau (ADR-9). */
-    const semuaAksi = (tanpaTinjau = false) => [
+    /** Aksi tulis data induk. Tinjauan diuji terpisah: Pemantau boleh meninjau (ADR-9). */
+    const semuaAksi = () => [
         () =>
             aset.buatAset(
                 null,
@@ -110,12 +109,6 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
             ),
         () => aset.gantiTokenAset(asetId),
         () => aset.lihatTokenAset(asetId),
-        ...(tanpaTinjau ? [] : [() => insp.tandaiDitinjau(null, fd({ id: inspeksiId, catatanReview: "Alasan cukup panjang" }))]),
-        () => insp.simpanCatatanReview(null, fd({ id: inspeksiId, catatanReview: "x" })),
-        () => temuan.tetapkanTenggat(null, fd({ id: String(issueId), targetSelesai: "2099-01-01" })),
-        () => temuan.ubahStatusTemuan(null, fd({ id: String(issueId), ke: "selesai", uraian: "Uraian cukup panjang" })),
-        () => temuan.tetapkanPic(null, fd({ id: String(issueId), picUserId: "" })),
-        () => temuan.buatTemuan(null, fd({ assetId: String(asetId), item: "x", severity: "berat" })),
         () => peng.buatPengguna(null, fd({ nip: "x-otorisasi", name: "x", role: "admin", password: "sandi-panjang" })),
         () => peng.ubahPengguna(akun.admin!.id, null, fd({ nip: "admin", name: "x", role: "inspektur", aktif: "on" })),
         () => peng.aturAktifPengguna(akun.admin!.id, false),
@@ -134,7 +127,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         (select count(*) from audit_logs)::int a, (select count(*) from issue_events)::int e,
         (select qr_token from assets where id = ${asetId}) t, (select status from issues where id = ${issueId}) s,
         (select ditinjau_pada from inspections where id = ${inspeksiId}) d`);
-            for (const aksi of semuaAksi(peran === "pemantau")) {
+            for (const aksi of semuaAksi()) {
                 const r = await aksi();
                 expect(r.ok).toBe(false);
                 expect(r.ok === false && r.status).toBe(status);
@@ -164,30 +157,49 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         expect(u).toEqual({ role: "admin", aktif: true });
     });
 
-    it("pemantau meninjau; peninjau pertama tercatat, admin lalu 409; GPS tidak berubah (H6, ADR-9)", async () => {
+    const putuskan = (catatan = "Posisi di pintu bengkel, foto cocok dengan aset.") =>
+        putuskanTinjauan(null, fd({ id: inspeksiId, hasil: "ditolak", catatanReview: catatan }));
+
+    it("tinjauan: inspektur 403 dan tamu 401, tanpa perubahan (PRD F13)", async () => {
+        for (const [peran, status] of [
+            ["inspektur", 403],
+            [null, 401],
+        ] as const) {
+            sesi.user = peran ? akun[peran]! : null;
+            const r = await putuskan();
+            expect(r.ok === false && r.status).toBe(status);
+        }
+        const [i] = await db.select().from(s.inspections).where(eq(s.inspections.id, inspeksiId));
+        expect(i).toMatchObject({ ditinjauPada: null, hasilTinjauan: null });
+    });
+
+    it("tinjauan: catatan wajib; pemantau meninjau; peninjau pertama tercatat, kedua 409; GPS tidak berubah", async () => {
         sesi.user = akun.pemantau!;
-        const r = await insp.tandaiDitinjau(null, fd({ id: inspeksiId, catatanReview: "Diverifikasi lewat CCTV." }));
+        const pendek = await putuskan("pendek");
+        expect(pendek.ok === false && pendek.status).toBe(422);
+        const r = await putuskan();
         expect(r.ok).toBe(true);
         sesi.user = akun.admin!;
-        const ulang = await insp.tandaiDitinjau(
+        const ulang = await putuskanTinjauan(
             null,
-            fd({ id: inspeksiId, catatanReview: "Diverifikasi lewat CCTV." }),
+            fd({ id: inspeksiId, hasil: "diterima", catatanReview: "Admin mencoba meninjau ulang." }),
         );
         expect(ulang.ok === false && ulang.status).toBe(409);
         const [i] = await db.select().from(s.inspections).where(eq(s.inspections.id, inspeksiId));
-        expect(i).toMatchObject({ jarakM: 500, gateStatus: "jauh", ditinjauOleh: akun.pemantau!.id });
-    });
-
-    it("pemantau tidak boleh mengubah catatan tinjauan sesudahnya (hanya admin)", async () => {
-        sesi.user = akun.pemantau!;
-        const r = await insp.simpanCatatanReview(null, fd({ id: inspeksiId, catatanReview: "ubah" }));
-        expect(r.ok === false && r.status).toBe(403);
-    });
-
-    it("transisi temuan yang tidak sah ditolak (H9)", async () => {
-        sesi.user = akun.admin!;
-        const r = await temuan.ubahStatusTemuan(null, fd({ id: String(issueId), ke: "terbuka" }));
-        expect(r.ok === false && r.status).toBe(409);
+        expect(i).toMatchObject({
+            jarakM: 500,
+            gateStatus: "jauh",
+            hasilTinjauan: "ditolak",
+            ditinjauOleh: akun.pemantau!.id,
+        });
+        expect(i!.ditinjauPada).toBeInstanceOf(Date);
+        const [log] = await db
+            .select()
+            .from(s.auditLogs)
+            .where(eq(s.auditLogs.entitasId, inspeksiId))
+            .orderBy(sql`id desc`)
+            .limit(1);
+        expect(log).toMatchObject({ aksi: "inspeksi.tinjau", userId: akun.pemantau!.id });
     });
 
     it("pencarian: inspektur kosong; pemantau tanpa aset/tindakan; tidak mengembalikan token (K5, K6)", async () => {
@@ -210,7 +222,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
             ((await db.execute(sql`select count(*)::int n from schedules`)).rows[0] as { n: number }).n;
         const sebelum = await hitung();
         await ringkasanDasbor();
-        for (const t of ["berat", "lewat", "posisi", "belum"] as const) await antreanDasbor(t, 1);
+        for (const t of ["berat", "tinjauan", "belum"] as const) await antreanDasbor(t, 1);
         expect(await hitung()).toBe(sebelum);
     });
 });

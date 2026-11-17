@@ -22,6 +22,18 @@ export type TitikTampil = {
     href?: string;
 };
 
+/** Poligon GeoJSON (WGS84) yang digambar di bawah titik, mis. gedung aset dan kawasan galangan. */
+export type PoligonTampil = {
+    geojson: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+    judul: string;
+    warna: string;
+    /** Garis putus-putus, mis. untuk kawasan. */
+    putus?: boolean;
+};
+
+/** Lingkaran berjari-jari meter, mis. akurasi GPS di sekitar posisi inspektur. */
+export type LingkaranTampil = { lat: number; lng: number; radius: number; warna: string; judul?: string };
+
 const PUSAT_BAWAAN: [number, number] = [-7.2054, 112.7378];
 
 function warnaToken(nama: string): string {
@@ -46,6 +58,8 @@ export default function PetaLeaflet({
     pilih,
     onPilih,
     radius,
+    poligon,
+    lingkaran,
     label = "Peta lokasi aset",
 }: {
     titik: TitikTampil[];
@@ -55,12 +69,15 @@ export default function PetaLeaflet({
     onPilih?: (p: { lat: number; lng: number }) => void;
     /** Lingkaran radius gerbang di sekitar titik terpilih (meter). */
     radius?: number | null;
+    poligon?: PoligonTampil[];
+    lingkaran?: LingkaranTampil[];
     label?: string;
 }) {
     const wadah = useRef<HTMLDivElement>(null);
     const peta = useRef<L.Map | null>(null);
     const lapisTitik = useRef<L.LayerGroup | null>(null);
     const lapisPilih = useRef<L.LayerGroup | null>(null);
+    const lapisBentuk = useRef<L.LayerGroup | null>(null);
     const onPilihRef = useRef(onPilih);
     useEffect(() => {
         onPilihRef.current = onPilih;
@@ -70,6 +87,7 @@ export default function PetaLeaflet({
         if (!wadah.current || peta.current) return;
         const m = L.map(wadah.current, { scrollWheelZoom: false }).setView(PUSAT_BAWAAN, 16);
         lapisanOsm().addTo(m);
+        lapisBentuk.current = L.layerGroup().addTo(m);
         lapisTitik.current = L.layerGroup().addTo(m);
         lapisPilih.current = L.layerGroup().addTo(m);
         m.on("click", (e: L.LeafletMouseEvent) => {
@@ -81,6 +99,31 @@ export default function PetaLeaflet({
             peta.current = null;
         };
     }, []);
+
+    useEffect(() => {
+        const m = peta.current;
+        const g = lapisBentuk.current;
+        if (!m || !g) return;
+        g.clearLayers();
+        const batas = L.latLngBounds([]);
+        for (const p of poligon ?? []) {
+            const warna = warnaToken(p.warna);
+            const lapis = L.geoJSON(p.geojson as GeoJSON.GeoJsonObject, {
+                style: { color: warna, weight: 2, fillOpacity: 0.08, dashArray: p.putus ? "6 6" : undefined },
+            })
+                .bindTooltip(esc(p.judul))
+                .addTo(g);
+            batas.extend(lapis.getBounds());
+        }
+        for (const c of lingkaran ?? []) {
+            const warna = warnaToken(c.warna);
+            const lapis = L.circle([c.lat, c.lng], { radius: c.radius, color: warna, weight: 1.5, fillOpacity: 0.12 }).addTo(g);
+            if (c.judul) lapis.bindTooltip(esc(c.judul));
+            batas.extend(lapis.getBounds());
+        }
+        for (const t of titik) batas.extend([t.lat, t.lng]);
+        if (batas.isValid() && (poligon?.length || lingkaran?.length)) m.fitBounds(batas, { padding: [24, 24], maxZoom: 18 });
+    }, [poligon, lingkaran, titik]);
 
     useEffect(() => {
         const m = peta.current;
@@ -102,11 +145,11 @@ export default function PetaLeaflet({
             c.bindPopup(isi);
             c.bindTooltip(esc(t.judul));
         }
-        if (!pilih) {
+        if (!pilih && !poligon?.length && !lingkaran?.length) {
             const b = batasPeta(titik);
             if (b) m.fitBounds(b, { padding: [24, 24], maxZoom: 18 });
         }
-    }, [titik, pilih]);
+    }, [titik, pilih, poligon, lingkaran]);
 
     useEffect(() => {
         const m = peta.current;

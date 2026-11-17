@@ -17,7 +17,7 @@ import {
   type Severity,
 } from "@/lib/domain/constants";
 import { labelLantai } from "@/lib/domain/asset";
-import { simbolJawaban, TINDAKAN_BAKU } from "@/lib/domain/jawaban";
+import { simbolJawaban } from "@/lib/domain/jawaban";
 import { bacaTipeKotak, butirIsiDari, kelengkapanP3k, nilaiIsi, type KondisiIsi } from "@/lib/domain/modul/p3k";
 import { SIMBOL_KEDALUWARSA, SIMBOL_KURANG, SIMBOL_TIDAK_ADA } from "./profil";
 import { NAMA_BULAN, tanggalIso } from "./format";
@@ -140,17 +140,6 @@ export function inspeksiTerakhirPerAset<T extends { assetId: number; inspectedAt
 const HARI = 86_400_000;
 
 /** Issue::umurHari: hari penuh sejak ditemukan sampai selesai atau sekarang. */
-export function umurHari(t: Pick<TemuanLaporan, "createdAt" | "selesaiPada">, now: Date): number {
-  return Math.max(0, Math.floor(((t.selesaiPada ?? now).getTime() - t.createdAt.getTime()) / HARI));
-}
-
-/** Tenggat lewat: target_selesai sebelum hari ini (WIB), sama dengan tab "Lewat tenggat" dasbor. */
-export function lewatTenggat(t: Pick<TemuanLaporan, "targetSelesai">, hariIni: string): boolean {
-  return t.targetSelesai !== null && t.targetSelesai < hariIni;
-}
-
-/* ---------- Lembar PMS dan ringkasan periode ---------- */
-
 export type BarisPms = {
   aset: AsetLaporan;
   lokasi: { utama: string; lantai: string | null };
@@ -276,45 +265,6 @@ export function rakitPeriode(input: {
   };
 }
 
-/* ---------- Rekap temuan ---------- */
-
-export type BarisRekap = {
-  no: number;
-  temuan: TemuanLaporan;
-  aset: AsetLaporan | undefined;
-  lokasi: { utama: string; lantai: string | null };
-  tindakan: string;
-  lewat: boolean;
-  umur: number;
-};
-
-export function rakitRekap(data: DataPeriode, now: Date) {
-  const hariIni = tanggalIso(now);
-  const asetById = new Map(data.baris.map((b) => [b.aset.id, b.aset]));
-  const baris = data.temuan.map((t, i): BarisRekap => {
-    const aset = asetById.get(t.assetId);
-    return {
-      no: i + 1,
-      temuan: t,
-      aset,
-      lokasi: aset ? lokasiAset(aset) : { utama: "-", lantai: null },
-      tindakan: t.tindakLanjut || TINDAKAN_BAKU[t.severity],
-      lewat: lewatTenggat(t, hariIni),
-      umur: umurHari(t, now),
-    };
-  });
-  return {
-    baris,
-    ringkas: {
-      terbuka: baris.length,
-      berat: baris.filter((b) => b.temuan.severity === "berat").length,
-      lewat: baris.filter((b) => b.lewat).length,
-      unitTerdampak: new Set(baris.map((b) => b.temuan.assetId)).size,
-      totalUnit: data.ringkas.total,
-    },
-  };
-}
-
 /* ---------- Kartu kontrol ---------- */
 
 export type InspeksiKartu = Pick<InspeksiLaporan, "inspectedAt" | "kesimpulan" | "gateStatus" | "ditinjauPada" | "petugas"> & {
@@ -348,57 +298,33 @@ export function rakitKartu(tahun: number, inspeksi: InspeksiKartu[], now: Date):
 /* ---------- Ringkasan pemantau (SPEC §5) ---------- */
 
 export type AngkaPantau = {
-  total: number;
-  diperiksa: number;
-  persen: number;
-  tidakLayak: number;
-  berat: number;
-  lewat: number;
-  posisi: number;
-  hari: number;
+    total: number;
+    diperiksa: number;
+    persen: number;
+    tidakLayak: number;
+    /** Temuan berat sejak awal bulan. */
+    berat: number;
+    /** Inspeksi yang menunggu tinjauan. */
+    tinjauan: number;
+    /** Per modul: "APAR 12/35", dinilai pada periode modulnya. */
+    perModul: { nama: string; sudah: number; total: number; mingguan: boolean }[];
 };
 
-/** RingkasanDasbor::narasi, tiga keadaan (ACCEPTANCE J2). */
+/** Narasi papan pantau lintas empat modul (PRD F14), tiga keadaan. */
 export function narasiPemantau(d: AngkaPantau, persenTeks: (n: number) => string): string {
-  if (d.total === 0) return "Belum ada APAR aktif. Ringkasan akan terisi setelah aset dan inspeksi tersedia.";
+  if (d.total === 0) return "Belum ada aset aktif. Ringkasan akan terisi setelah aset dan inspeksi tersedia.";
+  const rincian = d.perModul
+    .filter((m) => m.total > 0)
+    .map((m) => `${m.nama} ${m.sudah}/${m.total}${m.mingguan ? " minggu ini" : ""}`)
+    .join(", ");
   if (d.diperiksa === 0) {
-    return `Belum ada inspeksi bulan ini. ${d.total} APAR aktif menunggu pemeriksaan sebelum akhir bulan (sisa ${d.hari} hari).`;
+    return `Belum ada inspeksi pada periode ini. ${d.total} aset aktif menunggu pemeriksaan (${rincian}).`;
   }
   return (
-    `${d.diperiksa} dari ${d.total} APAR sudah diperiksa bulan ini (${persenTeks(d.persen)}%). ${d.tidakLayak} unit dinyatakan tidak layak pakai. ` +
-    `Ada ${d.berat} temuan berat dan ${d.lewat} temuan lewat tenggat yang belum selesai, ` +
-    `serta ${d.posisi} inspeksi yang menunggu tinjauan posisi.`
+    `${d.diperiksa} dari ${d.total} aset sudah diperiksa pada periodenya (${persenTeks(d.persen)}%): ${rincian}. ` +
+    `${d.tidakLayak} unit dinyatakan tidak layak pakai. Bulan ini tercatat ${d.berat} temuan berat, ` +
+    `dan ${d.tinjauan} inspeksi menunggu tinjauan.`
   );
-}
-
-export type TandaRisiko = "Berat" | "Lewat tenggat" | "Perlu perhatian";
-
-/**
- * Risiko terbuka (RingkasanDasbor::risiko, ACCEPTANCE J3): belum selesai, berat dulu,
- * lalu tenggat terdekat, tanpa tenggat paling akhir.
- */
-export function urutRisiko<T extends Pick<TemuanLaporan, "id" | "severity" | "targetSelesai" | "status">>(
-  temuan: T[],
-  hariIni: string,
-  batas = 5,
-): (T & { tanda: TandaRisiko[] })[] {
-  return temuan
-    .filter((t) => t.status !== "selesai")
-    .sort(
-      (a, b) =>
-        Number(a.severity !== "berat") - Number(b.severity !== "berat") ||
-        Number(a.targetSelesai === null) - Number(b.targetSelesai === null) ||
-        (a.targetSelesai ?? "").localeCompare(b.targetSelesai ?? "") ||
-        a.id - b.id,
-    )
-    .slice(0, batas)
-    .map((t) => {
-      const tanda: TandaRisiko[] = [];
-      if (t.severity === "berat") tanda.push("Berat");
-      if (lewatTenggat(t, hariIni)) tanda.push("Lewat tenggat");
-      else if (t.severity !== "berat") tanda.push("Perlu perhatian");
-      return { ...t, tanda };
-    });
 }
 
 /** Sisa hari bulan ini, seperti ceil(now→endOfMonth) di Laravel. */

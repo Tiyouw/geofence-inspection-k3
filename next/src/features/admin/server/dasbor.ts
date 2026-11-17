@@ -1,118 +1,37 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lt, ne, notExists, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, inspections, issues, users } from "@/db/schema";
-import { GATE_PERLU_TINJAUAN, KESIMPULAN, type Kesimpulan } from "@/lib/domain/constants";
-import { namaArea } from "@/lib/domain/label-aset";
-import { hariIniJakarta } from "@/lib/format";
-import { PER_HALAMAN_ANTREAN, halamanAman, persen, titikPeta, type TabAntrean } from "../lib/dasbor";
-import { mundurBulan, periodeJakarta, sisaHariBulan, type Periode } from "../lib/periode";
+import { areas, assets, assetTypes, inspections, issues, users } from "@/db/schema";
+import { progresSemuaModul, temuanSejak, trenEnamBulan } from "@/features/dasbor/server";
+import { hitungTinjauan, syaratAntreanTinjauan } from "@/features/tinjauan/server";
+import { lokasiTemuan } from "@/lib/domain/temuan";
+import { PER_HALAMAN_ANTREAN, halamanAman, titikPeta, type TabAntrean } from "../lib/dasbor";
+import { mundurBulan, periodeJakarta, sisaHariBulan } from "../lib/periode";
+
+/** Antrean tinjauan bersama Admin K3 dan Pemantau (features/tinjauan). */
+export { syaratAntreanTinjauan };
+
+/** Waktu temuan = waktu resmi inspeksinya; data lama memakai created_at. */
+const waktuTemuan = sql<Date>`coalesce(${inspections.inspectedAt}, ${issues.createdAt})`;
 
 /**
- * Ringkasan dasbor admin (RingkasanDasbor.php). Semua angka hanya APAR (SPEC §4.7).
+ * Ringkasan dasbor admin lintas empat modul (PRD F14): progres per modul pada periodenya,
+ * per gedung, kondisi, temuan bulan ini, antrean tinjauan, tren, dan peta aset bertitik.
  * Hanya membaca: membuka dasbor tidak pernah menulis jadwal (G11).
  */
-const tipeApar = sql`(select ${assetTypes.id} from ${assetTypes} where ${assetTypes.slug} = 'apar')`;
-const asetApar = eq(assets.assetTypeId, tipeApar);
-const asetAparAktif = and(eq(assets.aktif, true), asetApar);
-
-/** Antrean tinjauan: final ∧ gerbang menyimpang ∧ belum ditinjau (E7). */
-/** Antrean tinjauan: final, belum ditinjau, dan gerbang perlu tinjauan atau area terbatas (PRD F13). */
-export const syaratAntreanTinjauan = and(
-    eq(inspections.status, "final"),
-    or(inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), eq(inspections.restrictedArea, true)),
-    isNull(inspections.ditinjauPada),
-);
-
-const finalDalam = (p: Periode) =>
-    and(eq(inspections.status, "final"), gte(inspections.inspectedAt, p.awal), lt(inspections.inspectedAt, p.akhir));
-
-const temuanBelumSelesai = and(ne(issues.status, "selesai"), asetApar);
-
 export async function ringkasanDasbor(now = new Date()) {
     const p = periodeJakarta(now);
-    const hariIni = hariIniJakarta(now);
-
-    const [daftarAset, terakhir, antreAset, [berat], [lewat], [posisi], trenRows] = await Promise.all([
-        db
-            .select({
-                id: assets.id,
-                kode: assets.kode,
-                gedung: assets.gedung,
-                lantai: assets.lantai,
-                lokasiTeks: assets.lokasiTeks,
-                lat: assets.lat,
-                lng: assets.lng,
-            })
-            .from(assets)
-            .where(asetAparAktif)
-            .orderBy(asc(assets.kode)),
-        // Inspeksi final TERAKHIR per aset bulan ini.
-        db
-            .selectDistinctOn([inspections.assetId], {
-                assetId: inspections.assetId,
-                kesimpulan: inspections.kesimpulan,
-            })
-            .from(inspections)
-            .where(finalDalam(p))
-            .orderBy(inspections.assetId, desc(inspections.inspectedAt), desc(inspections.id)),
-        db
-            .selectDistinct({ assetId: inspections.assetId })
-            .from(inspections)
-            .innerJoin(assets, eq(assets.id, inspections.assetId))
-            .where(and(syaratAntreanTinjauan, asetApar)),
-        db
-            .select({ n: count() })
-            .from(issues)
-            .innerJoin(assets, eq(assets.id, issues.assetId))
-            .where(and(temuanBelumSelesai, eq(issues.severity, "berat"))),
-        db
-            .select({ n: count() })
-            .from(issues)
-            .innerJoin(assets, eq(assets.id, issues.assetId))
-            .where(and(temuanBelumSelesai, lt(issues.targetSelesai, hariIni))),
-        db
-            .select({ n: count() })
-            .from(inspections)
-            .innerJoin(assets, eq(assets.id, inspections.assetId))
-            .where(and(syaratAntreanTinjauan, asetApar)),
-        db
-            .select({
-                bulan: sql<string>`to_char(${inspections.inspectedAt} at time zone 'Asia/Jakarta', 'YYYY-MM')`,
-                n: sql<number>`count(distinct ${inspections.assetId})::int`,
-            })
-            .from(inspections)
-            .innerJoin(assets, eq(assets.id, inspections.assetId))
-            .where(
-                and(
-                    asetAparAktif,
-                    eq(inspections.status, "final"),
-                    gte(inspections.inspectedAt, mundurBulan(p, 5).awal),
-                    lt(inspections.inspectedAt, p.akhir),
-                ),
-            )
-            .groupBy(sql`1`),
+    const [progres, temuan, tinjauan, trenRows] = await Promise.all([
+        progresSemuaModul(now),
+        temuanSejak(p.awal),
+        hitungTinjauan(p.awal),
+        trenEnamBulan(mundurBulan(p, 5).awal, p.akhir),
     ]);
-
-    const kesimpulanAset = new Map(terakhir.map((r) => [r.assetId, r.kesimpulan]));
-    const tinjau = new Set(antreAset.map((r) => r.assetId));
-    const total = daftarAset.length;
-    const diperiksa = daftarAset.filter((a) => kesimpulanAset.has(a.id)).length;
-
-    const kondisi = Object.fromEntries(KESIMPULAN.map((k) => [k, 0])) as Record<Kesimpulan, number>;
-    for (const a of daftarAset) {
-        const k = kesimpulanAset.get(a.id);
-        if (k) kondisi[k]++;
-    }
-
-    const area = new Map<string, { total: number; sudah: number }>();
-    for (const a of daftarAset) {
-        const nama = namaArea(a);
-        const v = area.get(nama) ?? { total: 0, sudah: 0 };
-        v.total++;
-        if (kesimpulanAset.has(a.id)) v.sudah++;
-        area.set(nama, v);
-    }
+    const antre = await db
+        .selectDistinct({ assetId: inspections.assetId })
+        .from(inspections)
+        .where(syaratAntreanTinjauan);
+    const tinjau = new Set(antre.map((r) => r.assetId));
 
     const trenMap = new Map(trenRows.map((r) => [r.bulan, r.n]));
     const tren = Array.from({ length: 6 }, (_, i) => {
@@ -122,25 +41,34 @@ export async function ringkasanDasbor(now = new Date()) {
     });
 
     const peta = titikPeta(
-        daftarAset.map((a) => ({
-            ...a,
-            sudahDiperiksa: kesimpulanAset.has(a.id),
-            kesimpulan: kesimpulanAset.get(a.id) ?? null,
-            tinjau: tinjau.has(a.id),
-        })),
+        progres.aset
+            .filter((a) => a.lat != null && a.lng != null)
+            .map((a) => ({
+                id: a.id,
+                kode: a.kode,
+                gedung: a.area,
+                lantai: null,
+                lokasiTeks: a.lokasi,
+                lat: a.lat,
+                lng: a.lng,
+                sudahDiperiksa: progres.cek.has(a.id),
+                kesimpulan: progres.cek.get(a.id)?.kesimpulan ?? null,
+                tinjau: tinjau.has(a.id),
+            })),
     );
 
     return {
         periode: p,
-        total,
-        diperiksa,
-        persen: persen(diperiksa, total),
-        jumlah: { berat: berat?.n ?? 0, lewat: lewat?.n ?? 0, posisi: posisi?.n ?? 0, belum: total - diperiksa },
-        kondisi,
+        total: progres.total,
+        diperiksa: progres.sudah,
+        persen: progres.persen,
+        modul: progres.perModul,
+        area: progres.perArea,
+        kondisi: progres.kondisi,
+        jumlah: { berat: temuan.berat, tinjauan: tinjauan.menunggu, belum: progres.belum },
+        temuan,
+        tinjauan,
         tren,
-        area: [...area.entries()]
-            .map(([nama, v]) => ({ nama, ...v }))
-            .sort((a, b) => a.nama.localeCompare(b.nama, "id")),
         peta,
         sisaHari: sisaHariBulan(now),
     };
@@ -150,36 +78,26 @@ export type BarisTemuanAntrean = {
     jenis: "temuan";
     id: number;
     item: string;
-    severity: string;
-    targetSelesai: string | null;
-    createdAt: Date;
+    waktu: Date;
     asetKode: string;
-    asetLokasi: string;
-    asetGedung: string | null;
-    asetLantai: string | null;
+    modul: string;
+    lokasi: string;
 };
-export type BarisPosisiAntrean = {
-    jenis: "posisi";
+export type BarisTinjauanAntrean = {
+    jenis: "tinjauan";
     id: string;
     inspectedAt: Date | null;
-    jarakM: number | null;
     gpsAccuracy: number | null;
-    gateStatus: string;
+    gateStatus: (typeof inspections.$inferSelect)["gateStatus"];
+    gateAlasan: (typeof inspections.$inferSelect)["gateAlasan"];
+    restrictedArea: boolean;
     asetKode: string;
-    asetLokasi: string;
-    asetGedung: string | null;
-    asetLantai: string | null;
+    modul: string;
+    lokasi: string;
     inspektur: string;
 };
-export type BarisBelumAntrean = {
-    jenis: "belum";
-    id: number;
-    asetKode: string;
-    asetLokasi: string;
-    asetGedung: string | null;
-    asetLantai: string | null;
-};
-export type BarisAntrean = BarisTemuanAntrean | BarisPosisiAntrean | BarisBelumAntrean;
+export type BarisBelumAntrean = { jenis: "belum"; id: number; asetKode: string; modul: string; lokasi: string };
+export type BarisAntrean = BarisTemuanAntrean | BarisTinjauanAntrean | BarisBelumAntrean;
 
 /** Isi satu tab antrean, 6 per halaman; halaman di luar rentang dikoreksi (I3, I4). */
 export async function antreanDasbor(
@@ -187,99 +105,108 @@ export async function antreanDasbor(
     halamanDiminta: unknown,
     now = new Date(),
 ): Promise<{ baris: BarisAntrean[]; halaman: number; terakhir: number; total: number }> {
-    const hariIni = hariIniJakarta(now);
     const p = periodeJakarta(now);
     const per = PER_HALAMAN_ANTREAN;
     const kolomAset = {
         asetKode: assets.kode,
-        asetLokasi: assets.lokasiTeks,
-        asetGedung: assets.gedung,
-        asetLantai: assets.lantai,
+        modul: assetTypes.nama,
+        area: areas.nama,
+        gedung: assets.gedung,
+        lantai: assets.lantai,
+        lokasiTeks: assets.lokasiTeks,
     };
+    const lokasi = (r: { area: string | null; gedung: string | null; lantai: string | null; lokasiTeks: string }) =>
+        lokasiTemuan({ area: r.area, gedung: r.gedung, lantai: r.lantai, lokasiTeks: r.lokasiTeks });
 
-    if (tab === "berat" || tab === "lewat") {
-        const syarat =
-            tab === "berat"
-                ? and(temuanBelumSelesai, eq(issues.severity, "berat"))
-                : and(temuanBelumSelesai, lt(issues.targetSelesai, hariIni));
+    if (tab === "berat") {
+        const syarat = and(eq(issues.severity, "berat"), gte(waktuTemuan, p.awal));
         const [{ n } = { n: 0 }] = await db
             .select({ n: count() })
             .from(issues)
-            .innerJoin(assets, eq(assets.id, issues.assetId))
+            .leftJoin(inspections, eq(inspections.id, issues.inspectionId))
             .where(syarat);
         const { halaman, terakhir } = halamanAman(halamanDiminta, n, per);
         const rows = await db
-            .select({
-                id: issues.id,
-                item: issues.item,
-                severity: issues.severity,
-                targetSelesai: issues.targetSelesai,
-                createdAt: issues.createdAt,
-                ...kolomAset,
-            })
+            .select({ id: issues.id, item: issues.item, waktu: waktuTemuan, ...kolomAset })
             .from(issues)
             .innerJoin(assets, eq(assets.id, issues.assetId))
+            .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+            .leftJoin(areas, eq(areas.id, assets.areaId))
+            .leftJoin(inspections, eq(inspections.id, issues.inspectionId))
             .where(syarat)
-            .orderBy(
-                ...(tab === "berat"
-                    ? [asc(issues.createdAt), asc(issues.id)]
-                    : [asc(issues.targetSelesai), asc(issues.id)]),
-            )
+            .orderBy(sql`${waktuTemuan} desc`, asc(issues.id))
             .limit(per)
             .offset((halaman - 1) * per);
-        return { baris: rows.map((r) => ({ jenis: "temuan" as const, ...r })), halaman, terakhir, total: n };
+        return {
+            baris: rows.map((r) => ({
+                jenis: "temuan" as const,
+                id: r.id,
+                item: r.item,
+                waktu: new Date(r.waktu),
+                asetKode: r.asetKode,
+                modul: r.modul,
+                lokasi: lokasi(r),
+            })),
+            halaman,
+            terakhir,
+            total: n,
+        };
     }
 
-    if (tab === "posisi") {
-        const syarat = and(syaratAntreanTinjauan, asetApar);
-        const [{ n } = { n: 0 }] = await db
-            .select({ n: count() })
-            .from(inspections)
-            .innerJoin(assets, eq(assets.id, inspections.assetId))
-            .where(syarat);
+    if (tab === "tinjauan") {
+        const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(inspections).where(syaratAntreanTinjauan);
         const { halaman, terakhir } = halamanAman(halamanDiminta, n, per);
         const rows = await db
             .select({
                 id: inspections.id,
                 inspectedAt: inspections.inspectedAt,
-                jarakM: inspections.jarakM,
                 gpsAccuracy: inspections.gpsAccuracy,
                 gateStatus: inspections.gateStatus,
+                gateAlasan: inspections.gateAlasan,
+                restrictedArea: inspections.restrictedArea,
                 inspektur: users.name,
                 ...kolomAset,
             })
             .from(inspections)
             .innerJoin(assets, eq(assets.id, inspections.assetId))
+            .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+            .leftJoin(areas, eq(areas.id, assets.areaId))
             .innerJoin(users, eq(users.id, inspections.userId))
-            .where(syarat)
+            .where(syaratAntreanTinjauan)
             .orderBy(asc(inspections.inspectedAt), asc(inspections.id))
             .limit(per)
             .offset((halaman - 1) * per);
-        return { baris: rows.map((r) => ({ jenis: "posisi" as const, ...r })), halaman, terakhir, total: n };
+        return {
+            baris: rows.map(({ area, gedung, lantai, lokasiTeks, ...r }) => ({
+                jenis: "tinjauan" as const,
+                ...r,
+                lokasi: lokasi({ area, gedung, lantai, lokasiTeks }),
+            })),
+            halaman,
+            terakhir,
+            total: n,
+        };
     }
 
-    const belum = and(
-        asetAparAktif,
-        notExists(
-            db
-                .select({ x: sql`1` })
-                .from(inspections)
-                .where(and(eq(inspections.assetId, assets.id), finalDalam(p))),
-        ),
-    );
-    const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(assets).where(belum);
-    const { halaman, terakhir } = halamanAman(halamanDiminta, n, per);
-    const rows = await db
-        .select({ id: assets.id, ...kolomAset })
-        .from(assets)
-        .where(belum)
-        .orderBy(asc(assets.kode))
-        .limit(per)
-        .offset((halaman - 1) * per);
-    return { baris: rows.map((r) => ({ jenis: "belum" as const, ...r })), halaman, terakhir, total: n };
+    // Belum dicek pada periode modulnya (bulan; minggu untuk mobil pemadam).
+    const progres = await progresSemuaModul(now);
+    const belum = progres.aset.filter((a) => !progres.cek.has(a.id));
+    const { halaman, terakhir } = halamanAman(halamanDiminta, belum.length, per);
+    return {
+        baris: belum.slice((halaman - 1) * per, halaman * per).map((a) => ({
+            jenis: "belum" as const,
+            id: a.id,
+            asetKode: a.kode,
+            modul: a.modul,
+            lokasi: [a.area, a.lokasi === "-" ? null : a.lokasi].filter(Boolean).join(" · ") || "-",
+        })),
+        halaman,
+        terakhir,
+        total: belum.length,
+    };
 }
 
-/** Lencana menu Tinjauan = jumlah antrean (semua tipe aset). */
+/** Lencana menu Tinjauan = jumlah antrean (semua modul). */
 export async function jumlahAntreanTinjauan(): Promise<number> {
     const [r] = await db.select({ n: count() }).from(inspections).where(syaratAntreanTinjauan);
     return r?.n ?? 0;

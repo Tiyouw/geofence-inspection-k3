@@ -4,9 +4,8 @@ import { jatuhTempoPeriode, labelJadwal, labelRadius } from "./label";
 import { escapeLike, halamanUntuk, polaMengandung, tindakanUntuk } from "./pencarian";
 import { mundurBulan, parsePeriode, periodeDari, periodeJakarta, sisaHariBulan } from "./periode";
 import { buatSandiAcak } from "./sandi";
-import { galatKolom, skemaAset, skemaPengguna, skemaTinjau } from "./skema";
+import { galatKolom, skemaAset, skemaPengguna } from "./skema";
 import { bagiLembar, parseDaftarKode, parseTata, TATA_LETAK, ukuranLabel, urlStiker } from "./stiker";
-import { bolehTransisi, butuhUraian, lewatTenggat, urutTemuan } from "./temuan";
 
 describe("periode WIB", () => {
     it("awal bulan Jakarta = 17.00 UTC hari sebelumnya", () => {
@@ -36,9 +35,10 @@ describe("periode WIB", () => {
 });
 
 describe("dasbor (I3, I4, I6)", () => {
-    it("hanya empat tab yang diterima", () => {
+    it("hanya tiga tab yang diterima (tenggat temuan dihapus, ADR-4)", () => {
         expect(parseTab(undefined)).toBe("berat");
-        expect(parseTab("posisi")).toBe("posisi");
+        expect(parseTab("tinjauan")).toBe("tinjauan");
+        expect(parseTab("lewat")).toBeNull();
         expect(parseTab("hapus")).toBeNull();
         expect(parseTab(["berat", "lewat"])).toBeNull();
     });
@@ -165,31 +165,6 @@ describe("stiker (L7)", () => {
     });
 });
 
-describe("temuan (H9, I5)", () => {
-    it("transisi terkontrol", () => {
-        expect(bolehTransisi("terbuka", "proses")).toBe(true);
-        expect(bolehTransisi("terbuka", "selesai")).toBe(true);
-        expect(bolehTransisi("selesai", "terbuka")).toBe(true);
-        expect(bolehTransisi("selesai", "proses")).toBe(false);
-        expect(bolehTransisi("terbuka", "terbuka")).toBe(false);
-        expect(butuhUraian("selesai", "proses")).toBe(true);
-        expect(butuhUraian("terbuka", "selesai")).toBe(true);
-        expect(butuhUraian("proses", "terbuka")).toBe(false);
-    });
-
-    it("lewat tenggat dan urutan berat dulu lalu terlama", () => {
-        expect(lewatTenggat({ status: "terbuka", targetSelesai: "2026-11-15" }, "2026-11-16")).toBe(true);
-        expect(lewatTenggat({ status: "selesai", targetSelesai: "2026-11-15" }, "2026-11-16")).toBe(false);
-        const d = (s: string) => new Date(s);
-        const urut = urutTemuan([
-            { id: 1, severity: "ringan" as const, createdAt: d("2026-01-01") },
-            { id: 2, severity: "berat" as const, createdAt: d("2026-02-01") },
-            { id: 3, severity: "berat" as const, createdAt: d("2026-01-15") },
-        ]);
-        expect(urut.map((t) => t.id)).toEqual([3, 2, 1]);
-    });
-});
-
 describe("skema masukan (H2, H8, H6, M3)", () => {
     const asetSah = { assetTypeId: "1", kode: "01D", lokasiTeks: "Lorong", lokasiTipe: "dalam_gedung" };
 
@@ -216,12 +191,6 @@ describe("skema masukan (H2, H8, H6, M3)", () => {
         expect(galatKolom(skemaPengguna.safeParse({ ...dasar, password: "123" }).error!).password?.[0]).toBe(
             "Kata sandi minimal 8 karakter.",
         );
-    });
-
-    it("tinjau: alasan minimal 10 karakter", () => {
-        const id = "0195f8f0-0000-7000-8000-000000000000";
-        expect(skemaTinjau.safeParse({ id, catatanReview: "pendek" }).success).toBe(false);
-        expect(skemaTinjau.safeParse({ id, catatanReview: "Sudah dicek CCTV" }).success).toBe(true);
     });
 });
 

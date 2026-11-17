@@ -5,17 +5,14 @@ import { notFound, redirect } from "next/navigation";
 import { FileDown } from "lucide-react";
 import { KerangkaHalaman } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
-import { AksiSelesai, AksiTenggat, AksiTinjau } from "@/features/admin/components/aksi-antrean";
 import { Peta, type TitikTampil } from "@/features/admin/components/peta";
 import { Kartu, Kosong, Lencana, qs } from "@/features/admin/components/ui";
 import { LABEL_TAB, TAB_ANTREAN, parseTab, type StatusTitik, type TabAntrean } from "@/features/admin/lib/dasbor";
-import { LABEL_GERBANG } from "@/features/admin/lib/label";
-import { LABEL_SEVERITY } from "@/features/admin/lib/temuan";
 import { antreanDasbor, ringkasanDasbor, type BarisAntrean } from "@/features/admin/server/dasbor";
 import { requireRole } from "@/lib/auth/guards";
-import { KESIMPULAN, LABEL_KESIMPULAN, type GateStatus } from "@/lib/domain/constants";
-import { labelLokasi } from "@/lib/domain/label-aset";
-import { formatAngka, formatTanggal, formatWaktu, hariIniJakarta } from "@/lib/format";
+import { AlasanTinjauan } from "@/features/tinjauan/ui";
+import { KESIMPULAN, LABEL_KESIMPULAN } from "@/lib/domain/constants";
+import { formatAngka, formatTanggal, formatWaktu } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Ringkasan" };
@@ -33,7 +30,10 @@ const LABEL_STATUS_TITIK: Record<StatusTitik, string> = {
     tanpa_kesimpulan: "Tanpa kesimpulan",
 };
 
-/** Dasbor admin (SPEC §4.7): kepatuhan, empat antrean keputusan, kondisi, tren, area, peta. Hanya APAR. */
+/**
+ * Dasbor admin (PRD F14): progres pemeriksaan empat modul pada periodenya (bulan; minggu untuk mobil
+ * pemadam), antrean keputusan, kondisi, tren, progres per gedung, dan peta aset bertitik.
+ */
 export default async function AdminDasbor({ searchParams }: PageProps<"/admin">) {
     const user = await requireRole("admin");
     const sp = await searchParams;
@@ -66,7 +66,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
         lat: t.lat,
         lng: t.lng,
         judul: t.kode,
-        rincian: `${t.lokasi} · ${LABEL_STATUS_TITIK[t.status]}${t.tinjau ? " · perlu tinjauan posisi" : ""}`,
+        rincian: `${t.lokasi} · ${LABEL_STATUS_TITIK[t.status]}${t.tinjau ? " · perlu tinjauan" : ""}`,
         warna: WARNA_STATUS[t.status],
         cincin: t.tinjau,
         href: `/admin/aset/${t.id}`,
@@ -102,7 +102,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     </h2>
                     <p className="mt-2 text-5xl font-semibold tabular-nums">{formatAngka(r.persen, 1)}%</p>
                     <p className="mt-1 text-sm opacity-80">
-                        {r.diperiksa} dari {r.total} unit diperiksa · sisa {r.sisaHari} hari
+                        {r.diperiksa} dari {r.total} unit diperiksa pada periodenya · semua modul
                     </p>
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
                         <div
@@ -112,7 +112,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     </div>
                 </section>
 
-                <nav aria-label="Antrean keputusan" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <nav aria-label="Antrean keputusan" className="grid grid-cols-3 gap-3">
                     {TAB_ANTREAN.map((t) => (
                         <Link
                             key={t}
@@ -127,7 +127,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                                 className={cn(
                                     "mt-2 text-3xl font-semibold tabular-nums",
                                     r.jumlah[t] > 0 &&
-                                        (t === "posisi" ? "text-warning" : t !== "belum" && "text-danger"),
+                                        (t === "tinjauan" ? "text-warning" : t === "berat" && "text-danger"),
                                 )}
                             >
                                 {formatAngka(r.jumlah[t])}
@@ -136,6 +136,36 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     ))}
                 </nav>
             </div>
+
+            <section aria-labelledby="judul-modul" className="mt-4">
+                <h2 id="judul-modul" className="sr-only">
+                    Progres per modul
+                </h2>
+                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="progres-modul">
+                    {r.modul.map((m) => (
+                        <li key={m.slug} className="rounded-xl border bg-card p-4">
+                            <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-sm font-medium">{m.nama}</span>
+                                <span className="text-xs text-muted-foreground">
+                                    {m.mingguan
+                                        ? `Minggu ini s.d. ${formatTanggal(`${m.jatuhTempo}T12:00:00+07:00`, { day: "numeric", month: "short" })}`
+                                        : "Bulan ini"}
+                                </span>
+                            </div>
+                            <p className="mt-2 text-2xl font-semibold tabular-nums">{formatAngka(m.persen, 1)}%</p>
+                            <p className="text-xs text-muted-foreground">
+                                {m.sudah} dari {m.total} unit diperiksa
+                            </p>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                                <div
+                                    className="h-full rounded-full bg-success transition-[width] duration-500 ease-out"
+                                    style={{ width: `${Math.min(100, m.persen)}%` }}
+                                />
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            </section>
 
             <Kartu judul={`Perlu keputusan Anda · ${LABEL_TAB[tab]}`} className="mt-4">
                 {antrean.baris.length === 0 ? (
@@ -210,9 +240,9 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     </ol>
                 </Kartu>
 
-                <Kartu judul="Progres per area">
+                <Kartu judul="Progres per gedung">
                     {r.area.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Belum ada APAR aktif.</p>
+                        <p className="text-sm text-muted-foreground">Belum ada aset aktif.</p>
                     ) : (
                         <ul className="max-h-48 space-y-2 overflow-y-auto pr-1 text-sm">
                             {r.area.map((a) => (
@@ -222,6 +252,9 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                                         <span className="tabular-nums text-muted-foreground">
                                             {a.sudah}/{a.total}
                                         </span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {a.modul.map((m) => `${m.nama} ${m.sudah}/${m.total}`).join(" · ")}
                                     </div>
                                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                                         <div
@@ -237,7 +270,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
             </div>
 
             <Kartu
-                judul="Peta APAR"
+                judul="Peta aset"
                 className="mt-4"
                 aksi={
                     r.peta.tanpaTitik > 0 ? (
@@ -247,7 +280,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     ) : null
                 }
             >
-                <Peta titik={titik} label="Peta APAR dan status pemeriksaan bulan ini" />
+                <Peta titik={titik} label="Peta aset bertitik dan status pemeriksaan periode ini" />
                 <ul
                     className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"
                     aria-label="Keterangan warna"
@@ -264,7 +297,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     ))}
                     <li className="flex items-center gap-1.5">
                         <span className="size-2.5 rounded-full border-2 border-danger" aria-hidden />
-                        Perlu tinjauan posisi
+                        Perlu tinjauan
                     </li>
                 </ul>
             </Kartu>
@@ -273,9 +306,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
 }
 
 function BarisAntreanItem({ b, tab }: { b: BarisAntrean; tab: TabAntrean }) {
-    const lokasi = labelLokasi({ lokasiTeks: b.asetLokasi, gedung: b.asetGedung, lantai: b.asetLantai });
     if (b.jenis === "temuan") {
-        const lewat = b.targetSelesai !== null && b.targetSelesai < hariIniJakarta();
         return (
             <li className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
@@ -283,59 +314,41 @@ function BarisAntreanItem({ b, tab }: { b: BarisAntrean; tab: TabAntrean }) {
                         {b.asetKode}: {b.item}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                        {lokasi} · dicatat {formatTanggal(b.createdAt, { dateStyle: "medium" })}
+                        {b.modul} · {b.lokasi} · {formatTanggal(b.waktu, { dateStyle: "medium" })}
                     </p>
-                    <div className="mt-1 flex gap-2">
-                        <Lencana
-                            nada={b.severity === "berat" ? "danger" : b.severity === "sedang" ? "warning" : "muted"}
-                        >
-                            {LABEL_SEVERITY[b.severity as keyof typeof LABEL_SEVERITY]}
-                        </Lencana>
-                        <Lencana nada={lewat ? "danger" : "muted"}>
-                            {b.targetSelesai
-                                ? `Tenggat ${formatTanggal(b.targetSelesai + "T00:00:00+07:00", { dateStyle: "medium" })}`
-                                : "Tanpa tenggat"}
-                        </Lencana>
-                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <AksiTenggat id={b.id} targetSelesai={b.targetSelesai} />
-                    <AksiSelesai id={b.id} />
-                </div>
+                <Lencana nada="danger">Berat</Lencana>
             </li>
         );
     }
-    if (b.jenis === "posisi") {
-        const g = LABEL_GERBANG[b.gateStatus as GateStatus];
+    if (b.jenis === "tinjauan") {
         return (
             <li className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                     <p className="font-medium">
-                        {b.asetKode} · {lokasi}
+                        {b.asetKode} · {b.modul}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        {b.inspektur} · {formatWaktu(b.inspectedAt)} · jarak{" "}
-                        {b.jarakM != null ? `${formatAngka(b.jarakM)} m` : "-"} · akurasi{" "}
-                        {b.gpsAccuracy != null ? `${formatAngka(b.gpsAccuracy)} m` : "-"}
+                        {b.lokasi} · {b.inspektur} · {formatWaktu(b.inspectedAt)} · akurasi{" "}
+                        {b.gpsAccuracy != null ? `±${formatAngka(b.gpsAccuracy)} m` : "-"}
                     </p>
-                    <Lencana nada={g.nada} className="mt-1">
-                        {g.label}
-                    </Lencana>
+                    <div className="mt-1">
+                        <AlasanTinjauan gateStatus={b.gateStatus} gateAlasan={b.gateAlasan} restrictedArea={b.restrictedArea} />
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link href={`/admin/tinjauan/${b.id}`}>Lihat bukti ↗</Link>
-                    </Button>
-                    <AksiTinjau id={b.id} />
-                </div>
+                <Button asChild size="sm" variant="outline">
+                    <Link href={`/admin/tinjauan/${b.id}`}>Tinjau</Link>
+                </Button>
             </li>
         );
     }
     return (
         <li className="flex flex-wrap items-center justify-between gap-3 py-3" data-tab={tab}>
             <div>
-                <p className="font-medium">{b.asetKode}</p>
-                <p className="text-xs text-muted-foreground">{lokasi}</p>
+                <p className="font-medium">
+                    {b.asetKode} <span className="font-normal text-muted-foreground">· {b.modul}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">{b.lokasi}</p>
             </div>
             <Button asChild variant="ghost" size="sm">
                 <Link href={`/laporan/kartu/${b.id}`}>Kartu pemeriksaan ↗</Link>

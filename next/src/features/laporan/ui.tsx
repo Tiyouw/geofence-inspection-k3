@@ -4,7 +4,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { AnswerType, GateStatus, IssueStatus, Kesimpulan, Severity } from "@/lib/domain/constants";
+import type { AnswerType, GateStatus, Kesimpulan, Severity } from "@/lib/domain/constants";
 import { LABEL_KESIMPULAN } from "@/lib/domain/constants";
 import { cn } from "@/lib/utils";
 
@@ -48,12 +48,10 @@ export const NADA_TINGKAT: Record<Severity, Nada> = { berat: "bahaya", sedang: "
 export function LencanaHanyaLihat() {
   return (
     <Lencana nada="info" className="gap-1">
-      Hanya lihat
+      Hanya lihat dan tinjau
     </Lencana>
   );
 }
-export const LABEL_STATUS_TEMUAN: Record<IssueStatus, string> = { terbuka: "Terbuka", proses: "Proses", selesai: "Selesai" };
-export const NADA_STATUS_TEMUAN: Record<IssueStatus, Nada> = { terbuka: "bahaya", proses: "waspada", selesai: "sukses" };
 
 export function LencanaGerbang({ status }: { status: GateStatus }) {
   return <Lencana nada={GERBANG[status].nada}>{GERBANG[status].label}</Lencana>;

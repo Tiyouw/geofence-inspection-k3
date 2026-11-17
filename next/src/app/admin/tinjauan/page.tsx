@@ -14,6 +14,7 @@ import {
     daftarInspektur,
     parseFilterInspeksi,
 } from "@/features/admin/server/inspeksi";
+import { AlasanTinjauan, HasilLencana } from "@/features/tinjauan/ui";
 import { requireRole } from "@/lib/auth/guards";
 import { DURASI_WAJAR_DETIK, GATE_STATUSES, KESIMPULAN, LABEL_KESIMPULAN } from "@/lib/domain/constants";
 import { labelLokasi } from "@/lib/domain/label-aset";
@@ -47,7 +48,7 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
         <>
             <PageHeader
                 title="Tinjauan inspeksi"
-                description="Bukti lapangan dari inspektur. Inspeksi hanya lahir dari pindaian stiker QR."
+                description="Bukti lapangan dari inspektur. Inspeksi perlu tinjauan (posisi di luar gedung, GPS lemah, area terbatas) diputuskan Diterima atau Ditolak oleh Admin K3 atau Pemantau."
             />
 
             <nav aria-label="Tab inspeksi" className="mb-4 flex flex-wrap gap-1 rounded-xl border bg-card p-1">
@@ -180,7 +181,15 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
                                         )}
                                     </td>
                                     <td>
-                                        <Lencana nada={g.nada}>{g.label}</Lencana>
+                                        {i.restrictedArea || i.gateAlasan ? (
+                                            <AlasanTinjauan
+                                                gateStatus={i.gateStatus}
+                                                gateAlasan={i.gateAlasan}
+                                                restrictedArea={i.restrictedArea}
+                                            />
+                                        ) : (
+                                            <Lencana nada={g.nada}>{g.label}</Lencana>
+                                        )}
                                     </td>
                                     <td className="whitespace-nowrap tabular-nums">
                                         {i.jarakM != null ? `${formatAngka(i.jarakM)} m` : "-"}
@@ -213,6 +222,7 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
                                     <td className="whitespace-nowrap">
                                         {i.ditinjauPada ? (
                                             <span title={i.catatanReview ?? undefined}>
+                                                <HasilLencana hasil={i.hasilTinjauan} />{" "}
                                                 {formatTanggal(i.ditinjauPada, { dateStyle: "short" })} ·{" "}
                                                 {i.peninjau ?? "-"}
                                             </span>

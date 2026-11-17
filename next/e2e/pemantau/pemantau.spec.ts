@@ -61,7 +61,7 @@ test.describe("pemantau", () => {
     await expect(page).toHaveURL(/\/pemantau$/);
     await expect(page.getByRole("heading", { name: "Papan pantau" })).toBeVisible();
     await expect(page.getByText("Ringkasan untuk manajemen")).toBeVisible();
-    await expect(page.getByTestId("hanya-lihat")).toHaveText("Hanya lihat");
+    await expect(page.getByTestId("hanya-lihat")).toHaveText("Hanya lihat dan tinjau");
     await expect(page.getByTestId("narasi")).toContainText(/APAR sudah diperiksa bulan ini \(\d+,\d%\)/);
     await expect(page.getByTestId("risiko").getByText("Berat").first()).toBeVisible();
     await expect(page.getByText("Laporan siap cetak")).toBeVisible();

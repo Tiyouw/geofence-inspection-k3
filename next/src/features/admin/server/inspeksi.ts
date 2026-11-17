@@ -1,6 +1,6 @@
 import "server-only";
 import { alias } from "drizzle-orm/pg-core";
-import { and, asc, count, desc, eq, inArray, lt, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
     assets,
@@ -26,8 +26,8 @@ import { syaratAntreanTinjauan } from "./dasbor";
 export const TAB_INSPEKSI = ["antre", "menyimpang", "tidak_layak", "semua"] as const;
 export type TabInspeksi = (typeof TAB_INSPEKSI)[number];
 export const LABEL_TAB_INSPEKSI: Record<TabInspeksi, string> = {
-    antre: "Antre ditinjau",
-    menyimpang: "Lokasi menyimpang",
+    antre: "Perlu tinjauan",
+    menyimpang: "Pernah masuk antrean",
     tidak_layak: "Tidak layak pakai",
     semua: "Semua",
 };
@@ -73,7 +73,7 @@ function syaratTab(tab: TabInspeksi): SQL | undefined {
         case "antre":
             return syaratAntreanTinjauan;
         case "menyimpang":
-            return inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN);
+            return or(inArray(inspections.gateStatus, GATE_PERLU_TINJAUAN), eq(inspections.restrictedArea, true));
         case "tidak_layak":
             return eq(inspections.kesimpulan, "tidak_layak");
         default:
@@ -114,6 +114,9 @@ export async function daftarInspeksi(f: FilterInspeksi, halaman = 1) {
                 offline: inspections.offline,
                 ditinjauPada: inspections.ditinjauPada,
                 catatanReview: inspections.catatanReview,
+                hasilTinjauan: inspections.hasilTinjauan,
+                gateAlasan: inspections.gateAlasan,
+                restrictedArea: inspections.restrictedArea,
                 peninjau: peninjau.name,
             })
             .from(inspections)
