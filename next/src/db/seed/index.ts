@@ -555,7 +555,6 @@ async function main() {
     await seedDamkar(tx, div[DIVISI.satPk] ?? null);
     const [damkar] = await tx.select({ id: s.assetTypes.id }).from(s.assetTypes).where(eq(s.assetTypes.slug, SLUG_DAMKAR));
     if (damkar) await seedLangkahFoto(tx, damkar.id, LANGKAH_FOTO_DAMKAR);
-    await poligonContoh(tx);
     await contohOperasional(tx);
     // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
     await seedP3kHydrant(tx);
@@ -564,6 +563,8 @@ async function main() {
       if (t) await seedLangkahFoto(tx, t.id, m.langkahFoto);
     }
     await areaDariGedung(tx);
+    // Terakhir: kotak sintetis harus memuat titik semua modul (APAR, P3K, hydrant).
+    await poligonContoh(tx);
   });
 }
 

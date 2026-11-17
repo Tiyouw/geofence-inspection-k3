@@ -1,15 +1,15 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
 import { masuk } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
+import { fotoSemuaLangkah, KAMERA_PALSU } from "../kamera-uji";
 
 /**
  * Gerbang lokasi poligon (PRD "Aturan gerbang lokasi", ADR-2/7). Geolokasi selalu dipalsukan.
  * Poligon yang dipakai adalah poligon SINTETIS dari seed demo (kotak di sekitar titik contoh).
  */
-const FOTO = { name: "apar.png", mimeType: "image/png", buffer: readFileSync("public/icons/icon-512.png") };
 const M = 111_195;
 
+test.use(KAMERA_PALSU);
 test.afterAll(tutup);
 
 type Poligon = { type: "Polygon"; coordinates: [number, number][][] };
@@ -54,8 +54,7 @@ async function isiLengkap(page: Page) {
   ]) {
     await pilih(label, "Ada");
   }
-  await page.getByTestId("input-foto").setInputFiles(FOTO);
-  await expect(page.getByRole("img", { name: "Foto bukti" })).toHaveCount(1);
+  await fotoSemuaLangkah(page);
 }
 
 const kirim = (page: Page) => page.getByRole("button", { name: "Kirim", exact: true });
