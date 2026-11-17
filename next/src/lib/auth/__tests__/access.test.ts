@@ -57,5 +57,8 @@ describe("safeRedirect", () => {
     expect(homeFor(undefined)).toBe("/masuk");
     expect(isPublicPath("/masuk")).toBe(true);
     expect(isPublicPath("/admin")).toBe(false);
+    expect(isPublicPath("/tanya/rahasia-apa-pun")).toBe(true);
+    expect(isPublicPath("/tanya")).toBe(false);
+    expect(canAccessPath(undefined, "/admin/tanya/ekspor")).toBe(false);
   });
 });

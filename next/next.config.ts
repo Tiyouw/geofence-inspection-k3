@@ -48,6 +48,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Formulir klien bertoken: jangan diindeks, jangan dikirim sebagai Referer ke luar.
+        source: "/tanya/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "private, no-store" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           { key: "Content-Type", value: "application/javascript; charset=utf-8" },
