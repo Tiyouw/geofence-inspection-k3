@@ -88,7 +88,7 @@ describe("hydrant: temuan dan kesimpulan lewat aturan umum", () => {
   it("selang Rusak → temuan berat → Tidak layak pakai; fisik box Rusak saja → dengan catatan", () => {
     const j = items.map((i) => ({ checklistItemId: i.id, nilai: i.id === 3 ? "Rusak" : "Baik" }));
     const t = bangunTemuan(items, j);
-    expect(t).toEqual([{ checklistItemId: 3, item: "Selang kebakaran: Rusak", severity: "berat" }]);
+    expect(t).toEqual([{ checklistItemId: 3, item: "Selang kebakaran: Rusak", severity: "berat", tindakan: "ganti" }]);
     expect(usulanKesimpulan(t)).toBe("tidak_layak");
     const t2 = bangunTemuan(items, items.map((i) => ({ checklistItemId: i.id, nilai: i.id === 2 ? "Rusak" : "Baik" })));
     expect(usulanKesimpulan(t2)).toBe("layak_catatan");
@@ -193,7 +193,7 @@ describe("P3K lewat aturan umum (bangunTemuan, periksaKirim)", () => {
   it("isi kurang menjadi temuan hanya dengan konteks P3K, dan rekomendasi wajib", () => {
     const jawaban = [...kotak, ...ganti(lengkap(), 8, { nilaiAngka: 6 })];
     expect(bangunTemuan(items, jawaban)).toEqual([]);
-    expect(bangunTemuan(items, jawaban, ctx)).toEqual([{ checklistItemId: 8, item: "Plester cepat: 6 dari 10 buah, kurang 4", severity: "sedang" }]);
+    expect(bangunTemuan(items, jawaban, ctx)).toEqual([{ checklistItemId: 8, item: "Plester cepat: 6 dari 10 buah, kurang 4", severity: "sedang", tindakan: "lengkapi" }]);
     expect(periksaKirim(items, { ...dasar, jawaban, p3k: ctx }, 15)).toEqual(["Ada temuan pada inspeksi ini, rekomendasi wajib diisi."]);
   });
 

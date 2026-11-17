@@ -10,7 +10,7 @@ import {
 } from "../jadwal";
 import { validasiDefinisiLangkah } from "../langkah-foto";
 import { CHECKLIST_DAMKAR, LANGKAH_FOTO_DAMKAR, identitasDamkar } from "../modul/damkar";
-import { hitungBerulang, lokasiTemuan, temuanInspeksi } from "../temuan";
+import { hitungBerulang, lokasiTemuan } from "../temuan";
 
 /** Butir mobil pemadam dalam bentuk ButirChecklist, id = urut. */
 const butirDamkar: ButirChecklist[] = CHECKLIST_DAMKAR.flatMap((g) =>
@@ -112,14 +112,6 @@ describe("temuan sederhana (PRD Temuan)", () => {
             { checklistItemId: 2, nilai: "tidak" },
         ]);
         expect(t.map((x) => x.tindakan)).toEqual(["ganti", "perbaiki"]);
-    });
-
-    it("penilai modul menggantikan temuan butir yang sama dan menambah yang baru", () => {
-        const t = temuanInspeksi(items, [{ checklistItemId: 2, nilai: "tidak" }], () => [
-            { checklistItemId: 2, item: "Label: hilang", severity: "sedang", tindakan: "lengkapi" },
-            { checklistItemId: 1, item: "Tabung: kedaluwarsa", severity: "berat", tindakan: "ganti" },
-        ]);
-        expect(t.map((x) => x.item)).toEqual(["Tabung: kedaluwarsa", "Label: hilang"]);
     });
 
     it("lokasi disalin sebagai teks: gedung, titik, lantai, identitas", () => {

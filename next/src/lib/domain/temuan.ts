@@ -3,28 +3,7 @@
  * direkomendasikan. Tanpa status, tenggat, PIC, atau penutupan: laporan adalah akhir alur.
  * Murni, dipakai finalisasi (peladen), pratinjau formulir, daftar temuan, dan laporan.
  */
-import type { Severity } from "./constants";
-import { bangunTemuan, type ButirChecklist, type Jawaban, type Temuan } from "./inspeksi";
 import { labelLokasi } from "./label-aset";
-
-/**
- * Temuan tambahan per modul, untuk butir yang dinilai bukan dari `nilai` (mis. isi P3K:
- * jumlah, kondisi, kedaluwarsa; sesi D). Hasilnya menggantikan temuan butir yang sama.
- */
-export type PenilaiModul = (items: ButirChecklist[], jawaban: Jawaban[]) => Temuan[];
-
-const URUT: Record<Severity, number> = { berat: 0, sedang: 1, ringan: 2 };
-
-/** Semua temuan sebuah inspeksi: aturan umum, lalu aturan khusus modul bila ada. */
-export function temuanInspeksi(items: ButirChecklist[], jawaban: Jawaban[], penilaiModul?: PenilaiModul): Temuan[] {
-    const umum = bangunTemuan(items, jawaban);
-    if (!penilaiModul) return umum;
-    const khusus = penilaiModul(items, jawaban);
-    const diganti = new Set(khusus.map((t) => t.checklistItemId));
-    return [...umum.filter((t) => !diganti.has(t.checklistItemId)), ...khusus].sort(
-        (a, b) => URUT[a.severity] - URUT[b.severity],
-    );
-}
 
 /**
  * Lokasi temuan sebagai teks, disalin saat inspeksi final supaya laporan tetap benar walau
