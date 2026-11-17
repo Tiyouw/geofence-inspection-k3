@@ -141,9 +141,45 @@ export function bacaTipeKotak(attributes: Record<string, unknown> | null | undef
   return t === "A" || t === "B" || t === "C" ? t : null;
 }
 
-/** Butir angka dengan baku: isi kotak P3K (bukan butir lain bertipe angka seperti odometer). */
-export function isButirIsi(butir: { answerType: string; jumlahBaku: unknown }): boolean {
-  return butir.answerType === "number" && butir.jumlahBaku != null;
+/** Butir checklist seperti dibaca peladen/paket kerja (kolom jumlah_baku_per_tipe, has_expiry). */
+export type ButirChecklistIsi = {
+  id: number;
+  label: string;
+  answerType: string;
+  jumlahBakuPerTipe?: Partial<Record<TipeKotak, number>> | null;
+  hasExpiry?: boolean;
+  satuan?: string | null;
+  severityDefault?: Severity;
+};
+
+/** Isi kotak P3K: butir angka dengan baku per tipe kotak (bukan butir angka lain seperti odometer). */
+export function isButirIsi(butir: Pick<ButirChecklistIsi, "answerType" | "jumlahBakuPerTipe">): boolean {
+  return butir.answerType === "number" && butir.jumlahBakuPerTipe != null;
+}
+
+/** Butir isi dari daftar butir checklist; butir lain dilewati. */
+export function butirIsiDari(items: ButirChecklistIsi[]): ButirIsiP3k[] {
+  return items.filter(isButirIsi).map((b) => ({
+    id: b.id,
+    label: b.label,
+    jumlahBaku: b.jumlahBakuPerTipe ?? null,
+    hasExpiry: !!b.hasExpiry,
+    satuan: b.satuan ?? null,
+    severityDefault: b.severityDefault,
+  }));
+}
+
+/** Konteks penilaian P3K untuk satu aset, atau null bila aset bukan kotak P3K. */
+export function konteksP3k(slugTipe: string, attributes: Record<string, unknown> | null | undefined, hariIni: string): KonteksP3k | null {
+  return slugTipe === "p3k" ? { tipeKotak: bacaTipeKotak(attributes) ?? "A", hariIni } : null;
+}
+
+/** Galat isian isi P3K untuk pemeriksaan sebelum kirim (klien dan peladen). */
+export function periksaIsiP3k(items: ButirChecklistIsi[], jawaban: JawabanIsiP3k[], ctx: KonteksP3k): string[] {
+  const map = new Map(jawaban.map((j) => [j.checklistItemId, j]));
+  return butirIsiDari(items)
+    .map((b) => (map.has(b.id) ? validasiIsi(b, map.get(b.id), ctx) : null))
+    .filter((g): g is string => g !== null);
 }
 
 function selisihHari(dari: string, ke: string): number {

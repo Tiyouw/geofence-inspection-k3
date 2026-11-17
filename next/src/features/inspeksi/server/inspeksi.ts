@@ -18,7 +18,8 @@ import {
 } from "@/db/schema";
 import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
-import { KESIMPULAN, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
+import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
+import { konteksP3k } from "@/lib/domain/modul/p3k";
 import {
   bangunTemuan,
   jatuhTempo,
@@ -231,6 +232,8 @@ export const finalizeSchema = z.object({
         nilai: z.string().max(120).nullish(),
         nilaiAngka: z.number().int().nullish(),
         catatan: z.string().max(500).nullish(),
+        kondisiIsi: z.enum(KONDISI_ISI).nullish(),
+        tglKedaluwarsaTerdekat: z.iso.date().nullish(),
         answeredAt: z.iso.datetime({ offset: true }).nullish(),
       }),
     )
@@ -321,9 +324,13 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       severityMap: i.severityMap,
       severityDefault: i.severityDefault,
       jumlahBaku: i.jumlahBaku,
+      jumlahBakuPerTipe: i.jumlahBakuPerTipe,
+      hasExpiry: i.hasExpiry,
       satuan: i.satuan,
       wajib: i.wajib,
     }));
+    // Kotak P3K: kedaluwarsa dinilai terhadap tanggal kirim di perangkat (WIB).
+    const p3k = konteksP3k(tipe.slug, aset.attributes, hariIniJakarta(new Date(input.submittedAtDevice)));
 
     const fotoAda = await tx
       .select({ id: inspectionPhotos.id })
@@ -334,7 +341,7 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       throw new GalatApi(409, "foto_belum_lengkap", "Foto belum semuanya terunggah.");
     }
 
-    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size }, MAKS_FOTO);
+    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size, p3k }, MAKS_FOTO);
     if (galat.length) throw new GalatApi(422, "validasi", galat[0]!, galat);
 
     // Bukti QR: token mentah dicocokkan dengan assets.qr_token (SPEC §7.7, §7.8).
@@ -395,6 +402,8 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
           checklistItemId: j.checklistItemId,
           nilai: j.nilai ?? null,
           nilaiAngka: j.nilaiAngka ?? null,
+          kondisiIsi: j.kondisiIsi ?? null,
+          tglKedaluwarsaTerdekat: j.tglKedaluwarsaTerdekat ?? null,
           catatan: j.catatan?.trim() || null,
           answeredAtDevice: j.answeredAt ? new Date(j.answeredAt) : null,
         })),
@@ -402,7 +411,7 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
     }
 
     const tanggal = hariIniJakarta(waktu.inspectedAt);
-    await buatTemuan(tx, user, aset.id, inspectionId, tanggal, bangunTemuan(items, input.answers));
+    await buatTemuan(tx, user, aset.id, inspectionId, tanggal, bangunTemuan(items, input.answers, p3k));
 
     await tx
       .update(assets)

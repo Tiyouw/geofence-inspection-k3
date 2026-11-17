@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bangunTemuan, usulanKesimpulan, type ButirChecklist } from "../inspeksi";
+import { bangunTemuan, periksaKirim, usulanKesimpulan, type ButirChecklist } from "../inspeksi";
 import { DEFINISI_HYDRANT_BOX, DEFINISI_HYDRANT_PILAR } from "../modul/hydrant";
 import {
   DEFINISI_P3K,
@@ -7,6 +7,7 @@ import {
   bakuIsi,
   kedaluwarsaTerdekat,
   kelengkapanP3k,
+  konteksP3k,
   segeraKedaluwarsa,
   temuanIsiP3k,
   validasiIsi,
@@ -168,5 +169,42 @@ describe("P3K: isi kotak", () => {
   it("kesimpulan: temuan isi (sedang) → Layak dengan catatan", () => {
     const t = temuanIsiP3k(isi, ganti(lengkap(), 8, { nilaiAngka: 6 }), ctx);
     expect(usulanKesimpulan(t)).toBe("layak_catatan");
+  });
+});
+
+describe("P3K lewat aturan umum (bangunTemuan, periksaKirim)", () => {
+  const items: ButirChecklist[] = semuaButir(DEFINISI_P3K).map((b) => ({
+    id: b.urut,
+    label: b.label,
+    answerType: b.answerType,
+    options: null,
+    severityMap: null,
+    severityDefault: b.severityDefault,
+    jumlahBaku: null,
+    satuan: b.satuan ?? null,
+    wajib: true,
+    jumlahBakuPerTipe: b.baku ?? null,
+    hasExpiry: !!b.adaKedaluwarsa,
+  }));
+  const kotak = [1, 2, 3].map((id) => ({ checklistItemId: id, nilai: "ok" }));
+  const dasar = { jumlahFoto: 3, kesimpulan: "layak" as const, rekomendasi: "" };
+
+  it("isi kurang menjadi temuan hanya dengan konteks P3K, dan rekomendasi wajib", () => {
+    const jawaban = [...kotak, ...ganti(lengkap(), 8, { nilaiAngka: 6 })];
+    expect(bangunTemuan(items, jawaban)).toEqual([]);
+    expect(bangunTemuan(items, jawaban, ctx)).toEqual([{ checklistItemId: 8, item: "Plester cepat: 6 dari 10 buah, kurang 4", severity: "sedang" }]);
+    expect(periksaKirim(items, { ...dasar, jawaban, p3k: ctx }, 15)).toEqual(["Ada temuan pada inspeksi ini, rekomendasi wajib diisi."]);
+  });
+
+  it("validasi isi ikut diperiksa sebelum kirim", () => {
+    const jawaban = [...kotak, ...ganti(lengkap(), 4, { kondisiIsi: null })];
+    expect(periksaKirim(items, { ...dasar, jawaban, p3k: ctx }, 15)).toEqual(['Kondisi "Kasa steril terbungkus" belum dipilih.']);
+    expect(periksaKirim(items, { ...dasar, jawaban: [...kotak, ...lengkap()], p3k: ctx }, 15)).toEqual([]);
+  });
+
+  it("konteksP3k hanya untuk tipe p3k; tipe kotak kosong dibaca A", () => {
+    expect(konteksP3k("p3k", {}, "2026-11-17")).toEqual({ tipeKotak: "A", hariIni: "2026-11-17" });
+    expect(konteksP3k("p3k", { tipe_kotak: "C" }, "2026-11-17")?.tipeKotak).toBe("C");
+    expect(konteksP3k("apar", { tipe_kotak: "C" }, "2026-11-17")).toBeNull();
   });
 });

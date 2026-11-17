@@ -5,6 +5,7 @@
 import { pesanAsetUnitLain } from "@/lib/domain/akses";
 import { MAKS_FOTO } from "@/lib/domain/constants";
 import { ambilToken, bangunTemuan, miripNomorAset, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
+import type { KonteksP3k } from "@/lib/domain/modul/p3k";
 import { getMeta, setMeta, type DbAkun } from "./db";
 import { monoNow, uuidv7 } from "./ids";
 import { opsInspeksi, tambahOp } from "./outbox";
@@ -162,10 +163,10 @@ async function ubahDraf(db: DbAkun, inspectionId: string, fn: (d: DrafLokal) => 
 }
 
 /** Usulan kesimpulan diperbarui tiap jawaban, kecuali inspektur sudah memilih sendiri (SPEC §3.4). */
-function denganUsulan(d: DrafLokal, items: ButirChecklist[]): DrafLokal {
+function denganUsulan(d: DrafLokal, items: ButirChecklist[], p3k: KonteksP3k | null): DrafLokal {
   if (d.kesimpulanManual) return d;
   const jawaban = Object.entries(d.jawaban).map(([id, j]) => ({ checklistItemId: Number(id), ...j }));
-  return { ...d, kesimpulan: usulanKesimpulan(bangunTemuan(items, jawaban)) };
+  return { ...d, kesimpulan: usulanKesimpulan(bangunTemuan(items, jawaban, p3k)) };
 }
 
 export function simpanJawaban(
@@ -174,9 +175,10 @@ export function simpanJawaban(
   itemId: number,
   isi: Omit<JawabanLokal, "answeredAt">,
   items: ButirChecklist[],
+  p3k: KonteksP3k | null = null,
 ) {
   return ubahDraf(db, inspectionId, (d) =>
-    denganUsulan({ ...d, jawaban: { ...d.jawaban, [itemId]: { ...d.jawaban[itemId], ...isi, answeredAt: nowIso() } } }, items),
+    denganUsulan({ ...d, jawaban: { ...d.jawaban, [itemId]: { ...d.jawaban[itemId], ...isi, answeredAt: nowIso() } } }, items, p3k),
   );
 }
 
@@ -220,6 +222,7 @@ export async function kirimInspeksi(
   db: DbAkun,
   inspectionId: string,
   items: ButirChecklist[],
+  p3k: KonteksP3k | null = null,
 ): Promise<{ ok: true } | { ok: false; galat: string[] }> {
   const d = await db.get("drafts", inspectionId);
   if (!d) return { ok: false, galat: ["Draf tidak ditemukan di perangkat."] };
@@ -229,9 +232,16 @@ export async function kirimInspeksi(
     nilai: j.nilai ?? null,
     nilaiAngka: j.nilaiAngka ?? null,
     catatan: j.catatan ?? null,
+    ...(j.kondisiIsi !== undefined || j.tglKedaluwarsaTerdekat !== undefined
+      ? { kondisiIsi: j.kondisiIsi ?? null, tglKedaluwarsaTerdekat: j.tglKedaluwarsaTerdekat ?? null }
+      : {}),
     answeredAt: j.answeredAt,
   }));
-  const galat = periksaKirim(items, { jawaban, jumlahFoto: fotos.length, kesimpulan: d.kesimpulan, catatan: d.catatan, rekomendasi: d.rekomendasi }, MAKS_FOTO);
+  const galat = periksaKirim(
+    items,
+    { jawaban, jumlahFoto: fotos.length, kesimpulan: d.kesimpulan, catatan: d.catatan, rekomendasi: d.rekomendasi, p3k },
+    MAKS_FOTO,
+  );
   if (galat.length) return { ok: false, galat };
 
   const submittedAtDevice = nowIso();

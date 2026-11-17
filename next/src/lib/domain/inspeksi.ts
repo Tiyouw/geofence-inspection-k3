@@ -7,8 +7,11 @@ import {
   TENGGAT_HARI,
   type AnswerType,
   type Kesimpulan,
+  type KondisiIsi,
   type Severity,
+  type TipeKotakP3k,
 } from "./constants";
+import { periksaIsiP3k, temuanIsiP3k, butirIsiDari, type KonteksP3k } from "./modul/p3k";
 
 export type ButirChecklist = {
   id: number;
@@ -20,6 +23,9 @@ export type ButirChecklist = {
   jumlahBaku: number | null;
   satuan: string | null;
   wajib: boolean;
+  /** Isi kotak P3K: baku per tipe kotak dan pencatatan kedaluwarsa. */
+  jumlahBakuPerTipe?: Partial<Record<TipeKotakP3k, number>> | null;
+  hasExpiry?: boolean;
 };
 
 export type Jawaban = {
@@ -27,6 +33,9 @@ export type Jawaban = {
   nilai?: string | null;
   nilaiAngka?: number | null;
   catatan?: string | null;
+  /** Isi kotak P3K. */
+  kondisiIsi?: KondisiIsi | null;
+  tglKedaluwarsaTerdekat?: string | null;
 };
 
 const DUA_NILAI: AnswerType[] = ["fungsi", "kondisi", "boolean"];
@@ -106,14 +115,22 @@ export type Temuan = { checklistItemId: number; item: string; severity: Severity
 
 const URUT_SEVERITY: Record<Severity, number> = { berat: 0, sedang: 1, ringan: 2 };
 
-/** Temuan dari seluruh jawaban, diurutkan berat → sedang → ringan. */
-export function bangunTemuan(items: ButirChecklist[], jawaban: Jawaban[]): Temuan[] {
+/**
+ * Temuan dari seluruh jawaban, diurutkan berat → sedang → ringan. Untuk kotak P3K, `p3k`
+ * menambahkan temuan isi (jumlah, kosong, kedaluwarsa) dari lib/domain/modul/p3k.
+ */
+export function bangunTemuan(items: ButirChecklist[], jawaban: Jawaban[], p3k?: KonteksP3k | null): Temuan[] {
   const map = new Map(jawaban.map((j) => [j.checklistItemId, j]));
   const out: Temuan[] = [];
   for (const item of items) {
     const j = map.get(item.id);
     const sev = severityJawaban(item, j);
     if (sev) out.push({ checklistItemId: item.id, item: kalimatTemuan(item, j!), severity: sev });
+  }
+  if (p3k) {
+    for (const t of temuanIsiP3k(butirIsiDari(items), jawaban, p3k)) {
+      out.push({ checklistItemId: t.checklistItemId, item: t.item, severity: t.severity });
+    }
   }
   return out.sort((a, b) => URUT_SEVERITY[a.severity] - URUT_SEVERITY[b.severity]);
 }
@@ -131,6 +148,8 @@ export type DataKirim = {
   kesimpulan: Kesimpulan | null | undefined;
   catatan?: string | null;
   rekomendasi?: string | null;
+  /** Konteks kotak P3K (tipe kotak, tanggal); null untuk modul lain. */
+  p3k?: KonteksP3k | null;
 };
 
 /**
@@ -151,12 +170,13 @@ export function periksaKirim(items: ButirChecklist[], data: DataKirim, maksFoto:
   }
   const belum = items.filter((i) => i.wajib && !terjawab(i, map.get(i.id))).map((i) => i.label);
   if (belum.length) galat.push(`Masih ada pemeriksaan yang belum diisi: ${belum.join(", ")}`);
+  if (data.p3k) galat.push(...periksaIsiP3k(items, data.jawaban, data.p3k));
   if (data.jumlahFoto < 1) galat.push("Foto wajib diunggah minimal satu sebelum inspeksi dikirim.");
   if (data.jumlahFoto > maksFoto) galat.push(`Foto paling banyak ${maksFoto}.`);
   if (!data.kesimpulan) galat.push("Kesimpulan wajib dipilih.");
   if ((data.catatan?.length ?? 0) > 1000) galat.push("Catatan paling panjang 1000 karakter.");
   if ((data.rekomendasi?.length ?? 0) > 1000) galat.push("Rekomendasi paling panjang 1000 karakter.");
-  const usulan = usulanKesimpulan(bangunTemuan(items, data.jawaban));
+  const usulan = usulanKesimpulan(bangunTemuan(items, data.jawaban, data.p3k));
   if (usulan === "tidak_layak" && data.kesimpulan === "layak") {
     galat.push("Terdapat temuan berat, kesimpulan tidak dapat diisi Layak pakai.");
   }
