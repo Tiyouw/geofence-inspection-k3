@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { masuk } from "../helpers";
+import { masuk, pilih, setujuiDialog } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
 
 /**
@@ -20,7 +20,6 @@ function kotak(lat: number, lng: number, timurM: number, utaraM: number, lebarM:
 
 test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpul, pasangkan aset, hapus", async ({ page }) => {
   test.setTimeout(60_000);
-  page.on("dialog", (d) => void d.accept());
   const a = await aset("29D");
   const unik = Date.now().toString(36).slice(-5).toUpperCase();
   const fc = {
@@ -76,8 +75,8 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await expect(peta.locator("path.poligon-area").first()).toHaveAttribute("stroke-opacity", "0.35");
   await expect(page.getByTestId("legenda-terpilih")).toHaveText("Terpilih");
   await panel.getByLabel("Nama", { exact: true }).fill(`Bengkel Las ${unik}`);
-  await panel.getByLabel("Jenis").selectOption("bengkel");
-  await panel.getByLabel("Unit kerja").selectOption({ index: 1 });
+  await pilih(panel.getByLabel("Jenis"), "Bengkel");
+  await pilih(panel.getByLabel("Unit kerja"), 1);
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "Simpan atribut" }).click();
   await expect.poll(async () => (await q("select nama, jenis, restricted, division_id is not null as unit from areas where id = $1", [bengkel.id]))[0]).toEqual({
@@ -89,6 +88,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
 
   // Setujui: draf menjadi poligon resmi
   await panel.getByRole("button", { name: "Setujui poligon" }).click();
+  await setujuiDialog(page, "Setujui poligon");
   await expect(panel).toContainText("Poligon disetujui");
   const [resmi] = await q<{ polygon: { coordinates: number[][][] }; polygon_draf: unknown }>(
     "select polygon, polygon_draf from areas where id = $1",
@@ -114,7 +114,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
 
   // Pasangkan aset (panel area tetap terbuka setelah simpan draf)
   await expect(panel).toContainText("Ada draf");
-  await page.getByLabel("Aset untuk dipasangkan").selectOption(String(a.id));
+  await pilih(page.getByLabel("Aset untuk dipasangkan"), /^29D · /);
   await page.getByRole("button", { name: "Pasangkan", exact: true }).click();
   await expect(page.getByTestId("aset-area")).toContainText("29D");
   expect((await q("select area_id from assets where id = $1", [a.id]))[0]).toEqual({ area_id: bengkel.id });
@@ -130,6 +130,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await page.getByLabel("Cari area").fill(`Dok Uji ${unik}`);
   await page.getByTestId("daftar-area").getByRole("button", { name: new RegExp(`Dok Uji ${unik}`) }).click();
   await page.getByRole("button", { name: "Hapus area" }).click();
+  await setujuiDialog(page, "Hapus area");
   await expect.poll(async () => (await q("select aktif from areas where id = $1", [rows[1]!.id]))[0]).toEqual({ aktif: false });
 });
 

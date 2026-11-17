@@ -14,14 +14,21 @@ export type FilterAset = {
     aktif?: "ya" | "tidak";
     tanpaKoordinat?: boolean;
     jatuhTempo?: boolean;
+    /** id area, atau "belum" = aset bertitik tetap yang belum dipasangkan ke area. */
+    area?: number | "belum";
 };
+
+/** Nilai filter Area untuk aset yang belum dipasangkan ke area. */
+export const AREA_BELUM = "belum";
 
 const satu = (v: string | string[] | undefined) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 
 export function parseFilterAset(sp: Record<string, string | string[] | undefined>): FilterAset {
     const lokasi = satu(sp.lokasi);
     const aktif = satu(sp.aktif);
+    const area = satu(sp.area);
     return {
+        area: area === AREA_BELUM ? AREA_BELUM : area && /^\d+$/.test(area) ? Number(area) : undefined,
         q: satu(sp.q),
         tipe: satu(sp.tipe),
         gedung: satu(sp.gedung),
@@ -50,6 +57,9 @@ function syaratAset(f: FilterAset, hariIni: string): SQL | undefined {
     if (f.lokasiTipe) s.push(eq(assets.lokasiTipe, f.lokasiTipe));
     if (f.aktif) s.push(eq(assets.aktif, f.aktif === "ya"));
     if (f.tanpaKoordinat) s.push(or(isNull(assets.lat), isNull(assets.lng)));
+    // Mobil pemadam tidak punya area (objek bergerak), jadi tidak dihitung "belum berarea".
+    if (f.area === AREA_BELUM) s.push(and(isNull(assets.areaId), eq(assetTypes.isMobile, false)));
+    else if (f.area !== undefined) s.push(eq(assets.areaId, f.area));
     // Celah #7: memakai periode_hari tipe objek, bukan 30 hari tetap.
     if (f.jatuhTempo) {
         s.push(
@@ -146,6 +156,19 @@ export async function pilihanAset() {
             .orderBy(asc(areas.nama)),
     ]);
     return { tipe, divisi, gedung, area };
+}
+
+/** Jumlah aset aktif bertitik tetap yang belum berarea dan yang belum punya koordinat (untuk label filter). */
+export async function hitungBelumLengkap() {
+    const [r] = await db
+        .select({
+            belumArea: sql<number>`count(*) filter (where ${assets.areaId} is null and not ${assetTypes.isMobile})::int`,
+            belumKoordinat: sql<number>`count(*) filter (where ${assets.lat} is null or ${assets.lng} is null)::int`,
+        })
+        .from(assets)
+        .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+        .where(eq(assets.aktif, true));
+    return { belumArea: r?.belumArea ?? 0, belumKoordinat: r?.belumKoordinat ?? 0 };
 }
 
 export async function daftarGedung(): Promise<string[]> {

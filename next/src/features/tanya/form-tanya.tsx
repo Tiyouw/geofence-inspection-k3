@@ -1,5 +1,6 @@
 "use client";
 
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { upload } from "@vercel/blob/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Brand } from "@/components/shell/brand";
@@ -389,6 +390,7 @@ function KartuPertanyaan(props: {
     const { p, j } = props;
     const [mengunggah, setMengunggah] = useState(false);
     const [pesanBerkas, setPesanBerkas] = useState<string | null>(null);
+    const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
     const idTeks = `jawaban-${p.nomor}`;
 
     async function unggah(files: FileList | null) {
@@ -602,8 +604,9 @@ function KartuPertanyaan(props: {
                             <button
                                 type="button"
                                 className="text-muted-foreground hover:text-destructive"
-                                onClick={() => {
-                                    if (confirm(`Hapus ${l.nama}?`)) void hapus(l.id);
+                                onClick={async () => {
+                                    const ya = await konfirmasi({ judul: `Hapus ${l.nama}?`, isi: "Berkas lampiran ini dihapus dari jawaban Anda.", tombol: "Hapus berkas", bahaya: true });
+                                    if (ya) void hapus(l.id);
                                 }}
                                 aria-label={`Hapus ${l.nama}`}
                             >
@@ -614,6 +617,7 @@ function KartuPertanyaan(props: {
                     {pesanBerkas && <p className="text-xs text-muted-foreground">{pesanBerkas}</p>}
                 </div>
             )}
+            {dialogKonfirmasi}
         </article>
     );
 }

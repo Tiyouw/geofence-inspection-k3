@@ -1,6 +1,6 @@
 import { expect, test, type APIResponse, type Page } from "@playwright/test";
 import { Pool } from "pg";
-import { masuk } from "../helpers";
+import { masuk, pilih } from "../helpers";
 
 /**
  * Area Laporan/Pemantau (SPEC §4.9, §5; ACCEPTANCE J, L, F5, G14).
@@ -83,7 +83,7 @@ test.describe("pemantau", () => {
     const { tahun, bulan } = bulanIni();
     await page.goto(`/pemantau/laporan?tipe=apar&tahun=${tahun}&bulan=${Number(bulan)}`);
     await expect(page.getByRole("heading", { name: "Laporan bulanan" })).toBeVisible();
-    await expect(page.getByLabel("Tahun")).toHaveValue(tahun);
+    await expect(page.getByLabel("Tahun")).toHaveAttribute("data-nilai", tahun);
     const tabel = page.getByRole("table", { name: "Rincian per unit" });
     // Satu baris per unit (+ kepala), sama dengan angka di judul. Uji lain boleh menambah aset.
     const judul = await page.getByRole("heading", { name: /Rincian per unit/ }).innerText();
@@ -125,7 +125,7 @@ test.describe("pemantau", () => {
     await page.goto("/pemantau/temuan");
     await expect(page.getByRole("heading", { name: "Temuan" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Daftar temuan" })).toContainText("Tekanan manometer: Kurang");
-    await page.getByLabel("Tingkat").selectOption("ringan");
+    await pilih(page.getByLabel("Tingkat"), "Ringan");
     await page.getByRole("button", { name: "Terapkan" }).click();
     await expect(page).toHaveURL(/tingkat=ringan/);
     // Hanya temuan ringan yang tampil (uji Admin boleh menambah temuan ringan).

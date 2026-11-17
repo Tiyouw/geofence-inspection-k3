@@ -8,8 +8,9 @@ import { ambilDataPeriode, daftarGedung, daftarTipe, tahunTersedia } from "@/fea
 import { perluTinjauan } from "@/features/laporan/rakit";
 import { Kosong, LencanaGerbang, LencanaKesimpulan, Tabel } from "@/features/laporan/ui";
 import { requireRole } from "@/lib/auth/guards";
+import { Pilihan } from "@/components/ui/pilihan";
 
-const pilih = "h-9 rounded-md border bg-card px-2 text-sm";
+const pilih = "h-9 min-w-40";
 
 /**
  * Laporan bulanan (SPEC §4.9, ACCEPTANCE L6): saring tipe/tahun/bulan/gedung, ringkasan,
@@ -33,44 +34,44 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
       <form method="get" className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4" aria-label="Saring laporan">
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">Tipe objek</span>
-          <select name="tipe" defaultValue={f.tipe} className={pilih}>
+          <Pilihan name="tipe" defaultValue={f.tipe} className={pilih}>
             {tipe.map((t) => (
               <option key={t.slug} value={t.slug}>
                 {t.nama}
               </option>
             ))}
-          </select>
+          </Pilihan>
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">Tahun</span>
-          <select name="tahun" defaultValue={String(f.tahun)} className={pilih}>
+          <Pilihan name="tahun" defaultValue={String(f.tahun)} className={pilih}>
             {[...new Set([f.tahun, ...tahun])].sort((a, b) => b - a).map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
+          </Pilihan>
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">Bulan</span>
-          <select name="bulan" defaultValue={String(f.bulan)} className={pilih}>
+          <Pilihan name="bulan" defaultValue={String(f.bulan)} className={pilih}>
             {NAMA_BULAN.map((b, i) => (
               <option key={b} value={i + 1}>
                 {b}
               </option>
             ))}
-          </select>
+          </Pilihan>
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">Gedung</span>
-          <select name="gedung" defaultValue={f.gedung ?? ""} className={pilih}>
+          <Pilihan name="gedung" defaultValue={f.gedung ?? ""} className={pilih}>
             <option value="">Semua gedung</option>
             {gedung.map((g) => (
               <option key={g} value={g}>
                 {g}
               </option>
             ))}
-          </select>
+          </Pilihan>
         </label>
         <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
           Tampilkan

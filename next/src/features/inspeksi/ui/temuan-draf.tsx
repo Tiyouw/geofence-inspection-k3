@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { Input } from "@/components/ui/input";
+import { Pilihan } from "@/components/ui/pilihan";
 import { LABEL_TINDAKAN, TINDAKAN_REKOMENDASI, type TindakanRekomendasi } from "@/lib/domain/constants";
 import type { Temuan } from "@/lib/domain/inspeksi";
 import type { JawabanLokal } from "../client/types";
@@ -35,8 +36,8 @@ export function TemuanDraf({
             </div>
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Tindakan yang direkomendasikan
-              <select
-                className="h-14 rounded-xl border bg-background px-3 text-base text-foreground transition-colors duration-200"
+              <Pilihan
+                className="h-14 rounded-xl px-3 text-base text-foreground"
                 value={t.tindakan}
                 disabled={!bisaUbah}
                 onChange={(e) => onUbah(t.checklistItemId, { tindakanRekomendasi: e.target.value as TindakanRekomendasi })}
@@ -46,7 +47,7 @@ export function TemuanDraf({
                     {LABEL_TINDAKAN[k]}
                   </option>
                 ))}
-              </select>
+              </Pilihan>
             </label>
             <UraianTindakan
               awal={jawaban[t.checklistItemId]?.uraianTindakan ?? ""}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Camera, CameraOff, Check, ChevronLeft, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ export function KameraTerpandu({
     setVersi((v) => v + 1);
     berubah();
   }, [berubah]);
+  const [konfirmasi, dialogKonfirmasi] = useKonfirmasi();
 
   const l = langkah[indeks]!;
   const fotoLangkah = (kode: string) => fotos.filter((f) => f.langkah === kode);
@@ -106,14 +108,29 @@ export function KameraTerpandu({
   };
 
   const tutup = async () => {
-    if (jumlahSesi > 0 && !confirm(`Tutup kamera? ${jumlahSesi} foto yang belum disimpan akan dibuang.`)) return;
+    if (
+      jumlahSesi > 0 &&
+      !(await konfirmasi({
+        judul: "Tutup kamera?",
+        jumlah: `${jumlahSesi} foto belum disimpan`,
+        isi: "Foto yang belum disimpan akan dibuang. Foto yang sudah disimpan tetap ada.",
+        tombol: "Tutup dan buang",
+        batal: "Lanjut memotret",
+        bahaya: true,
+      }))
+    )
+      return;
     await batalSesiFoto(db!, inspectionId);
     segarkan();
     onTutup(false);
   };
 
   const hapus = async (f: FotoTampil) => {
-    if (!f.sesi && !confirm("Hapus foto yang sudah tersimpan ini?")) return;
+    if (
+      !f.sesi &&
+      !(await konfirmasi({ judul: "Hapus foto ini?", isi: "Foto yang sudah disimpan ini dihapus dari draf.", tombol: "Hapus foto", bahaya: true }))
+    )
+      return;
     await hapusFotoLokal(db!, inspectionId, f.photoId);
     setLihat(null);
     segarkan();
@@ -204,6 +221,7 @@ export function KameraTerpandu({
           </div>
         </div>
       )}
+      {dialogKonfirmasi}
     </div>
   );
 }

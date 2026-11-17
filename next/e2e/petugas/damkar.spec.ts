@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { masuk } from "../helpers";
+import { masuk, pilih as pilihKontrol } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
 import { fotoSemuaLangkah, KAMERA_PALSU } from "../kamera-uji";
 import { LANGKAH_FOTO_DAMKAR } from "../../src/lib/domain/modul/damkar";
@@ -52,8 +52,8 @@ test("mobil pemadam: 'Objek bergerak', 17 butir, odometer bukan temuan; temuan d
   const pratinjau = page.getByTestId("pratinjau-temuan");
   await expect(pratinjau).toContainText("Temuan (2)");
   const rem = pratinjau.getByRole("listitem").filter({ hasText: "Rem berfungsi" });
-  await expect(rem.getByRole("combobox")).toHaveValue("perbaiki");
-  await rem.getByRole("combobox").selectOption("ganti");
+  await expect(rem.getByRole("combobox")).toHaveAttribute("data-nilai", "perbaiki");
+  await pilihKontrol(rem.getByRole("combobox"), "Ganti");
 
   await fotoSemuaLangkah(page, LANGKAH_FOTO_DAMKAR.map((l) => l.judul));
   await page.getByLabel(/Rekomendasi/).fill("Kendaraan tidak dioperasikan sampai rem diperbaiki.");
