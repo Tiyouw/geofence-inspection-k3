@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { mulaiDariTeks } from "../client/aksi";
+import { bukaKamera, buatPembacaQR, type PembacaQR } from "../client/qr";
 import { useInspektur } from "./konteks";
-
-type Detektor = { detect(src: CanvasImageSource): Promise<{ rawValue: string }[]> };
 
 /**
  * SPEC §3.1/§3.2: pemindai di aplikasi. Kamera belakang dulu, bisa ganti kamera, dilepas
@@ -66,45 +65,39 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
   useEffect(() => {
     if (kamera !== "nyala") return;
     let hidup = true;
-    let detektor: Detektor | null = null;
-    const BD = (globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detektor }).BarcodeDetector;
-    if (BD) detektor = new BD({ formats: ["qr_code"] });
+    // QR yang sama yang baru saja ditolak tidak diproses ulang tiap bingkai (tiap penolakan
+    // daring memicu unduh ulang paket).
+    let terakhir = { teks: "", waktu: 0 };
 
     (async () => {
+      let pembaca: PembacaQR;
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: hadap } }, audio: false });
+        const s = await bukaKamera(hadap);
         if (!hidup) return s.getTracks().forEach((t) => t.stop());
         stream.current = s;
-        video.current!.srcObject = s;
-        await video.current!.play();
+        const v = video.current!;
+        v.srcObject = s;
+        v.setAttribute("playsinline", "true"); // iOS Safari: jangan layar penuh
+        await v.play();
+        pembaca = await buatPembacaQR();
+        v.dataset.mesin = pembaca.mesin();
+        v.dataset.hadap = s.getVideoTracks()[0]?.getSettings?.().facingMode ?? "";
       } catch {
-        setKamera("gagal");
+        if (hidup) setKamera("gagal");
         return;
       }
-      const jsQR = detektor ? null : (await import("jsqr")).default;
       const loop = async () => {
-        if (!hidup || !video.current || video.current.readyState < 2) {
-          if (hidup) requestAnimationFrame(loop);
-          return;
+        if (!hidup) return;
+        const v = video.current;
+        const c = kanvas.current;
+        const hasil = v && c ? await pembaca.baca(v, c).catch(() => null) : null;
+        if (hidup && hasil && !(hasil === terakhir.teks && Date.now() - terakhir.waktu < 3000)) {
+          terakhir = { teks: hasil, waktu: Date.now() };
+          await proses(hasil);
         }
-        let hasil: string | null = null;
-        if (detektor) {
-          const kode = await detektor.detect(video.current).catch(() => []);
-          hasil = kode[0]?.rawValue ?? null;
-        } else if (jsQR && kanvas.current) {
-          const v = video.current;
-          const c = kanvas.current;
-          c.width = v.videoWidth;
-          c.height = v.videoHeight;
-          const ctx = c.getContext("2d", { willReadFrequently: true })!;
-          ctx.drawImage(v, 0, 0);
-          const img = ctx.getImageData(0, 0, c.width, c.height);
-          hasil = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" })?.data ?? null;
-        }
-        if (hasil) await proses(hasil);
-        if (hidup) setTimeout(() => requestAnimationFrame(loop), 120);
+        if (hidup) setTimeout(() => requestAnimationFrame(() => void loop()), 80);
       };
-      requestAnimationFrame(loop);
+      void loop();
     })();
 
     return () => {
@@ -175,7 +168,7 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
           void proses(manual);
         }}
       >
-        <Label htmlFor="kode-cadangan">Kode cadangan (tertulis di bawah QR)</Label>
+        <Label htmlFor="kode-cadangan">Kode cadangan (tulisan kecil PAL-K3-… di bawah QR)</Label>
         <div className="flex gap-2">
           <Input
             id="kode-cadangan"
@@ -191,6 +184,7 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
             Buka
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">Spasi, baris baru, dan huruf besar tidak masalah. Nomor aset (mis. 01D) saja tidak cukup.</p>
         {!daring && <p className="text-xs text-muted-foreground">Luring: stiker dicocokkan dengan data di perangkat.</p>}
       </form>
     </div>

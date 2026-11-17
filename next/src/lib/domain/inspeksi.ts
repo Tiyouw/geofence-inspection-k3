@@ -255,5 +255,27 @@ export function ambilToken(teks: string): string | null {
   } catch {
     // bukan URL: pakai apa adanya
   }
-  return /^PAL-K3-[0-9a-f]{32}$/i.test(kandidat) ? "PAL-K3-" + kandidat.slice(7).toLowerCase() : null;
+  return normalisasiKodeCadangan(kandidat);
+}
+
+/**
+ * Kode cadangan yang diketik dari stiker. Token tercetak kecil dan terpotong ke beberapa baris
+ * (dan sejak perbaikan ini dikelompokkan per 4 karakter), sehingga ketikan petugas bisa memuat
+ * spasi, baris baru, tanda hubung panjang dari papan ketik ponsel, huruf besar, atau tanpa awalan.
+ * Huruf O/I/L tidak ada di heksadesimal, jadi dibaca sebagai 0/1 (salah baca stiker yang pudar).
+ */
+export function normalisasiKodeCadangan(teks: string): string | null {
+  let s = teks
+    .normalize("NFKC")
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
+    .replace(/[\s\u200B-\u200D\uFEFF]+/g, "")
+    .toLowerCase();
+  s = s.replace(/^pal-?k3-?/, "");
+  s = s.replace(/-/g, "").replace(/o/g, "0").replace(/[il]/g, "1");
+  return /^[0-9a-f]{32}$/.test(s) ? "PAL-K3-" + s : null;
+}
+
+/** Mirip nomor aset ("01D", "14A"), bukan token: petugas mengetik nomor besar di stiker. */
+export function miripNomorAset(teks: string): boolean {
+  return /^[a-z0-9][a-z0-9.\-/]{0,11}$/i.test(teks.trim()) && !normalisasiKodeCadangan(teks);
 }

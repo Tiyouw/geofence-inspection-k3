@@ -38,8 +38,16 @@ export async function asetStiker(f: FilterStiker) {
 
 /**
  * QR SVG berisi URL lengkap /i/{token}, koreksi galat M (stiker di bengkel terkena debu dan
- * percikan cat; tingkat L terlalu rapat), margin 0.
+ * percikan cat; tingkat L terlalu rapat), margin 4 (quiet zone).
  */
 export async function qrSvg(origin: string, token: string): Promise<string> {
-    return QRCode.toString(urlStiker(origin, token), { type: "svg", errorCorrectionLevel: "M", margin: 0 });
+    // margin 4 = quiet zone baku QR (ISO/IEC 18004). Dengan margin 0, tepi QR menempel pada
+    // garis potong label, label tetangga, atau latar layar gelap, dan pemindai (jsQR dan
+    // BarcodeDetector) gagal menemukan pola pencari. Latar putih ikut tergambar di SVG.
+    return QRCode.toString(urlStiker(origin, token), { type: "svg", errorCorrectionLevel: "M", margin: 4 });
+}
+
+/** Token dicetak berkelompok 4 karakter supaya mudah diketik ulang ("PAL-K3-da4f 8df0 …"). */
+export function tokenTercetak(token: string): string {
+    return token.startsWith("PAL-K3-") ? "PAL-K3-" + (token.slice(7).match(/.{1,4}/g) ?? []).join(" ") : token;
 }
