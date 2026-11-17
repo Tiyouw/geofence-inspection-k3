@@ -145,6 +145,11 @@ export function usulanKesimpulan(temuan: { severity: Severity }[]): Kesimpulan {
 export type DataKirim = {
   jawaban: Jawaban[];
   jumlahFoto: number;
+  /**
+   * Hasil periksaFotoLangkah (kamera terpandu). Bila diisi, menggantikan pemeriksaan jumlah
+   * foto per inspeksi, karena syaratnya per langkah dan area terbatas tanpa foto.
+   */
+  galatFoto?: string[];
   kesimpulan: Kesimpulan | null | undefined;
   catatan?: string | null;
   rekomendasi?: string | null;
@@ -171,8 +176,11 @@ export function periksaKirim(items: ButirChecklist[], data: DataKirim, maksFoto:
   const belum = items.filter((i) => i.wajib && !terjawab(i, map.get(i.id))).map((i) => i.label);
   if (belum.length) galat.push(`Masih ada pemeriksaan yang belum diisi: ${belum.join(", ")}`);
   if (data.p3k) galat.push(...periksaIsiP3k(items, data.jawaban, data.p3k));
-  if (data.jumlahFoto < 1) galat.push("Foto wajib diunggah minimal satu sebelum inspeksi dikirim.");
-  if (data.jumlahFoto > maksFoto) galat.push(`Foto paling banyak ${maksFoto}.`);
+  if (data.galatFoto) galat.push(...data.galatFoto);
+  else {
+    if (data.jumlahFoto < 1) galat.push("Foto wajib diunggah minimal satu sebelum inspeksi dikirim.");
+    if (data.jumlahFoto > maksFoto) galat.push(`Foto paling banyak ${maksFoto}.`);
+  }
   if (!data.kesimpulan) galat.push("Kesimpulan wajib dipilih.");
   if ((data.catatan?.length ?? 0) > 1000) galat.push("Catatan paling panjang 1000 karakter.");
   if ((data.rekomendasi?.length ?? 0) > 1000) galat.push("Rekomendasi paling panjang 1000 karakter.");

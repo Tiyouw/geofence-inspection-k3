@@ -4,6 +4,7 @@ import {
   fotoPerButir,
   LANGKAH_FOTO_APAR,
   langkahCadangan,
+  langkahUntukTipe,
   MAKS_JEPRETAN_LANGKAH,
   periksaFotoLangkah,
   selesaikanLangkah,
@@ -102,5 +103,24 @@ describe("fotoPerButir: satu foto untuk beberapa butir", () => {
     expect(m.get(11)).toEqual(["p1", "p2"]);
     expect(m.get(14)).toEqual(["p1", "p2"]);
     expect(m.get(12)).toEqual(["p3"]);
+  });
+});
+
+describe("langkahUntukTipe", () => {
+  const grup = [
+    { kode: "A", nama: "Isi", items: [{ id: 1, urut: 1 }, { id: 2, urut: 2 }] },
+    { kode: "B", nama: "Fisik", items: [{ id: 3, urut: 3 }] },
+  ];
+
+  it("tanpa definisi memakai cadangan per grup", () => {
+    expect(langkahUntukTipe(undefined, grup).map((l) => l.judul)).toEqual(["Isi", "Fisik"]);
+  });
+
+  it("butir yang tidak terpetakan dikumpulkan ke Butir lainnya", () => {
+    const l = langkahUntukTipe([{ kode: "m", judul: "Manometer", butir: [2] }], grup);
+    expect(l).toEqual([
+      { kode: "m", judul: "Manometer", petunjuk: null, itemIds: [2] },
+      { kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: [1, 3] },
+    ]);
   });
 });

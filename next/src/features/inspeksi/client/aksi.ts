@@ -4,11 +4,12 @@
  */
 import { pesanAsetUnitLain } from "@/lib/domain/akses";
 import { MAKS_FOTO } from "@/lib/domain/constants";
+import { langkahCadangan, MAKS_JEPRETAN_LANGKAH, periksaFotoLangkah, type LangkahFoto } from "@/lib/domain/langkah-foto";
 import { ambilToken, bangunTemuan, miripNomorAset, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
 import type { KonteksP3k } from "@/lib/domain/modul/p3k";
 import { getMeta, setMeta, type DbAkun } from "./db";
 import { monoNow, uuidv7 } from "./ids";
-import { opsInspeksi, tambahOp } from "./outbox";
+import { buatOp, opsInspeksi, tambahOp } from "./outbox";
 import type { AsetPaket, DrafLokal, FotoLokal, GpsBacaan, JawabanLokal, PaketKerja } from "./types";
 
 const nowIso = () => new Date().toISOString();
@@ -77,6 +78,11 @@ export async function pesanUnitLain(db: DbAkun, token: string): Promise<string |
 
 export function butirUntuk(paket: PaketKerja, assetTypeId: number): ButirChecklist[] {
   return (paket.checklist[assetTypeId] ?? []).flatMap((g) => g.items);
+}
+
+/** Langkah kamera terpandu; paket lama tanpa langkah memakai cadangan per grup. */
+export function langkahUntuk(paket: PaketKerja, assetTypeId: number): LangkahFoto[] {
+  return paket.langkahFoto?.[assetTypeId] ?? langkahCadangan(paket.checklist[assetTypeId] ?? []);
 }
 
 /* ---------- pindai ---------- */
@@ -197,18 +203,64 @@ export function simpanGps(db: DbAkun, inspectionId: string, bacaan: GpsBacaan, p
   );
 }
 
-/* ---------- foto ---------- */
+/* ---------- foto: kamera terpandu (PRD Aturan bukti 3) ---------- */
 
-export async function tambahFoto(db: DbAkun, foto: Omit<FotoLokal, "uploaded">) {
-  const d = await db.get("drafts", foto.inspectionId);
+async function drafBisaDiubah(db: DbAkun, inspectionId: string) {
+  const d = await db.get("drafts", inspectionId);
   if (!d || d.status === "antre") throw new Error("Draf tidak bisa diubah.");
-  const ada = await db.countFromIndex("photos", "byInspection", foto.inspectionId);
-  if (ada >= MAKS_FOTO) throw new Error(`Foto paling banyak ${MAKS_FOTO}.`);
-  await db.put("photos", { ...foto, uploaded: false });
-  await tambahOp(db, "upload-photo", foto.inspectionId, { photoId: foto.photoId });
+  return d;
+}
+
+/**
+ * Jepretan masuk IndexedDB seketika, tetapi belum ke antrean unggah (`sesi: true`) sampai
+ * inspektur menekan "Simpan semua". Maksimal 5 per langkah, termasuk yang sudah tersimpan.
+ */
+export async function simpanJepretan(db: DbAkun, foto: Omit<FotoLokal, "uploaded" | "sesi"> & { langkah: string }) {
+  await drafBisaDiubah(db, foto.inspectionId);
+  const ada = (await db.getAllFromIndex("photos", "byInspection", foto.inspectionId)).filter((f) => f.langkah === foto.langkah);
+  if (ada.length >= MAKS_JEPRETAN_LANGKAH) throw new Error(`Paling banyak ${MAKS_JEPRETAN_LANGKAH} foto per langkah.`);
+  await db.put("photos", { ...foto, sesi: true, uploaded: false });
+}
+
+/** Simpan semua jepretan sesi sekaligus: satu transaksi, satu operasi unggah per foto (Idempotency-Key per foto). */
+export async function simpanSemuaFoto(db: DbAkun, inspectionId: string): Promise<number> {
+  await drafBisaDiubah(db, inspectionId);
+  const tx = db.transaction(["photos", "outbox", "meta"], "readwrite");
+  const fotos = (await tx.objectStore("photos").index("byInspection").getAll(inspectionId))
+    .filter((f) => f.sesi)
+    .sort((a, b) => a.takenAtDevice.localeCompare(b.takenAtDevice));
+  let seq = ((await tx.objectStore("meta").get("seq")) as number | undefined) ?? 0;
+  const now = Date.now();
+  for (const f of fotos) {
+    await tx.objectStore("photos").put({ ...f, sesi: false });
+    await tx.objectStore("outbox").put(buatOp("upload-photo", inspectionId, { photoId: f.photoId }, ++seq, now));
+  }
+  await tx.objectStore("meta").put(seq, "seq");
+  await tx.done;
+  return fotos.length;
+}
+
+/** Tutup kamera tanpa menyimpan: jepretan sesi dibuang, foto yang sudah tersimpan tetap. */
+export async function batalSesiFoto(db: DbAkun, inspectionId: string) {
+  const tx = db.transaction("photos", "readwrite");
+  for (const f of await tx.store.index("byInspection").getAll(inspectionId)) {
+    if (f.sesi) await tx.store.delete(f.photoId);
+  }
+  await tx.done;
+}
+
+/** Ulangi satu langkah sebelum menyimpan: jepretan sesi langkah itu dihapus. */
+export async function ulangiLangkah(db: DbAkun, inspectionId: string, langkah: string) {
+  const tx = db.transaction("photos", "readwrite");
+  for (const f of await tx.store.index("byInspection").getAll(inspectionId)) {
+    if (f.sesi && f.langkah === langkah) await tx.store.delete(f.photoId);
+  }
+  await tx.done;
 }
 
 export async function hapusFotoLokal(db: DbAkun, inspectionId: string, photoId: string) {
+  const foto = await db.get("photos", photoId);
+  if (foto?.sesi) return db.delete("photos", photoId); // belum pernah masuk antrean
   const ops = await opsInspeksi(db, inspectionId);
   const unggah = ops.find((o) => o.kind === "upload-photo" && o.payload.photoId === photoId);
   await db.delete("photos", photoId);
@@ -222,12 +274,16 @@ export async function kirimInspeksi(
   db: DbAkun,
   inspectionId: string,
   items: ButirChecklist[],
-  opsi: { p3k?: KonteksP3k | null } = {},
+  opsi: { langkah: LangkahFoto[]; areaTerbatas: boolean; p3k?: KonteksP3k | null },
 ): Promise<{ ok: true } | { ok: false; galat: string[] }> {
   const p3k = opsi.p3k ?? null;
   const d = await db.get("drafts", inspectionId);
   if (!d) return { ok: false, galat: ["Draf tidak ditemukan di perangkat."] };
-  const fotos = await db.getAllFromIndex("photos", "byInspection", inspectionId);
+  const semua = await db.getAllFromIndex("photos", "byInspection", inspectionId);
+  const fotos = semua.filter((f) => !f.sesi);
+  const galatFoto = semua.some((f) => f.sesi)
+    ? ["Foto di kamera belum disimpan. Buka kamera terpandu lalu tekan Simpan semua."]
+    : periksaFotoLangkah(opsi.langkah, fotos.map((f) => ({ langkah: f.langkah ?? "" })), { areaTerbatas: opsi.areaTerbatas });
   const jawaban = Object.entries(d.jawaban).map(([id, j]) => ({
     checklistItemId: Number(id),
     nilai: j.nilai ?? null,
@@ -240,7 +296,7 @@ export async function kirimInspeksi(
   }));
   const galat = periksaKirim(
     items,
-    { jawaban, jumlahFoto: fotos.length, kesimpulan: d.kesimpulan, catatan: d.catatan, rekomendasi: d.rekomendasi, p3k },
+    { jawaban, jumlahFoto: fotos.length, galatFoto, kesimpulan: d.kesimpulan, catatan: d.catatan, rekomendasi: d.rekomendasi, p3k },
     MAKS_FOTO,
   );
   if (galat.length) return { ok: false, galat };
@@ -263,6 +319,7 @@ export async function kirimInspeksi(
     gps: d.gps,
     answers: jawaban,
     photoIds: fotos.map((f) => f.photoId),
+    photos: fotos.map((f) => ({ id: f.photoId, langkah: f.langkah ?? null })),
     kesimpulan: d.kesimpulan,
     catatan: d.catatan || null,
     rekomendasi: d.rekomendasi || null,

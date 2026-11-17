@@ -53,6 +53,15 @@ export type FotoLokal = {
   takenAtDevice: string;
   lat: number | null;
   lng: number | null;
+  /** Akurasi GPS (m) saat jepretan diambil. */
+  akurasi?: number | null;
+  /** Kode langkah kamera terpandu; null untuk foto lama sebelum kamera terpandu. */
+  langkah?: string | null;
+  /**
+   * true selama sesi kamera belum disimpan: jepretan sudah aman di perangkat, tetapi belum
+   * masuk antrean unggah. "Simpan semua" mengubahnya sekaligus (PRD Aturan bukti 3).
+   */
+  sesi?: boolean;
   uploaded: boolean;
 };
 

@@ -54,7 +54,15 @@ export async function tambahOp(
   const tx = db.transaction(["outbox", "meta"], "readwrite");
   const seq = (((await tx.objectStore("meta").get("seq")) as number | undefined) ?? 0) + 1;
   await tx.objectStore("meta").put(seq, "seq");
-  const op: OutboxOp = {
+  const op = buatOp(kind, inspectionId, payload, seq, now);
+  await tx.objectStore("outbox").put(op);
+  await tx.done;
+  return op;
+}
+
+/** Operasi baru; pemanggil yang menulis beberapa operasi dalam satu transaksi menghitung `seq` sendiri. */
+export function buatOp(kind: JenisOp, inspectionId: string, payload: Record<string, unknown>, seq: number, now = Date.now()): OutboxOp {
+  return {
     opId: uuidv7(now),
     kind,
     inspectionId,
@@ -67,9 +75,6 @@ export async function tambahOp(
     errorKode: null,
     createdAt: now,
   };
-  await tx.objectStore("outbox").put(op);
-  await tx.done;
-  return op;
 }
 
 export async function opsInspeksi(db: DbAkun, inspectionId: string): Promise<OutboxOp[]> {
@@ -131,6 +136,8 @@ export function pengirimHttp(fetchFn: typeof fetch = fetch, base = ""): Pengirim
             "X-Width": String(foto.width),
             "X-Height": String(foto.height),
             ...(foto.lat !== null ? { "X-Lat": String(foto.lat), "X-Lng": String(foto.lng) } : {}),
+            ...(foto.akurasi != null ? { "X-Accuracy": String(foto.akurasi) } : {}),
+            ...(foto.langkah ? { "X-Step": foto.langkah } : {}),
           },
         };
         break;

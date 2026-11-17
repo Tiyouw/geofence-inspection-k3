@@ -1,11 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
 import { masuk } from "../helpers";
 import { aset, q, tutup } from "../db-uji";
+import { fotoSemuaLangkah, KAMERA_PALSU } from "../kamera-uji";
 
 /** SPEC §3 + ACCEPTANCE C/D/E/F/G: alur inspeksi lengkap dari ponsel. */
-const FOTO = { name: "apar.png", mimeType: "image/png", buffer: readFileSync("public/icons/icon-512.png") };
-
+test.use(KAMERA_PALSU);
 test.afterAll(tutup);
 
 async function isiSemua(page: Page, opsi: { volume: "Penuh" | "Tidak penuh" }) {
@@ -46,13 +45,12 @@ test.describe("daring", () => {
     await isiSemua(page, { volume: "Tidak penuh" });
     await page.getByRole("button", { name: "Kirim", exact: true }).click();
     const galat = page.getByTestId("galat-kirim");
-    await expect(galat).toContainText("Foto wajib diunggah minimal satu");
+    await expect(galat).toContainText("Langkah foto yang belum diisi: Tabung utuh dan label");
     // Temuan berat → usulan tidak layak dan rekomendasi wajib (G)
     await expect(page.getByRole("radio", { name: "Tidak layak pakai" })).toHaveAttribute("aria-checked", "true");
     await expect(galat).toContainText("rekomendasi wajib diisi");
 
-    await page.getByTestId("input-foto").setInputFiles(FOTO);
-    await expect(page.getByRole("img", { name: "Foto bukti" })).toHaveCount(1);
+    await fotoSemuaLangkah(page);
     await page.getByLabel(/Rekomendasi/).fill("Isi ulang tabung, pasang unit cadangan.");
     await page.getByRole("button", { name: "Kirim", exact: true }).click();
 
@@ -67,7 +65,8 @@ test.describe("daring", () => {
     const temuan = await q<{ severity: string; item: string; target_selesai: string }>("select severity, item from issues where inspection_id = $1", [id]);
     expect(temuan).toEqual([{ severity: "berat", item: "Volume isi tabung: Tidak penuh" }]);
     const fotos = await q<{ content_type: string; width: number }>("select content_type, width from inspection_photos where inspection_id = $1", [id]);
-    expect(fotos).toEqual([{ content_type: "image/jpeg", width: 512 }]);
+    expect(fotos).toHaveLength(5);
+    expect(fotos.every((f) => f.content_type === "image/jpeg" && f.width > 0 && f.width <= 1600)).toBe(true);
     const [jadwal] = await q<{ status: string }>("select status from schedules where inspection_id = $1", [id]);
     expect(jadwal?.status).toBe("selesai");
     expect((await q("select 1 from inspection_answers where inspection_id = $1", [id])).length).toBe(10);
@@ -84,8 +83,7 @@ test.describe("daring", () => {
     await expect(page).toHaveURL(/\/petugas\/isi\?id=/);
     await expect(page.getByTestId("pesan-gps")).toContainText("jauh di luar batas 75 m");
     await isiSemua(page, { volume: "Penuh" });
-    await page.getByTestId("input-foto").setInputFiles(FOTO);
-    await expect(page.getByRole("img", { name: "Foto bukti" })).toHaveCount(1);
+    await fotoSemuaLangkah(page);
     await page.getByRole("button", { name: "Kirim", exact: true }).click();
     await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("hasil-terkirim")).toContainText("Jauh dari aset");
@@ -129,8 +127,7 @@ test.describe("luring", () => {
     await expect(page.getByText("dicocokkan luring")).toBeVisible();
 
     await isiSemua(page, { volume: "Penuh" });
-    await page.getByTestId("input-foto").setInputFiles(FOTO);
-    await expect(page.getByRole("img", { name: "Foto bukti" })).toHaveCount(1);
+    await fotoSemuaLangkah(page);
     await page.getByRole("button", { name: "Kirim", exact: true }).click();
 
     await expect(page.getByTestId("status-kirim")).toContainText("Masuk antrean");

@@ -127,3 +127,20 @@ export function fotoPerButir(langkah: LangkahFoto[], fotos: { photoId: string; l
   }
   return out;
 }
+
+/**
+ * Langkah sebuah tipe aset: dari definisi bila ada, selain itu cadangan per grup. Butir aktif
+ * yang tidak terpetakan definisi dikumpulkan ke langkah "Butir lainnya", supaya tidak ada
+ * butir tanpa bukti foto.
+ */
+export function langkahUntukTipe(
+  def: DefinisiLangkahFoto[] | undefined,
+  grup: { kode: string | null; nama: string; items: { id: number; urut: number }[] }[],
+): LangkahFoto[] {
+  if (!def?.length) return langkahCadangan(grup);
+  const items = grup.flatMap((g) => g.items);
+  const langkah = selesaikanLangkah(def, items);
+  const lepas = butirTanpaLangkah(langkah, items.map((i) => i.id));
+  if (lepas.length) langkah.push({ kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: lepas });
+  return langkah;
+}

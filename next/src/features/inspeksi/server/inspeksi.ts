@@ -20,6 +20,7 @@ import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { evaluasiGerbang, jarakMeter, radiusEfektif } from "@/lib/domain/asset";
 import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
+import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
 import {
   bangunTemuan,
   jatuhTempo,
@@ -33,7 +34,9 @@ import {
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
+import { asetDiAreaTerbatas } from "./bundle";
 import { GalatApi } from "./http";
+import { langkahTipeAset } from "./langkah";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -128,7 +131,17 @@ export async function unggahFoto(
   inspectionId: string,
   photoId: string,
   body: Uint8Array,
-  meta: { contentType: string; sha256: string | null; takenAt: string | null; lat: number | null; lng: number | null; width: number | null; height: number | null },
+  meta: {
+    contentType: string;
+    sha256: string | null;
+    takenAt: string | null;
+    lat: number | null;
+    lng: number | null;
+    akurasi: number | null;
+    langkah: string | null;
+    width: number | null;
+    height: number | null;
+  },
 ) {
   const ext = TIPE_FOTO[meta.contentType];
   if (!ext) {
@@ -150,11 +163,23 @@ export async function unggahFoto(
   }
   if (ins.status === "final") throw SUDAH_DIKIRIM();
 
+  // Kamera terpandu (PRD Aturan bukti 3-4): langkah harus milik tipe aset; area terbatas tanpa foto.
+  const [{ a: aset, t: tipe }] = (await db
+    .select({ a: assets, t: { id: assetTypes.id, slug: assetTypes.slug } })
+    .from(assets)
+    .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+    .where(eq(assets.id, ins.assetId))) as [{ a: typeof assets.$inferSelect; t: { id: number; slug: string } }];
+  if (asetDiAreaTerbatas(aset)) throw new GalatApi(422, "area_terbatas", "Aset di area terbatas tidak boleh difoto.");
+  const langkah = await langkahTipeAset(db, tipe);
+  if (meta.langkah && !langkah.some((l) => l.kode === meta.langkah)) {
+    throw new GalatApi(422, "langkah_tidak_dikenal", "Langkah foto tidak dikenal. Perbarui data lalu ulangi kamera terpandu.");
+  }
+  const maks = Math.max(MAKS_FOTO, maksFotoInspeksi(langkah));
   const [{ n }] = (await db
     .select({ n: sql<number>`count(*)::int` })
     .from(inspectionPhotos)
     .where(eq(inspectionPhotos.inspectionId, inspectionId))) as [{ n: number }];
-  if (n >= MAKS_FOTO) throw new GalatApi(422, "foto_maks", `Foto paling banyak ${MAKS_FOTO}.`);
+  if (n >= maks) throw new GalatApi(422, "foto_maks", `Foto paling banyak ${maks}.`);
 
   const key = kunciFoto(inspectionId, photoId, ext);
   await simpanFoto(key, body, meta.contentType);
@@ -238,7 +263,9 @@ export const finalizeSchema = z.object({
       }),
     )
     .max(200),
-  photoIds: z.array(z.uuid()).max(MAKS_FOTO),
+  photoIds: z.array(z.uuid()).max(200),
+  /** Kamera terpandu: langkah tiap foto. Kiriman lama (sebelum kamera terpandu) tidak membawanya. */
+  photos: z.array(z.object({ id: z.uuid(), langkah: z.string().max(64).nullable() })).max(200).optional(),
   kesimpulan: z.enum(KESIMPULAN),
   catatan: z.string().max(1000).nullish(),
   rekomendasi: z.string().max(1000).nullish(),
@@ -341,7 +368,20 @@ export async function finalisasi(user: SessionUser, inspectionId: string, input:
       throw new GalatApi(409, "foto_belum_lengkap", "Foto belum semuanya terunggah.");
     }
 
-    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size, p3k }, MAKS_FOTO);
+    // Syarat foto per langkah (PRD Aturan bukti 3-4). Tautan foto ke butir diturunkan dari langkahnya.
+    const langkah = await langkahTipeAset(tx, tipe);
+    const areaTerbatas = asetDiAreaTerbatas(aset);
+    const galatFoto = input.photos
+      ? periksaFotoLangkah(
+          langkah,
+          input.photos.map((p) => ({ langkah: p.langkah ?? "" })),
+          { areaTerbatas },
+        )
+      : undefined;
+    if (input.photos && input.photos.some((p) => !idAda.has(p.id))) {
+      throw new GalatApi(409, "foto_belum_lengkap", "Foto belum semuanya terunggah.");
+    }
+    const galat = periksaKirim(items, { ...input, jawaban: input.answers, jumlahFoto: idAda.size, galatFoto, p3k }, Math.max(MAKS_FOTO, maksFotoInspeksi(langkah)));
     if (galat.length) throw new GalatApi(422, "validasi", galat[0]!, galat);
 
     // Bukti QR: token mentah dicocokkan dengan assets.qr_token (SPEC §7.7, §7.8).
