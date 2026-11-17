@@ -1,11 +1,13 @@
 "use client";
 
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputSandi } from "@/components/ui/input-sandi";
 import { Label } from "@/components/ui/label";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { cn } from "@/lib/utils";
 import { masuk, type MasukState } from "./actions";
 import { DURASI_MEMBUKA_MS, DURASI_TERDETEKSI_MS, PERAN_MASUK } from "./peran";
@@ -16,13 +18,12 @@ type Fase = "diam" | "memeriksa" | "terdeteksi" | "membuka";
  * Satu pintu masuk untuk semua peran. Setelah peladen menerima sandi, tampil animasi singkat:
  * "Memeriksa akun…" (selama autentikasi sebenarnya) → "Peran terdeteksi: …" dengan warna peran
  * → "Membuka …" sambil halaman tujuan dimuat. Peran berasal dari jawaban peladen, bukan tebakan
- * klien. Dilewati bila pengguna meminta gerak dikurangi. Galat tampil di formulir tanpa animasi.
+ * klien. Dilewati bila pengguna meminta gerak dikurangi. Galat membuka halus di bawah kolom sandi.
  */
 export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: boolean }) {
     const router = useRouter();
     const [state, setState] = useState<MasukState>({});
     const [fase, setFase] = useState<Fase>("diam");
-    const [lihat, setLihat] = useState(false);
     const [, mulai] = useTransition();
     const pewaktu = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -71,7 +72,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: b
                 noValidate
                 aria-hidden={sibuk || undefined}
                 className={cn(
-                    "space-y-5 transition-opacity duration-200 ease-out",
+                    "space-y-5 transition-opacity duration-(--durasi-lambat) ease-halus",
                     sibuk && "pointer-events-none opacity-0",
                 )}
             >
@@ -96,33 +97,23 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: b
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="password">Kata sandi</Label>
-                    <div className="relative">
-                        <Input
-                            id="password"
-                            name="password"
-                            type={lihat ? "text" : "password"}
-                            autoComplete="current-password"
-                            required
-                            placeholder="Masukkan kata sandi"
-                            className="h-12 pr-12"
-                            aria-invalid={state.error ? true : undefined}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setLihat((v) => !v)}
-                            className="absolute inset-y-0 right-0 grid w-12 place-items-center text-muted-foreground hover:text-foreground"
-                            aria-label={lihat ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-                            aria-pressed={lihat}
-                        >
-                            {lihat ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                        </button>
-                    </div>
+                    <InputSandi
+                        id="password"
+                        name="password"
+                        autoComplete="current-password"
+                        required
+                        placeholder="Masukkan kata sandi"
+                        className="h-12"
+                        aria-invalid={state.error ? true : undefined}
+                        aria-describedby={state.error ? "galat-masuk" : undefined}
+                    />
+                    <PesanMuncul
+                        id="galat-masuk"
+                        role="alert"
+                        pesan={fase === "diam" ? state.error : undefined}
+                        isiClassName="pt-1 text-sm text-danger"
+                    />
                 </div>
-                {state.error && (
-                    <p id="galat-masuk" role="alert" className="text-sm text-danger">
-                        {state.error}
-                    </p>
-                )}
                 <Button
                     type="submit"
                     size="lg"
@@ -139,7 +130,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: b
                 aria-live="polite"
                 style={state.role ? ({ "--aksen": `var(--peran-${state.role})` } as CSSProperties) : undefined}
                 className={cn(
-                    "absolute inset-0 flex flex-col items-center justify-center gap-4 text-center transition-opacity duration-200 ease-out",
+                    "absolute inset-0 flex flex-col items-center justify-center gap-4 text-center transition-opacity duration-(--durasi-lambat) ease-halus",
                     sibuk ? "opacity-100" : "pointer-events-none opacity-0",
                 )}
             >
@@ -148,14 +139,14 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: b
                         <span
                             aria-hidden
                             className={cn(
-                                "size-12 rounded-full border-[3px] border-border transition-colors duration-300 ease-out",
+                                "size-12 rounded-full border-[3px] border-border transition-colors duration-(--durasi-lambat) ease-halus",
                                 fase === "memeriksa" && "animate-spin border-t-foreground motion-reduce:animate-none",
                                 fase !== "memeriksa" && "border-[var(--aksen)] bg-[var(--aksen)]/10",
                             )}
                         />
                         <p
                             key={fase}
-                            className="animate-in fade-in slide-in-from-bottom-1 text-base font-medium duration-300 ease-out motion-reduce:animate-none"
+                            className="animate-in fade-in-0 slide-in-from-bottom-1 text-base font-medium duration-(--durasi-lambat) ease-halus motion-reduce:animate-none"
                         >
                             {fase === "memeriksa" && "Memeriksa akun…"}
                             {fase === "terdeteksi" && peran && (
@@ -171,7 +162,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl?: string; demo: b
                         <span aria-hidden className="h-1 w-24 overflow-hidden rounded-full bg-border">
                             <span
                                 className={cn(
-                                    "block h-full rounded-full transition-[width,background-color] duration-500 ease-out",
+                                    "block h-full rounded-full transition-[width,background-color] duration-700 ease-halus",
                                     fase === "memeriksa" && "w-1/3 bg-foreground/40",
                                     fase === "terdeteksi" && "w-2/3 bg-[var(--aksen)]",
                                     fase === "membuka" && "w-full bg-[var(--aksen)]",

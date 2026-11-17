@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { InputSandi } from "@/components/ui/input-sandi";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { ROLES, ROLE_LABEL, type Role } from "@/lib/domain/constants";
 import type { HasilAksi } from "../server/aksi";
 import { Bidang, Pilihan } from "./ui";
@@ -47,11 +49,13 @@ export function FormPengguna({
             className="grid max-w-3xl gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2"
             noValidate
         >
-            {state && !state.ok && (
-                <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger sm:col-span-2">
-                    {state.pesan}
-                </p>
-            )}
+            <PesanMuncul
+                role="alert"
+                pesan={state && !state.ok ? state.pesan : undefined}
+                celah="1rem"
+                className="sm:col-span-2"
+                isiClassName="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger"
+            />
             <Bidang
                 label="NIP atau username"
                 htmlFor="nip"
@@ -105,7 +109,7 @@ export function FormPengguna({
                 galat={g("password")}
                 bantuan={baru ? "8–128 karakter." : "Kosongkan untuk mempertahankan sandi saat ini."}
             >
-                <Input id="password" name="password" type="password" autoComplete="new-password" maxLength={128} />
+                <InputSandi id="password" name="password" autoComplete="new-password" maxLength={128} />
             </Bidang>
             <div className="flex items-center gap-2 self-end pb-1.5">
                 {diriSendiri && <input type="hidden" name="aktif" value="on" />}

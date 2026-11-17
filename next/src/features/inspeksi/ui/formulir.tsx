@@ -2,11 +2,13 @@
 
 import { Camera, Check, Crosshair, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { evaluasiGerbang, jarakMeter } from "@/lib/domain/asset";
 import { KESIMPULAN, LABEL_KESIMPULAN, MAKS_BYTE_FOTO, MAKS_FOTO } from "@/lib/domain/constants";
 import { bangunTemuan, isDuaNilai, labelDuaNilai, pesanGerbang, severityJawaban, terjawab, usulanKesimpulan } from "@/lib/domain/inspeksi";
@@ -58,7 +60,7 @@ export function Formulir({ inspectionId }: { inspectionId: string }) {
   const draf = data.drafts.find((d) => d.inspectionId === inspectionId);
   const terkirim = data.sent.find((s) => s.inspectionId === inspectionId);
 
-  if (!siap) return <p className="text-sm text-muted-foreground">Memuat draf di perangkat…</p>;
+  if (!siap) return <KerangkaKartu baris={5} label="Memuat draf di perangkat…" />;
   if (terkirim && !draf) return <Terkirim id={inspectionId} />;
   if (!draf || !data.paket || !db) {
     return (
@@ -260,13 +262,22 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
         </div>
       )}
 
-      {galat.length > 0 && (
-        <ul role="alert" data-testid="galat-kirim" className="space-y-1 rounded-lg bg-danger-soft p-3 text-sm text-danger">
-          {galat.map((g) => (
-            <li key={g}>{g}</li>
-          ))}
-        </ul>
-      )}
+      <PesanMuncul
+        role="alert"
+        testId="galat-kirim"
+        pesan={
+          galat.length > 0 ? (
+            <ul className="space-y-1">
+              {galat.map((g) => (
+                <li key={g}>{g}</li>
+              ))}
+            </ul>
+          ) : undefined
+        }
+        celah="1.25rem"
+        className="my-0!"
+        isiClassName="rounded-lg bg-danger-soft p-3 text-sm text-danger"
+      />
 
       <Card className="gap-0 py-0">
         <CardContent className="space-y-2 p-4">

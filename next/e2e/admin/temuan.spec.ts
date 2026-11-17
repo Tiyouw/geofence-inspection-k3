@@ -55,6 +55,8 @@ test.describe("temuan dan tindak lanjut (H9, I2, I5)", () => {
         let ketemu = false;
         for (let hal = 1; hal <= 20 && !ketemu; hal++) {
             await page.goto(`/admin?hal=${hal}`);
+            // Isi dasbor menyusul di balik kerangka muat.
+            await expect(page.getByRole("heading", { name: /Perlu keputusan Anda/ })).toBeVisible();
             ketemu = (await page.getByRole("link", { name: new RegExp(t.item) }).count()) > 0;
             if (!ketemu && !(await page.getByRole("link", { name: "Berikutnya" }).count())) break;
         }

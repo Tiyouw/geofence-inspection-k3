@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { Textarea } from "@/components/ui/textarea";
 import type { HasilAksi } from "../server/aksi";
 import { useFormAksi } from "./use-form-aksi";
@@ -23,11 +24,12 @@ export function FormCatatanReview({
                 Catatan tinjauan
             </label>
             <Textarea id="catatanReview" name="catatanReview" defaultValue={nilai} rows={3} maxLength={2000} />
-            {state && !state.ok && (
-                <p role="alert" className="text-sm text-danger">
-                    {Object.values(state.galat ?? {}).flat()[0] ?? state.pesan}
-                </p>
-            )}
+            <PesanMuncul
+                role="alert"
+                pesan={state && !state.ok ? (Object.values(state.galat ?? {}).flat()[0] ?? state.pesan) : undefined}
+                celah="0.5rem"
+                isiClassName="text-sm text-danger"
+            />
             <Button type="submit" variant="outline" className="self-end" disabled={menunggu}>
                 {menunggu ? "Menyimpan…" : "Simpan catatan"}
             </Button>

@@ -4,6 +4,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Token gerak bersama: tidak ada yang tersentak. Masuk/keluar 180-320 ms, ease-out tanpa
+ * pantulan. `ease-halus` dan `duration-(--durasi*)` dipakai komponen; transisi tanpa durasi
+ * eksplisit memakai bawaan di bawah. Semua dimatikan saat prefers-reduced-motion.
+ */
+@theme {
+  --ease-halus: cubic-bezier(0.22, 1, 0.36, 1);
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-muncul: muncul-halus 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -88,6 +100,9 @@
   --input: #cbd7db;
   --ring: #c38c00;
   --radius: 0.625rem;
+  --durasi-cepat: 180ms;
+  --durasi: 240ms;
+  --durasi-lambat: 320ms;
 
   /* Merek dan status domain */
   --brand: #f5b700;
@@ -201,4 +216,54 @@
   --sidebar: #1e293b;
   --sidebar-accent: #334155;
   --sidebar-border: #334155;
+}
+
+/* ---------- Gerak ---------- */
+@keyframes muncul-halus {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@layer base {
+  /* Pergantian halaman dan kerangka muat yang diganti isi: anak langsung <main id="isi"> muncul halus. */
+  #isi > * {
+    animation: var(--animate-muncul);
+  }
+  /* Baris baru di tabel dan daftar memudar masuk, bukan muncul tiba-tiba. */
+  [data-slot="table-row"],
+  [data-muncul] > li {
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
+@layer utilities {
+  [data-slot="table-row"],
+  [data-muncul] > li {
+    transition-property: opacity, background-color, color;
+    transition-duration: var(--durasi-lambat);
+    transition-timing-function: var(--ease-halus);
+  }
+}
+
+/* Toast (sonner): geser + pudar, bertumpuk halus, sedikit lebih tenang dari bawaan. */
+[data-sonner-toast] {
+  transition-duration: var(--durasi-lambat) !important;
+  transition-timing-function: var(--ease-halus) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

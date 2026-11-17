@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { mulaiDariTeks } from "../client/aksi";
 import { useInspektur } from "./konteks";
 
@@ -158,11 +159,14 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
         )}
       </div>
 
-      {pesan && (
-        <p role="alert" data-testid="pesan-pindai" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
-          {pesan}
-        </p>
-      )}
+      <PesanMuncul
+        role="alert"
+        testId="pesan-pindai"
+        pesan={pesan || undefined}
+        celah="1.25rem"
+        className="my-0!"
+        isiClassName="rounded-lg bg-danger-soft p-3 text-sm text-danger"
+      />
 
       <form
         className="space-y-2"

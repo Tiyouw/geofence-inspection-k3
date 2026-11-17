@@ -5,9 +5,9 @@ import { jumlahAntreanTinjauan } from "@/features/admin/server/dasbor";
 import { requireRole } from "@/lib/auth/guards";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-    const user = await requireRole("admin");
     // Lencana menu Tinjauan = jumlah antrean (H7), ditulis di label karena menu bersama tidak punya slot lencana.
-    const antrean = await jumlahAntreanTinjauan();
+    // Dihitung bersamaan dengan pemeriksaan peran; angkanya tidak dipakai bila peran ditolak.
+    const [user, antrean] = await Promise.all([requireRole("admin"), jumlahAntreanTinjauan()]);
     const nav = NAV_ADMIN.map((n) =>
         n.href === "/admin/tinjauan" && antrean > 0 ? { ...n, label: `${n.label} (${antrean})` } : n,
     );
