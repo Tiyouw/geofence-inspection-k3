@@ -30,7 +30,7 @@ function lebarKolom(nButir: number) {
   };
 }
 
-const KAKI = "Dokumen dihasilkan Sistem Inspeksi K3 PT PAL Indonesia. Baris berlatar abu menandakan unit yang belum diperiksa pada periode ini.";
+const KAKI = "Dokumen dihasilkan Sistem Inspeksi K3 Perusahaan Galangan Kapal. Baris berlatar abu menandakan unit yang belum diperiksa pada periode ini.";
 
 export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; dicetak: Date }) {
   const { tipe, filter, butir, grup, baris, ringkas } = data;
@@ -39,7 +39,7 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
   const kepala = { fontSize: 6.8, fontWeight: "bold" as const, textAlign: "center" as const };
 
   return (
-    <Document title={`Lembar PMS ${tipe.nama} — ${periode}`} author="Sistem Inspeksi K3 PT PAL Indonesia" language="id">
+    <Document title={`Lembar PMS ${tipe.nama} — ${periode}`} author="Sistem Inspeksi K3 Perusahaan Galangan Kapal" language="id">
       <Page
         size="A4"
         orientation="landscape"

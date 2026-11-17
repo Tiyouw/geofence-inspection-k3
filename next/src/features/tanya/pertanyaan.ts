@@ -187,8 +187,8 @@ export const PERTANYAAN: Pertanyaan[] = [
         nomor: "1.8",
         bagian: "1",
         wajib: true,
-        teks: 'Boleh menyebut "PT PAL Indonesia (Persero)" di skripsi, aplikasi, dan kop laporan PDF? BAB 1 hanya menulis "perusahaan galangan kapal", sedangkan aplikasi saat ini memakai nama, logo, foto, dan video PT PAL, dan kodenya ada di repo GitHub publik. Siapa yang memberi izin, dan apakah ada surat izin penelitian?',
-        kenapa: "PT PAL adalah BUMN industri pertahanan. Memakai nama dan media tanpa izin tertulis berisiko untuk Anda dan pemilik aplikasi; publikasi kode dan media di repo publik juga perlu restu.",
+        teks: 'Boleh menyebut nama asli perusahaan di skripsi, aplikasi, dan kop laporan PDF? BAB 1 hanya menulis "perusahaan galangan kapal", sedangkan aplikasi saat ini memakai nama, logo, foto, dan video perusahaan, dan kodenya ada di repo GitHub publik. Siapa yang memberi izin, dan apakah ada surat izin penelitian?',
+        kenapa: "Perusahaan adalah BUMN industri pertahanan. Memakai nama dan media tanpa izin tertulis berisiko untuk Anda dan pemilik aplikasi; publikasi kode dan media di repo publik juga perlu restu.",
         pilihanTeks:
             'a) nama dan logo boleh (ada surat); b) nama boleh, logo dan media tidak; c) anonim "Perusahaan Galangan Kapal".',
         pilihan: [
@@ -205,7 +205,7 @@ export const PERTANYAAN: Pertanyaan[] = [
                 label: 'anonim "Perusahaan Galangan Kapal"',
             },
         ],
-        bawaan: "c) anonim di skripsi dan di aplikasi publik; merek PT PAL hanya muncul bila surat izin sudah Anda tunjukkan. Repo dijadikan privat sampai ada keputusan.",
+        bawaan: "c) anonim di skripsi dan di aplikasi publik; merek perusahaan hanya muncul bila surat izin sudah Anda tunjukkan. Repo dijadikan privat sampai ada keputusan.",
         memblokir: "Merek aplikasi, kop PDF, halaman depan, status repo, BAB 1 (objek penelitian).",
     },
     {
@@ -223,7 +223,7 @@ export const PERTANYAAN: Pertanyaan[] = [
         nomor: "2.1",
         bagian: "2",
         wajib: false,
-        teks: "Lokasi persis penelitian: galangan mana (mis. PT PAL Ujung, Surabaya), seluruh area atau satu divisi saja (Kapal Niaga, Kapal Perang, Kapal Selam, Harkan, Rekayasa Umum)? Berapa gedung, bengkel, dok, dan dermaga yang tercakup?",
+        teks: "Lokasi persis penelitian: galangan mana, seluruh area atau satu divisi saja (Kapal Niaga, Kapal Perang, Kapal Selam, Harkan, Rekayasa Umum)? Berapa gedung, bengkel, dok, dan dermaga yang tercakup?",
         kenapa: "Menentukan jumlah aset, jumlah zona di peta, dan apakah ada area terlarang. Data seed sekarang (35 APAR) memakai koordinat contoh, bukan galangan.",
         pilihanTeks: null,
         pilihan: [],
@@ -898,7 +898,7 @@ export const PERTANYAAN: Pertanyaan[] = [
         bagian: "8",
         wajib: false,
         teks: "Siapa merawat aplikasi setelah serah terima (perbaikan bug, akun baru, tambah aset)? Perlu manual pengguna dan manual admin? Kode sumber milik siapa, dan repo publik (lisensi MIT) boleh tetap publik?",
-        kenapa: "Repo sekarang publik dan memuat media PT PAL. Hak kode dan media perlu jelas sebelum diserahkan ke perusahaan atau dilampirkan di skripsi.",
+        kenapa: "Repo sekarang publik dan memuat media perusahaan. Hak kode dan media perlu jelas sebelum diserahkan ke perusahaan atau dilampirkan di skripsi.",
         pilihanTeks: null,
         pilihan: [],
         bawaan: "Pemilik merawat selama masa hosting; manual pengguna 3 peran; repo privat sampai ada izin (lihat 1.8).",

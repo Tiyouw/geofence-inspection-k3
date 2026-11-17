@@ -10,11 +10,11 @@ const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"] });
 export const metadata: Metadata = {
   title: { default: "Geofencing — Inspeksi K3 APAR", template: "%s — Inspeksi K3 APAR" },
   description: "Inspeksi APAR dan sarana K3 berbasis QR dan lokasi.",
-  applicationName: "PAL-K3",
+  applicationName: "Geofencing",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icons/icon.svg", apple: "/icons/icon-192.png" },
   robots: { index: false, follow: false },
-  appleWebApp: { capable: true, title: "PAL-K3", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Geofencing", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

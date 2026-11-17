@@ -36,7 +36,7 @@ export default async function MasukPage({ searchParams }: PageProps<"/masuk">) {
                     aria-labelledby="judul-masuk"
                 >
                     <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
-                        SISTEM INSPEKSI K3 · PT PAL INDONESIA
+                        SISTEM INSPEKSI K3 · PERUSAHAAN GALANGAN KAPAL
                     </span>
                     <h1 id="judul-masuk" className="mt-3 mb-2 text-[26px] leading-tight font-semibold tracking-tight">
                         Siap menjaga keselamatan?
@@ -74,7 +74,7 @@ export default async function MasukPage({ searchParams }: PageProps<"/masuk">) {
                         </aside>
                     ) : (
                         <p className="mt-6 text-center text-xs text-muted-foreground">
-                            Lupa kata sandi? Hubungi Administrator K3 Divisi K3LH.
+                            Lupa kata sandi? Hubungi Administrator K3.
                         </p>
                     )}
                 </section>

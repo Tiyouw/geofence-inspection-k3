@@ -1,6 +1,6 @@
 /**
- * Foto media PT PAL dengan srcset (resources/views/components/situs/foto.blade.php).
- * Berkas di public/media/pal dengan pola <berkas>-<lebar>.webp; asal-usul di SUMBER.md.
+ * Ilustrasi halaman depan dengan srcset (resources/views/components/situs/foto.blade.php).
+ * Berkas di public/media/situs dengan pola <berkas>-<lebar>.webp; asal-usul di SUMBER.md.
  * <img> biasa, bukan next/image: berkas sudah diperkecil dan srcset-nya tetap seperti situs lama.
  */
 export function Foto({
@@ -17,7 +17,7 @@ export function Foto({
     zoomPelan?: boolean;
 }) {
     const daftar = [...lebar].sort((a, b) => a - b);
-    const url = (w: number) => `/media/pal/${berkas}-${w}.webp`;
+    const url = (w: number) => `/media/situs/${berkas}-${w}.webp`;
     return (
         // eslint-disable-next-line @next/next/no-img-element
         <img

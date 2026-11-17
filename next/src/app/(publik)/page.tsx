@@ -12,9 +12,9 @@ import { PerilakuSitus } from "./situs/perilaku";
 import "./situs.css";
 
 export const metadata: Metadata = {
-    title: { absolute: "Geofencing — Sistem Inspeksi K3 — PT PAL Indonesia" },
+    title: { absolute: "Geofencing — Sistem Inspeksi K3 — Perusahaan Galangan Kapal" },
     description:
-        "Sistem informasi inspeksi sarana proteksi kebakaran dan pertolongan pertama Divisi K3LH PT PAL Indonesia.",
+        "Sistem informasi inspeksi sarana tanggap darurat (APAR, hydrant, kotak P3K, mobil pemadam) untuk perusahaan galangan kapal.",
     icons: { icon: "/geofencing.svg" },
 };
 
@@ -42,7 +42,7 @@ const TAUTAN: [string, string][] = [
     ["#cara-kerja", "Cara kerja"],
     ["#peran", "Peran"],
     ["#modul", "Modul"],
-    ["#tentang", "Tentang PT PAL"],
+    ["#tentang", "Tentang"],
 ];
 
 const ALUR: [string, string][] = [
@@ -56,7 +56,7 @@ const ALUR: [string, string][] = [
     ],
     [
         "Temuan ditindaklanjuti",
-        "Butir yang bermasalah otomatis menjadi temuan dan masuk daftar tindak lanjut sampai selesai.",
+        "Butir yang bermasalah otomatis menjadi temuan lengkap dengan lokasi, tingkat, dan tindakan yang direkomendasikan.",
     ],
     ["Rekap bulanan", "Akhir bulan, administrator membuka menu laporan dan mengunduh rekap PDF."],
 ];
@@ -68,14 +68,14 @@ const PERAN: [string, string, string][] = [
         "Komputer",
         "Mengelola data tabung dan petugas, mencetak stiker, menerbitkan laporan, dan meninjau hasil.",
     ],
-    ["Pemantau", "Komputer", "Hanya melihat papan pantau dan laporan, tanpa bisa mengubah data."],
+    ["Pemantau", "Komputer", "Melihat papan pantau dan laporan, serta meninjau inspeksi yang perlu tinjauan, tanpa mengubah data."],
 ];
 
 const ANGKA: [string, string, string | null][] = [
-    ["329", "Kapal diproduksi", "1985–2024"],
-    ["92", "Di antaranya kapal perang", null],
-    ["47", "Kapal diekspor", null],
-    ["120", "Hektare area galangan", null],
+    ["4", "Jenis sarana tanggap darurat", null],
+    ["3", "Lapis bukti: QR, lokasi, foto", null],
+    ["30 m", "Toleransi tepi gedung", null],
+    ["0", "Perubahan setelah final", null],
 ];
 
 /**
@@ -93,7 +93,7 @@ const LABEL_BELUM = "s:label-meta s:text-charcoal/60";
 /**
  * Halaman depan publik, salinan 1:1 resources/views/landing.blade.php. Terbuka tanpa masuk,
  * jadi TIDAK memuat data aset: tanpa daftar tabung, koordinat, maupun token QR. Kartu modul
- * dibaca dari asset_types. Foto dan video milik PT PAL Indonesia (public/media/pal/SUMBER.md).
+ * dibaca dari asset_types. Ilustrasi dan video dibuat khusus untuk aplikasi ini (public/media/situs/SUMBER.md).
  */
 export default async function HalamanDepan() {
     const [user, tipe] = await Promise.all([
@@ -124,7 +124,7 @@ export default async function HalamanDepan() {
     return (
         <div className="situs" suppressHydrationWarning>
             <script dangerouslySetInnerHTML={{ __html: SKRIP_JS }} />
-            <link rel="preload" as="image" type="image/webp" fetchPriority="high" href="/media/pal/hero-poster.webp" />
+            <link rel="preload" as="image" type="image/webp" fetchPriority="high" href="/media/situs/hero-poster.webp" />
             <a
                 href="#isi"
                 className="s:label-meta s:fixed s:left-4 s:top-4 s:z-[60] s:-translate-y-24 s:rounded-md s:bg-paper s:px-4 s:py-3 s:text-charcoal s:focus-visible:translate-y-0"
@@ -224,9 +224,9 @@ export default async function HalamanDepan() {
                             disablePictureInPicture
                             disableRemotePlayback
                             aria-hidden="true"
-                            poster="/media/pal/hero-poster.webp"
-                            data-src-lebar="/media/pal/hero-lebar.mp4"
-                            data-src-tegak="/media/pal/hero-tegak.mp4"
+                            poster="/media/situs/hero-poster.webp"
+                            data-src-lebar="/media/situs/hero-lebar.mp4"
+                            data-src-tegak="/media/situs/hero-tegak.mp4"
                             className="s:size-full s:object-cover"
                         />
                         <div className="s:selubung-gelap s:absolute s:inset-0" />
@@ -238,7 +238,7 @@ export default async function HalamanDepan() {
                             style={{ "--urutan": 1 } as CSSProperties}
                             className="s:label-meta s:text-paper"
                         >
-                            Divisi K3LH &middot; PT PAL Indonesia
+                            Perusahaan Galangan Kapal &middot; K3
                         </p>
                         <h1
                             id="judul-hero"
@@ -324,22 +324,22 @@ export default async function HalamanDepan() {
                             {(
                                 [
                                     [
-                                        "bengkel-pemeriksaan",
-                                        "Dua pekerja berhelm keselamatan bekerja di bengkel PT PAL Indonesia.",
+                                        "stiker-qr",
+                                        "Ilustrasi garis tabung APAR dengan stiker QR dan kartu data aset.",
                                         "Stiker QR per tabung",
                                         "Tiap tabung punya kode acak sendiri. Formulir pemeriksaan baru terbuka setelah stiker di tabung itu dipindai.",
                                     ],
                                     [
-                                        "galangan-udara",
-                                        "Foto udara dermaga galangan PT PAL Indonesia dengan tongkang pembangkit listrik dan kapal tunda.",
+                                        "denah-lokasi",
+                                        "Ilustrasi denah galangan dengan poligon gedung yang disorot dan titik posisi ponsel di dalamnya.",
                                         "Pencocokan lokasi",
-                                        "Ponsel mengirim titik GPS saat pengisian. Bila terlalu jauh dari tabung, hasilnya ditandai perlu ditinjau, bukan ditolak.",
+                                        "Ponsel merekam titik GPS saat pengisian dan mencocokkannya dengan poligon gedung aset. Di luar gedung ditandai perlu tinjauan; di luar galangan ditolak.",
                                     ],
                                     [
-                                        "bengkel-pengelasan",
-                                        "Juru las berhelm keselamatan mengelas konstruksi baja di bengkel PT PAL Indonesia.",
+                                        "foto-bukti",
+                                        "Ilustrasi bingkai kamera yang membidik tabung APAR.",
                                         "Foto bukti",
-                                        "Kondisi tabung dipotret langsung dari formulir dan tersimpan bersama hasil pemeriksaan.",
+                                        "Kamera terpandu meminta foto per langkah langsung dari aplikasi, tanpa galeri, dan menautkannya ke butir pemeriksaan.",
                                     ],
                                 ] as const
                             ).map(([berkas, alt, judul, uraian], i) => (
@@ -409,10 +409,10 @@ export default async function HalamanDepan() {
                         <div data-muncul="" className="s:order-last s:md:order-first s:md:col-span-5">
                             <div className="s:bingkai-foto s:aspect-[4/5] s:bg-paper">
                                 <Foto
-                                    berkas="bengkel-pelat-baja"
+                                    berkas="ponsel-periksa"
                                     lebar={[600, 1000]}
                                     sizes="(min-width: 80rem) 484px, (min-width: 48rem) 40vw, 100vw"
-                                    alt="Pekerja berhelm memandu pelat baja yang diangkat derek di bengkel fabrikasi PT PAL Indonesia."
+                                    alt="Ilustrasi ponsel yang menampilkan daftar periksa dengan satu butir bertanda temuan."
                                 />
                             </div>
                         </div>
@@ -531,24 +531,24 @@ export default async function HalamanDepan() {
                     <div className="s:relative s:isolate s:flex s:min-h-[70svh] s:items-end s:overflow-hidden">
                         <div className="s:absolute s:inset-0 s:-z-10">
                             <Foto
-                                berkas="kri-semarang-udara"
+                                berkas="kapal-laut"
                                 sizes="100vw"
                                 zoomPelan
-                                alt="KRI Semarang (594), kapal produksi PT PAL Indonesia, melaju di laut lepas dilihat dari udara."
+                                alt="Ilustrasi garis rencana lambung kapal di laut, tampak atas."
                             />
                             <div className="s:selubung-gelap s:absolute s:inset-0" />
                         </div>
 
                         <div className="s:bingkai s:pt-40 s:pb-10 s:md:pb-14">
                             <p data-muncul="" className="s:label-meta s:text-paper/80">
-                                Tentang PT PAL Indonesia
+                                Perusahaan Galangan Kapal
                             </p>
                             <h2
                                 id="judul-tentang"
                                 data-muncul=""
                                 className="s:mt-4 s:max-w-[16ch] s:text-heading-lg s:font-light"
                             >
-                                Galangan kapal terbesar di Indonesia.
+                                Dibangun untuk sarana tanggap darurat di galangan.
                             </h2>
                         </div>
                     </div>
@@ -557,14 +557,13 @@ export default async function HalamanDepan() {
                         <div className="s:grid s:gap-10 s:md:grid-cols-12 s:md:gap-x-5">
                             <div className="s:space-y-5 s:text-body s:text-paper/70 s:md:col-span-6">
                                 <p data-muncul="">
-                                    Berkantor di Ujung, Surabaya, PT PAL Indonesia (Persero) membangun kapal perang,
-                                    kapal selam, dan kapal niaga; mengerjakan pemeliharaan, perbaikan, dan overhaul
-                                    kapal; serta membuat produk rekayasa umum untuk energi dan kelistrikan.
+                                    Galangan kapal bekerja dengan bengkel beratap baja, dok, dan dermaga yang luas. Sarana
+                                    tanggap darurat seperti APAR, hydrant, kotak P3K, dan mobil pemadam tersebar di
+                                    semuanya dan diperiksa oleh unit yang berbeda.
                                 </p>
                                 <p data-muncul="">
-                                    Cikal bakalnya adalah Marine Establishment yang diresmikan pemerintah Belanda.
-                                    Setelah kemerdekaan, galangan ini dinasionalisasi menjadi Penataran Angkatan Laut
-                                    (PAL), dan sejak 15 April 1980 berstatus perseroan terbatas.
+                                    Aplikasi ini menyatukan pemeriksaan itu: setiap hasil membawa bukti kehadiran di
+                                    lokasi, terkunci setelah dikirim, dan tersaji sebagai laporan.
                                 </p>
                             </div>
                             <div className="s:md:col-span-5 s:md:col-start-8">
@@ -573,10 +572,10 @@ export default async function HalamanDepan() {
                                 </p>
                                 <a
                                     data-muncul=""
-                                    href="https://www.pal.co.id/"
+                                    href="#cara-kerja"
                                     className="s:tombol s:tombol-terang s:mt-8 s:px-6 s:py-[1.125rem]"
                                 >
-                                    Situs resmi PT PAL
+                                    Lihat cara kerja
                                 </a>
                             </div>
                         </div>
@@ -611,7 +610,7 @@ export default async function HalamanDepan() {
                         <div>
                             <Logo />
                             <p className="s:mt-4 s:max-w-[28rem] s:text-body-sm s:text-charcoal/70">
-                                Divisi K3LH &mdash; PT PAL Indonesia (Persero), Surabaya. Akses terbatas bagi petugas
+                                Sistem inspeksi K3 Perusahaan Galangan Kapal. Akses terbatas bagi petugas
                                 berwenang.
                             </p>
                         </div>
@@ -633,20 +632,12 @@ export default async function HalamanDepan() {
                                         Modul
                                     </a>
                                 </li>
-                                <li>
-                                    <a
-                                        href="https://www.pal.co.id/"
-                                        className="s:tautan s:text-label s:font-medium s:uppercase"
-                                    >
-                                        pal.co.id
-                                    </a>
-                                </li>
                             </ul>
                         </nav>
                     </div>
 
                     <p className="s:mt-12 s:border-t s:border-bone s:pt-6 s:text-body-sm s:text-charcoal/60">
-                        Foto dan video: dokumentasi PT PAL Indonesia (Persero).
+                        Ilustrasi dan video: dibuat khusus untuk aplikasi ini.
                     </p>
                 </div>
             </footer>

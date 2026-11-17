@@ -63,8 +63,8 @@ export function Kop({
   return (
     <View style={{ flexDirection: "row", alignItems: "center", borderBottomWidth: garis, borderBottomColor: "#000", paddingBottom: 6, marginBottom: 12 }}>
       <View style={{ width: lebarKiri }}>
-        <Text style={{ fontSize: ukuranNama, fontWeight: "bold" }}>PT PAL INDONESIA (PERSERO)</Text>
-        <Text style={{ fontSize: ukuranSub, marginTop: 2 }}>Divisi Keselamatan, Kesehatan Kerja dan Lindungan Lingkungan</Text>
+        <Text style={{ fontSize: ukuranNama, fontWeight: "bold" }}>PERUSAHAAN GALANGAN KAPAL</Text>
+        <Text style={{ fontSize: ukuranSub, marginTop: 2 }}>Geofencing: Sistem Inspeksi Sarana Tanggap Darurat K3</Text>
       </View>
       <View style={{ flexGrow: 1, alignItems: "flex-end" }}>
         {kanan.map((k, i) => (

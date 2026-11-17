@@ -34,7 +34,7 @@ export function DokumenKartu({ kartu, tahun, baris, dicetak }: { kartu: Kartu; t
   ] as const;
 
   return (
-    <Document title={`Kartu Kontrol ${a.kode} — ${tahun}`} author="Sistem Inspeksi K3 PT PAL Indonesia" language="id">
+    <Document title={`Kartu Kontrol ${a.kode} — ${tahun}`} author="Sistem Inspeksi K3 Perusahaan Galangan Kapal" language="id">
       <Page size="A4" style={{ ...gayaHalaman, fontSize: 9, padding: 12 * MM }}>
         <View style={{ borderWidth: 1.5, borderColor: "#000", paddingTop: 8, paddingHorizontal: 10, paddingBottom: 10 }}>
           <Kop lebarKiri="62%" ukuranNama={11} ukuranSub={7.5} garis={1} kanan={[`Dicetak ${tglSingkat(dicetak)}`, "Simpan pada unit"]} />
