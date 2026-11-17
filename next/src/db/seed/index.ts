@@ -18,6 +18,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as s from "../schema";
 import { seedP3kHydrant } from "./modul-p3k-hydrant";
+import { DEFINISI_HYDRANT_BOX, DEFINISI_HYDRANT_PILAR } from "../../lib/domain/modul/hydrant";
+import { DEFINISI_P3K } from "../../lib/domain/modul/p3k";
 import { buatTokenQr, tebakLokasiTipe } from "../../lib/domain/asset";
 import { hariIniJakarta } from "../../lib/format";
 import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
@@ -505,6 +507,10 @@ async function main() {
     await contohOperasional(tx);
     // Setelah contohOperasional: contoh APAR membaca semua butir tanpa saring tipe.
     await seedP3kHydrant(tx);
+    for (const m of [DEFINISI_P3K, DEFINISI_HYDRANT_BOX, DEFINISI_HYDRANT_PILAR]) {
+      const [t] = await tx.select({ id: s.assetTypes.id }).from(s.assetTypes).where(eq(s.assetTypes.slug, m.slug));
+      if (t) await seedLangkahFoto(tx, t.id, m.langkahFoto);
+    }
     await areaDariGedung(tx);
   });
 }
