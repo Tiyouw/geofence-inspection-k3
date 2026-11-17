@@ -7,6 +7,8 @@ import { daftarkanFont } from "./dasar";
 import { DokumenKartu } from "./kartu";
 import { DokumenPms } from "./pms";
 import { DokumenRekap, type FotoLampiran } from "./rekap";
+import { DokumenRekapP3k } from "./rekap-p3k";
+import type { rakitRekapP3k } from "../rekap-p3k";
 
 /** Batas foto di lampiran supaya PDF tetap kecil dan fungsi tidak kehabisan waktu. */
 const MAKS_FOTO_LAMPIRAN = 40;
@@ -52,4 +54,9 @@ export async function renderKartu(assetId: number, tahun: number, dicetak: Date)
   const baris = rakitKartu(tahun, kartu.inspeksi, dicetak);
   const buffer = await renderToBuffer(<DokumenKartu kartu={kartu} tahun={tahun} baris={baris} dicetak={dicetak} />);
   return { buffer, kode: kartu.aset.kode };
+}
+
+export async function renderRekapP3k(rekap: ReturnType<typeof rakitRekapP3k>, judulPeriode: string, gedung: string | null, dicetak: Date): Promise<Buffer> {
+  daftarkanFont();
+  return renderToBuffer(<DokumenRekapP3k rekap={rekap} judulPeriode={judulPeriode} gedung={gedung} dicetak={dicetak} />);
 }

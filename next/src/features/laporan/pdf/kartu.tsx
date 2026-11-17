@@ -9,6 +9,8 @@ import { LABEL_KESIMPULAN } from "@/lib/domain/constants";
 import type { ambilKartu } from "../queries";
 import { labelMedia, type BarisKartu } from "../rakit";
 import { tglDm, tglSingkat } from "../format";
+import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
+import { profilLaporan } from "../profil";
 import { gayaHalaman, Kop, Sel, TandaTangan, s, wadahTabel } from "./dasar";
 
 const MM = 72 / 25.4;
@@ -19,11 +21,27 @@ export function DokumenKartu({ kartu, tahun, baris, dicetak }: { kartu: Kartu; t
   const a = kartu.aset;
   const lantai = labelLantai(a.lantai);
   const pad: [number, number] = [3.5, 5];
-  const identitas: [string, string, string, string][] = [
-    ["Kode unit", a.kode, "Jenis media", labelMedia(a.attributes) ?? "-"],
-    ["Lokasi", a.lokasiTeks || "-", "Gedung", `${a.gedung || "-"}${lantai ? `, ${lantai}` : ""}`],
-    ["Divisi", a.divisi ?? "-", "Masa kedaluwarsa", a.tglExpired ? tglSingkat(a.tglExpired) : "-"],
-  ];
+  const slug = a.slug;
+  const profil = profilLaporan(slug);
+  const tempat: [string, string, string, string] = ["Lokasi", a.lokasiTeks || "-", "Gedung", `${a.gedung || "-"}${lantai ? `, ${lantai}` : ""}`];
+  // Baris identitas per modul: APAR (media, kedaluwarsa tabung), P3K (tipe kotak), hydrant (tipe).
+  const identitas: [string, string, string, string][] =
+    slug === "apar"
+      ? [
+          ["Kode unit", a.kode, "Jenis media", labelMedia(a.attributes) ?? "-"],
+          tempat,
+          ["Divisi", a.divisi ?? "-", "Masa kedaluwarsa", a.tglExpired ? tglSingkat(a.tglExpired) : "-"],
+        ]
+      : [
+          [
+            "Kode unit",
+            a.kode,
+            slug === "p3k" ? "Tipe kotak" : "Tipe",
+            slug === "p3k" ? `${bacaTipeKotak(a.attributes) ?? "A (bawaan)"} · baku Lampiran II` : a.tipe,
+          ],
+          tempat,
+          ["Unit pemilik", a.divisi ?? "-", "Periode", "Bulanan (30 hari)"],
+        ];
   const kolom = [
     ["Bulan", "15%"],
     ["Tanggal", "12%"],
@@ -102,8 +120,11 @@ export function DokumenKartu({ kartu, tahun, baris, dicetak }: { kartu: Kartu; t
           </View>
 
           <Text style={{ fontSize: 7, color: "#333", marginTop: 8 }}>
-            Periode pemeriksaan satu bulan, mengikuti Permenaker No. 4 Tahun 1980 dan NFPA 10. Baris berlatar abu menandakan bulan yang sudah
-            lewat tanpa pemeriksaan tercatat. Kolom paraf diisi tangan oleh pengawas saat memeriksa kartu di lokasi.
+            {slug === "apar"
+              ? "Periode pemeriksaan satu bulan, mengikuti Permenaker No. 4 Tahun 1980 dan NFPA 10."
+              : `Periode pemeriksaan satu bulan. Dasar: ${profil.dasarHukum}`}{" "}
+            Baris berlatar abu menandakan bulan yang sudah lewat tanpa pemeriksaan tercatat. Kolom paraf diisi tangan oleh pengawas saat
+            memeriksa kartu di lokasi.
           </Text>
 
           <TandaTangan
@@ -111,10 +132,7 @@ export function DokumenKartu({ kartu, tahun, baris, dicetak }: { kartu: Kartu; t
             jarak={34}
             sisi={16}
             marginTop={12}
-            kolom={[
-              ["Diverifikasi oleh", "Supervisor K3LH"],
-              ["Disetujui oleh", "Kepala Divisi K3LH"],
-            ]}
+            kolom={profil.penandaTangan}
           />
         </View>
       </Page>

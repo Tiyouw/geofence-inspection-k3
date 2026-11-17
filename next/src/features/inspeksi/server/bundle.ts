@@ -6,7 +6,8 @@ import { assets, assetTypes, checklistGroups, checklistItems, divisions, inspect
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
 import { jatuhTempo, periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
-import type { Kesimpulan } from "@/lib/domain/constants";
+import type { Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
+import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 
@@ -22,6 +23,8 @@ export type AsetPaket = {
   lng: number | null;
   radiusM: number | null;
   media: string | null;
+  /** Kotak P3K: tipe kotak penentu jumlah baku (bawaan A bila atribut kosong); null untuk modul lain. */
+  tipeKotak?: TipeKotakP3k | null;
   /** HMAC-SHA256(kunciPerangkat, token) heksadesimal. Token mentah TIDAK pernah dikirim (SPEC §7.7). */
   qrTokenHash: string;
 };
@@ -101,6 +104,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     lng: a.lng,
     radiusM: t.isMobile ? null : radiusEfektif({ radiusAset: a.radiusM, lokasiTipe: a.lokasiTipe }),
     media: labelMedia(a.attributes ?? null),
+    tipeKotak: t.slug === "p3k" ? (bacaTipeKotak(a.attributes) ?? "A") : null,
     qrTokenHash: createHmac("sha256", key).update(a.qrToken).digest("hex"),
   }));
 
@@ -129,6 +133,8 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
       severityMap: i.severityMap,
       severityDefault: i.severityDefault,
       jumlahBaku: i.jumlahBaku,
+      jumlahBakuPerTipe: i.jumlahBakuPerTipe,
+      hasExpiry: i.hasExpiry,
       satuan: i.satuan,
       wajib: i.wajib,
       dasarHukum: i.dasarHukum,

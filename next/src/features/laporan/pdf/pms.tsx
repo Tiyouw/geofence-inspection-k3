@@ -7,6 +7,7 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { DataPeriodeLengkap } from "../queries";
 import { namaPeriode, persen1, tglDm, waktuCetak } from "../format";
+import { profilLaporan } from "../profil";
 import { gayaHalaman, Kop, Sel, TandaTangan, barisTabel, kepalaTabel, s, wadahTabel } from "./dasar";
 
 const MM = 72 / 25.4;
@@ -16,9 +17,10 @@ const LEBAR_ISI = 841.89 - 20 * MM; // A4 lanskap dikurangi margin kiri-kanan 10
  * Lebar kolom sesuai blade lama (Kode 9%, Lokasi 17%, Tanggal 6%, butir 3,2%,
  * Kesimpulan 8%, Petugas 9%), diregangkan ke lebar penuh seperti dompdf.
  */
-function lebarKolom(nButir: number) {
-  const dasar = { kode: 9, lokasi: 17, tanggal: 6, butir: 3.2, kesimpulan: 8, petugas: 9 };
-  const jumlah = dasar.kode + dasar.lokasi + dasar.tanggal + dasar.butir * nButir + dasar.kesimpulan + dasar.petugas;
+function lebarKolom(nButir: number, adaLengkap: boolean) {
+  const dasar = { kode: 9, lokasi: 17, tanggal: 6, butir: 3.2, kesimpulan: 8, petugas: 9, lengkap: adaLengkap ? 6 : 0 };
+  const jumlah =
+    dasar.kode + dasar.lokasi + dasar.tanggal + dasar.butir * nButir + dasar.lengkap + dasar.kesimpulan + dasar.petugas;
   const pt = (p: number) => (p / jumlah) * LEBAR_ISI;
   return {
     kode: pt(dasar.kode),
@@ -27,6 +29,7 @@ function lebarKolom(nButir: number) {
     butir: pt(dasar.butir),
     kesimpulan: pt(dasar.kesimpulan),
     petugas: pt(dasar.petugas),
+    lengkap: pt(dasar.lengkap),
   };
 }
 
@@ -34,7 +37,10 @@ const KAKI = "Dokumen dihasilkan Sistem Inspeksi K3 Perusahaan Galangan Kapal. B
 
 export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; dicetak: Date }) {
   const { tipe, filter, butir, grup, baris, ringkas } = data;
-  const w = lebarKolom(butir.length);
+  /** Kotak P3K: kolom kelengkapan isi (%). */
+  const adaLengkap = baris.some((b) => b.kelengkapan !== undefined);
+  const w = lebarKolom(butir.length, adaLengkap);
+  const profil = profilLaporan(tipe.slug);
   const periode = namaPeriode(filter.tahun, filter.bulan);
   const kepala = { fontSize: 6.8, fontWeight: "bold" as const, textAlign: "center" as const };
 
@@ -51,7 +57,7 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
             <Text key="j" style={s.tebal}>
               PREVENTIVE MAINTENANCE SCHEDULE
             </Text>,
-            "Lampiran 03 dari 04",
+            ...(tipe.slug === "apar" ? ["Lampiran 03 dari 04"] : []),
             `Dicetak ${waktuCetak(dicetak)} WIB`,
           ]}
         />
@@ -91,6 +97,11 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
                 ))}
               </View>
             </View>
+            {adaLengkap && (
+              <Sel lebar={w.lengkap} kepala tengah>
+                <Text style={{ ...kepala, fontSize: 6 }}>Lengkap</Text>
+              </Sel>
+            )}
             <Sel lebar={w.kesimpulan} kepala tengah>
               <Text style={kepala}>Kesimpulan</Text>
             </Sel>
@@ -119,9 +130,16 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
                 </Sel>
                 {b.simbol.map((sim, i) => (
                   <Sel key={i} lebar={w.butir} style={latar} tengah>
-                    <Text style={{ fontSize: 9, fontWeight: "bold", ...gaya }}>{sim}</Text>
+                    <Text style={{ fontSize: /\d/.test(sim) ? 7 : 9, fontWeight: "bold", ...gaya }}>{sim}</Text>
                   </Sel>
                 ))}
+                {adaLengkap && (
+                  <Sel lebar={w.lengkap} style={latar} tengah>
+                    <Text style={{ fontSize: 7, fontWeight: b.kelengkapan != null && b.kelengkapan < 100 ? "bold" : "normal", ...gaya }}>
+                      {b.kelengkapan == null ? "-" : `${b.kelengkapan}%`}
+                    </Text>
+                  </Sel>
+                )}
                 <Sel lebar={w.kesimpulan} style={latar} tengah>
                   <Text style={{ fontSize: 7, textAlign: "center", ...gaya }}>{b.kesimpulan}</Text>
                 </Sel>
@@ -150,25 +168,18 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
 
         <View style={{ marginTop: 8, fontSize: 7 }} wrap={false}>
           <Text>
-            <Text style={s.tebal}>Keterangan simbol.</Text> Dua dimensi dinilai terpisah:
+            <Text style={s.tebal}>Keterangan simbol.</Text>
+            {tipe.slug === "apar" ? " Dua dimensi dinilai terpisah:" : ""}
           </Text>
           <View style={{ flexDirection: "row", marginVertical: 2 }}>
-            {[
-              ["✓", "berfungsi"],
-              ["X", "tidak berfungsi"],
-              ["O", "kondisi baik"],
-              ["Ø", "kondisi tidak baik"],
-              ["-", "tidak diperiksa"],
-            ].map(([sim, arti]) => (
+            {profil.simbol.map(([sim, arti]) => (
               <Text key={sim} style={{ marginRight: 10 }}>
                 <Text style={s.tebal}>{sim}</Text> {arti}
               </Text>
             ))}
           </View>
-          <Text>
-            Dasar hukum: Permenaker No. 4 Tahun 1980 tentang syarat pemasangan dan pemeliharaan alat pemadam api ringan, serta NFPA 10
-            untuk periode pemeriksaan bulanan.
-          </Text>
+          {profil.dasarHukum !== "" && <Text>{`Dasar hukum: ${profil.dasarHukum}`}</Text>}
+          {adaLengkap && <Text>Lengkap: persentase isi kotak yang memenuhi jumlah baku tipe kotaknya dan tidak kedaluwarsa.</Text>}
         </View>
 
         <View wrap={false}>
@@ -218,11 +229,7 @@ export function DokumenPms({ data, dicetak }: { data: DataPeriodeLengkap; diceta
             jarak={38}
             sisi={12}
             marginTop={16}
-            kolom={[
-              ["Diperiksa oleh", "Petugas K3"],
-              ["Diverifikasi oleh", "Supervisor K3LH"],
-              ["Disetujui oleh", "Kepala Divisi K3LH"],
-            ]}
+            kolom={profil.penandaTangan}
           />
         </View>
 

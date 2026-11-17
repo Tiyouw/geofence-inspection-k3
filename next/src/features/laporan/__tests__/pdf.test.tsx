@@ -56,7 +56,7 @@ describe("PDF laporan", { timeout: 60_000 }, () => {
     const a = asetKode("31D");
     const inspeksi = INSPEKSI.filter((i) => i.assetId === a.id).map((i) => ({ ...i, jumlahTemuan: 1 }));
     const kartu = {
-      aset: { ...a, attributes: { tipe: "Dry Powder", kapasitas_kg: 9 }, tglExpired: null, tipe: "APAR", divisi: "Gedung PIP" },
+      aset: { ...a, attributes: { tipe: "Dry Powder", kapasitas_kg: 9 }, tglExpired: null, tipe: "APAR", slug: "apar", divisi: "Gedung PIP" },
       inspeksi,
     };
     const b = await renderToBuffer(<DokumenKartu kartu={kartu} tahun={2026} baris={rakitKartu(2026, inspeksi, DICETAK)} dicetak={DICETAK} />);

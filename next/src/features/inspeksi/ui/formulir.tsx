@@ -12,7 +12,8 @@ import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { evaluasiGerbang, jarakMeter } from "@/lib/domain/asset";
 import { KESIMPULAN, LABEL_KESIMPULAN, MAKS_BYTE_FOTO, MAKS_FOTO } from "@/lib/domain/constants";
 import { bangunTemuan, isDuaNilai, labelDuaNilai, pesanGerbang, severityJawaban, terjawab, usulanKesimpulan } from "@/lib/domain/inspeksi";
-import { formatWaktu } from "@/lib/format";
+import { isButirIsi, type KonteksP3k } from "@/lib/domain/modul/p3k";
+import { formatWaktu, hariIniJakarta } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   buangDraf,
@@ -29,6 +30,7 @@ import { uuidv7 } from "../client/ids";
 import { kompresFoto } from "../client/kompres";
 import { statusAntrean } from "../client/status";
 import type { DrafLokal, FotoLokal } from "../client/types";
+import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
 
@@ -137,7 +139,9 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   const bisaUbah = draf.status === "draf";
 
   const jawaban = Object.entries(draf.jawaban).map(([id, j]) => ({ ...j, checklistItemId: Number(id) }));
-  const temuan = bangunTemuan(items, jawaban);
+  // Kotak P3K: tipe kotak dari paket kerja, kedaluwarsa dinilai terhadap hari ini (WIB).
+  const p3k = aset?.tipeKotak ? { tipeKotak: aset.tipeKotak, hariIni: hariIniJakarta() } : null;
+  const temuan = bangunTemuan(items, jawaban, p3k);
   const usulan = usulanKesimpulan(temuan);
   const terisi = items.filter((i) => terjawab(i, jawaban.find((j) => j.checklistItemId === i.id))).length;
 
@@ -170,9 +174,9 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   const jarak = draf.gps && aset ? jarakMeter(draf.gps, aset) : null;
   const gerbang = evaluasiGerbang({ radius: aset?.radiusM ?? null, jarak, akurasi: draf.gps?.accuracy ?? null });
 
-  const jawab = async (itemId: number, isi: { nilai?: string | null; nilaiAngka?: number | null; catatan?: string | null }) => {
+  const jawab = async (itemId: number, isi: IsianJawaban & { catatan?: string | null }) => {
     navigator.vibrate?.(30);
-    await simpanJawaban(db!, draf.inspectionId, itemId, isi, items);
+    await simpanJawaban(db!, draf.inspectionId, itemId, isi, items, p3k);
     berubah();
   };
 
@@ -206,7 +210,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
 
   const kirim = async () => {
     setMengirim(true);
-    const r = await kirimInspeksi(db!, draf.inspectionId, items);
+    const r = await kirimInspeksi(db!, draf.inspectionId, items, { p3k });
     setMengirim(false);
     if (!r.ok) {
       setGalat(r.galat);
@@ -318,7 +322,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
           {g.items.map((item) => {
             const jl = draf.jawaban[item.id];
             const j = jl ? { ...jl, checklistItemId: item.id } : undefined;
-            const sev = severityJawaban(item, j);
+            const sev = severityJawaban(item, j) ?? temuan.find((t) => t.checklistItemId === item.id)?.severity ?? null;
             return (
               <Card key={item.id} className="gap-0 py-0" data-testid={`butir-${item.id}`}>
                 <CardContent className="space-y-3 p-4">
@@ -327,7 +331,7 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
                     {item.dasarHukum && <p className="text-xs text-muted-foreground">{item.dasarHukum}</p>}
                     {item.keterangan && <p className="mt-1 text-xs text-muted-foreground">{item.keterangan}</p>}
                   </div>
-                  <IsianButir item={item} nilai={j} bisaUbah={bisaUbah} onJawab={(isi) => void jawab(item.id, isi)} />
+                  <IsianButir item={item} nilai={j} bisaUbah={bisaUbah} p3k={p3k} onJawab={(isi) => void jawab(item.id, isi)} />
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">{terjawab(item, j) ? "Tersimpan di perangkat" : item.wajib ? "Wajib diisi" : ""}</span>
                     {sev && <LencanaSeverity s={sev} />}
@@ -480,17 +484,24 @@ function IsiDraf({ draf, daring, berubah }: { draf: DrafLokal; daring: boolean; 
   );
 }
 
+type IsianJawaban = { nilai?: string | null; nilaiAngka?: number | null } & IsianIsi;
+
 function IsianButir({
   item,
   nilai,
   bisaUbah,
+  p3k,
   onJawab,
 }: {
   item: ReturnType<typeof butirUntuk>[number];
   nilai: DrafLokal["jawaban"][number] | undefined;
   bisaUbah: boolean;
-  onJawab: (isi: { nilai?: string | null; nilaiAngka?: number | null }) => void;
+  p3k: KonteksP3k | null;
+  onJawab: (isi: IsianJawaban) => void;
 }) {
+  if (p3k && isButirIsi(item)) {
+    return <IsianIsiP3k item={{ ...item, jumlahBaku: item.jumlahBakuPerTipe ?? null, hasExpiry: !!item.hasExpiry }} tipeKotak={p3k.tipeKotak} hariIni={p3k.hariIni} nilai={nilai} bisaUbah={bisaUbah} onJawab={onJawab} />;
+  }
   const pilihan: { nilai: string; label: string; buruk: boolean }[] = isDuaNilai(item.answerType)
     ? [
         { nilai: "ok", label: labelDuaNilai(item.answerType).ok, buruk: false },
