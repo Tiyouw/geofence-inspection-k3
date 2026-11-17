@@ -154,8 +154,8 @@ describe("stiker (L7)", () => {
         expect(TATA_LETAK["2x4"]).toMatchObject({ kolom: 2, baris: 4, lebar: 99.1, tinggi: 67.7 });
         expect(parseTata(undefined)).toBe("2x5");
         expect(parseTata("9x9")).toBe("2x5");
-        expect(ukuranLabel("3x8")).toEqual({ qrMm: 20, kodeMm: 3.8 });
-        expect(ukuranLabel("2x5")).toEqual({ qrMm: 26, kodeMm: 4.6 });
+        expect(ukuranLabel("3x8")).toEqual({ qrMm: 24, kodeMm: 3.8 });
+        expect(ukuranLabel("2x5")).toEqual({ qrMm: 30, kodeMm: 4.6 });
     });
 
     it("kode dipisah koma, lembar dibagi, URL /i/{token}", () => {

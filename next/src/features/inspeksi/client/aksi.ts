@@ -3,7 +3,7 @@
  * outbox (SPEC §7.1). Modul ini tidak memakai DOM selain fetch/crypto, sehingga bisa diuji.
  */
 import { MAKS_FOTO } from "@/lib/domain/constants";
-import { ambilToken, bangunTemuan, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
+import { ambilToken, bangunTemuan, miripNomorAset, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
 import { getMeta, setMeta, type DbAkun } from "./db";
 import { monoNow, uuidv7 } from "./ids";
 import { opsInspeksi, tambahOp } from "./outbox";
@@ -76,6 +76,8 @@ export type HasilMulai =
 
 export const PESAN = {
   bukanStiker: "Kode ini bukan stiker inspeksi K3. Coba stiker yang benar.",
+  nomorAset:
+    "Itu nomor aset. Ketik kode panjang PAL-K3-… yang tercetak kecil di bawah QR (spasi dan huruf besar tidak masalah), atau pindai QR-nya.",
   tidakDikenali: "Stiker tidak dikenali. Laporkan ke Admin K3.",
   tidakDikenaliLuring:
     "Stiker tidak dikenali atau data stiker belum diperbarui. Simpan foto stiker dan coba saat ada sinyal.",
@@ -92,7 +94,7 @@ export async function mulaiDariTeks(
   opts: { daring: boolean; fetchFn?: typeof fetch } ,
 ): Promise<HasilMulai> {
   const token = ambilToken(teks);
-  if (!token) return { ok: false, pesan: PESAN.bukanStiker };
+  if (!token) return { ok: false, pesan: miripNomorAset(teks) ? PESAN.nomorAset : PESAN.bukanStiker };
 
   let aset = await cariAsetDariToken(db, token);
   if (!aset && opts.daring) {

@@ -15,7 +15,7 @@ import {
 } from "@/features/admin/lib/stiker";
 import { catatAudit } from "@/features/admin/server/aksi";
 import { daftarGedung, pilihanAset } from "@/features/admin/server/aset";
-import { asetStiker, qrSvg } from "@/features/admin/server/stiker";
+import { asetStiker, qrSvg, tokenTercetak } from "@/features/admin/server/stiker";
 import { db } from "@/db";
 import { requireRole } from "@/lib/auth/guards";
 import { labelLokasi } from "@/lib/domain/label-aset";
@@ -42,7 +42,7 @@ function gaya(kode: KodeTata): string {
   .stiker-lokasi { font-size: 2.5mm; line-height: 1.25; margin-top: .8mm; }
   .stiker-perintah { font-size: 2.3mm; margin-top: 1mm; font-weight: 600; }
   .stiker-token { font-family: ui-monospace, 'Courier New', monospace; font-size: 1.9mm; color: #495057;
-    word-break: break-all; line-height: 1.2; margin-top: .6mm; }
+    word-break: normal; overflow-wrap: anywhere; line-height: 1.2; margin-top: .6mm; }
   @media print {
     body { background: #fff !important; }
     .stiker-layar { display: none !important; }
@@ -171,7 +171,7 @@ export default async function LembarStiker({ searchParams }: PageProps<"/stiker"
                                     <div className="stiker-kode">{a.kode}</div>
                                     <div className="stiker-lokasi">{labelLokasi(a)}</div>
                                     <div className="stiker-perintah">Pindai sebelum memeriksa</div>
-                                    <div className="stiker-token">{a.qrToken}</div>
+                                    <div className="stiker-token">{tokenTercetak(a.qrToken)}</div>
                                 </div>
                             </div>
                         ))}

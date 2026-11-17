@@ -14,10 +14,13 @@ export function parseTata(nilai: string | undefined): KodeTata {
     return nilai && nilai in TATA_LETAK ? (nilai as KodeTata) : TATA_BAWAAN;
 }
 
-/** Ukuran cetak QR dan kode aset bergantung tinggi label. */
+/**
+ * Ukuran cetak QR (termasuk quiet zone 4 modul) dan kode aset bergantung tinggi label.
+ * QR dibesarkan dari 26/20 mm saat quiet zone ditambahkan supaya modulnya tidak mengecil.
+ */
 export function ukuranLabel(kode: KodeTata): { qrMm: number; kodeMm: number } {
     const besar = TATA_LETAK[kode].tinggi > 40;
-    return { qrMm: besar ? 26 : 20, kodeMm: besar ? 4.6 : 3.8 };
+    return { qrMm: besar ? 30 : 24, kodeMm: besar ? 4.6 : 3.8 };
 }
 
 /** "APAR-001, APAR-014 ,," → ["APAR-001", "APAR-014"] (cetak ulang satu-dua stiker). */

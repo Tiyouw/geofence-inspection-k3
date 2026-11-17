@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ambilToken,
+  miripNomorAset,
   bangunTemuan,
   jatuhTempo,
   periksaKirim,
@@ -163,5 +164,28 @@ describe("ambil token (SPEC §3.1)", () => {
   it("menolak QR lain", () => {
     expect(ambilToken("https://example.com/promo")).toBeNull();
     expect(ambilToken("01D")).toBeNull();
+  });
+});
+
+describe("kode cadangan yang diketik dari stiker", () => {
+  const hex = "da4f8df08dce241ff05797c2659b6017";
+  const tok = "PAL-K3-" + hex;
+  it("menerima ketikan dengan spasi, baris, huruf besar, tanda hubung ponsel, tanpa awalan, dan kelompok 4", () => {
+    expect(ambilToken(tok)).toBe(tok);
+    expect(ambilToken(tok.toUpperCase())).toBe(tok);
+    expect(ambilToken(` PAL-K3-${hex.slice(0, 14)}\n${hex.slice(14)} `)).toBe(tok);
+    expect(ambilToken("PAL-K3-" + hex.match(/.{4}/g)!.join(" "))).toBe(tok);
+    expect(ambilToken(hex)).toBe(tok);
+    expect(ambilToken("PAL–K3–" + hex)).toBe(tok);
+    expect(ambilToken("pal k3 " + hex)).toBe(tok);
+    expect(ambilToken("PAL-K3-" + hex.replace(/0/g, "O"))).toBe(tok);
+  });
+  it("menolak yang bukan token, dan mengenali nomor aset", () => {
+    expect(ambilToken("PAL-K3-" + hex.slice(1))).toBeNull();
+    expect(ambilToken("PAL-K3-" + hex + "0")).toBeNull();
+    expect(ambilToken("01D")).toBeNull();
+    expect(miripNomorAset("01D")).toBe(true);
+    expect(miripNomorAset(tok)).toBe(false);
+    expect(miripNomorAset("https://example.com/promo")).toBe(false);
   });
 });
