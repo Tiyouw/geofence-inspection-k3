@@ -141,7 +141,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                 <h2 id="judul-modul" className="sr-only">
                     Progres per modul
                 </h2>
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="progres-modul">
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-testid="progres-modul">
                     {r.modul.map((m) => (
                         <li key={m.slug} className="rounded-xl border bg-card p-4">
                             <div className="flex items-baseline justify-between gap-2">

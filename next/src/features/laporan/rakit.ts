@@ -139,7 +139,6 @@ export function inspeksiTerakhirPerAset<T extends { assetId: number; inspectedAt
 
 const HARI = 86_400_000;
 
-/** Issue::umurHari: hari penuh sejak ditemukan sampai selesai atau sekarang. */
 export type BarisPms = {
   aset: AsetLaporan;
   lokasi: { utama: string; lantai: string | null };

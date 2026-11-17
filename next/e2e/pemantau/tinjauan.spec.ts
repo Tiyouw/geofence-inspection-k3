@@ -21,7 +21,7 @@ test("pemantau menolak inspeksi area terbatas dengan catatan; keluar dari antrea
     await page.getByLabel("Catatan tinjauan").fill("Petugas tidak berada di area terbatas pada jam itu.");
     await page.getByRole("button", { name: "Simpan tinjauan" }).click();
     await expect(page.getByText("Inspeksi ditolak.")).toBeVisible();
-    await expect(page.getByText("Pemantau Demo")).toBeVisible();
+    await expect(page.locator("dd").getByText("Pemantau Demo")).toBeVisible();
 
     const [r] = await baris<{ hasil_tinjauan: string; ditinjau_oleh: number }>(
         "select hasil_tinjauan, ditinjau_oleh from inspections where id = $1",

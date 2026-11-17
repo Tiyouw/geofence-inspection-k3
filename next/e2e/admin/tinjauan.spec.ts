@@ -48,7 +48,7 @@ test.describe("tinjauan inspeksi oleh Administrator K3", () => {
         await catatan.fill("pendek");
         await catatan.evaluate((el) => el.removeAttribute("minlength"));
         await page.getByRole("button", { name: "Simpan tinjauan" }).click();
-        await expect(page.getByRole("alert")).toContainText("minimal 10 karakter");
+        await expect(page.getByText("Catatan tinjauan minimal 10 karakter.")).toBeVisible();
         await expect(catatan).toHaveValue("pendek");
         await catatan.fill("Petugas di pintu bengkel, sinyal terhalang atap baja.");
         await page.getByRole("button", { name: "Simpan tinjauan" }).click();

@@ -178,12 +178,14 @@ test.describe("cron jadwal (G14)", () => {
     const pertama = await request.get("/api/cron/jadwal", { headers });
     expect(pertama.status()).toBe(200);
     const kedua = await (await request.get("/api/cron/jadwal", { headers })).json();
-    expect(Object.values(kedua.jadwalBaru)).toEqual([0, 0]);
+    // Satu kunci per periode: bulan ini dan lalu, ditambah minggu ini dan lalu untuk mobil pemadam (PRD F16).
+    expect(Object.values(kedua.jadwalBaru).every((n) => n === 0)).toBe(true);
     expect(kedua.ditautkan).toBe(0);
 
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const { rows } = await pool.query<{ aset: number; jadwal: number }>(
-      `select (select count(*)::int from assets where aktif) as aset,
+      `select (select count(*)::int from assets a join asset_types t on t.id = a.asset_type_id
+                where a.aktif and t.aktif and t.periode_hari <> 7) as aset,
               (select count(*)::int from schedules where periode = $1::date) as jadwal`,
       [kedua.periode],
     );

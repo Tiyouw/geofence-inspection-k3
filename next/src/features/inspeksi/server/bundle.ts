@@ -156,6 +156,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
       hasExpiry: i.hasExpiry,
       satuan: i.satuan,
       wajib: i.wajib,
+      tindakanBawaan: i.tindakanBawaan,
       dasarHukum: i.dasarHukum,
       keterangan: i.keterangan,
     });
