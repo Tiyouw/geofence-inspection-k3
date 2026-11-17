@@ -37,10 +37,12 @@ import {
     jadikanKawasan,
     pasangkanAset,
     pasangkanAsetDalamPoligon,
+    setujuiDrafMassal,
     setujuiPoligon,
     simpanDrafPoligon,
     ubahArea,
 } from "../actions/area";
+import { kalimatDilewati, pilahSetujuiMassal, type PilahSetujui } from "../lib/draf-massal";
 import type { AreaEditor, AsetEditor } from "../server/area";
 import { PetaArea, type PoligonTampil } from "./peta-area";
 import { Bidang, Kartu, Lencana, Pilihan } from "./ui";
@@ -240,7 +242,7 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 {mode.jenis === "lihat" && !pilih && (
                     <>
                         <DaftarArea area={area} kawasan={kawasan} pilih={(id) => setPilihId(id)} />
-                        <HapusDraf area={area} menunggu={menunggu} jalankan={jalankan} />
+                        <DrafMassal area={area} menunggu={menunggu} jalankan={jalankan} />
                     </>
                 )}
             </div>
@@ -324,7 +326,14 @@ function drafTerhapus(a: AreaEditor) {
     return !a.polygon && !!a.polygonDraf && a.jenis !== "kawasan" && a.jumlahAset === 0;
 }
 
-function HapusDraf({
+type TanyaMassal = { aksi: "setujui" | "hapus"; judul: string; ids: number[]; dilewati: string };
+
+/**
+ * Kartu "Draf massal": per kumpulan impor (satu impor = satu transaksi = satu waktu dibuat)
+ * dan untuk semua draf, setujui atau hapus sekaligus. Angka dihitung dengan aturan yang sama
+ * dengan peladen (pilahSetujuiMassal, drafTerhapus); peladen memeriksa ulang.
+ */
+function DrafMassal({
     area,
     menunggu,
     jalankan,
@@ -333,63 +342,103 @@ function HapusDraf({
     menunggu: boolean;
     jalankan: (k: () => Promise<Hasil>, setelah?: () => void) => void;
 }) {
-    const [tanya, setTanya] = useState<{ judul: string; ids: number[] } | null>(null);
-    const draf = area.filter(drafTerhapus);
-    // Satu kali impor = satu transaksi = satu waktu dibuat.
-    const per = new Map<string, AreaEditor[]>();
-    for (const a of draf) per.set(a.dibuatPada, [...(per.get(a.dibuatPada) ?? []), a]);
-    const kumpulan = [...per.entries()].sort((x, y) => y[0].localeCompare(x[0])).map(([waktu, isi]) => ({ waktu, isi }));
-    if (draf.length === 0) return null;
+    const [tanya, setTanya] = useState<TanyaMassal | null>(null);
+    const ringkas = useMemo(() => {
+        const draf = area.filter((a) => a.polygonDraf);
+        const pilah = (isi: AreaEditor[]) => ({ setujui: pilahSetujuiMassal(isi, area), hapus: isi.filter(drafTerhapus).map((a) => a.id) });
+        const per = new Map<string, AreaEditor[]>();
+        for (const a of draf) {
+            const isi = per.get(a.dibuatPada);
+            if (isi) isi.push(a);
+            else per.set(a.dibuatPada, [a]);
+        }
+        const kumpulan = [...per.entries()]
+            .sort((x, y) => y[0].localeCompare(x[0]))
+            .map(([waktu, isi]) => ({ waktu, isi, ...pilah(isi) }));
+        return { jumlah: draf.length, kumpulan, semua: pilah(draf) };
+    }, [area]);
+    if (ringkas.jumlah === 0) return null;
+    const { semua } = ringkas;
+    const tanyaSetujui = (judul: string, p: PilahSetujui) =>
+        setTanya({ aksi: "setujui", judul, ids: p.setujui, dilewati: kalimatDilewati(p) });
+    const n = tanya?.ids.length ?? 0;
     return (
-        <Kartu judul="Hapus draf" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
-            <div data-testid="hapus-draf">
+        <Kartu judul="Draf massal" className="mt-4 animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+            <div data-testid="draf-massal">
                 <p className="mb-3 text-sm text-muted-foreground">
-                    Hanya draf yang belum pernah disetujui dan tidak berisi aset. Area disetujui dan batas kawasan tidak ikut terhapus.
+                    Setujui atau hapus draf per kumpulan impor. Calon batas kawasan dan poligon tidak sah tidak ikut disetujui. Hapus hanya
+                    berlaku untuk draf yang belum pernah disetujui dan tidak berisi aset.
                 </p>
                 <ul className="mb-3 space-y-1">
-                    {kumpulan.map((k) => (
-                        <li key={k.waktu} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
-                            <span className="min-w-0">
-                                <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
-                                <span className="block truncate text-xs text-muted-foreground">
-                                    {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}
-                                    {k.isi.length > 3 ? ", …" : ""}
-                                </span>
+                    {ringkas.kumpulan.map((k) => (
+                        <li key={k.waktu} className="rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
+                            <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                                {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}
+                                {k.isi.length > 3 ? ", …" : ""}
                             </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={menunggu}
-                                onClick={() => setTanya({ judul: `kumpulan ${formatWaktu(k.waktu)}`, ids: k.isi.map((a) => a.id) })}
-                            >
-                                <Trash2 aria-hidden /> Hapus {k.isi.length}
-                            </Button>
+                            <span className="mt-1.5 flex flex-wrap gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={menunggu || k.setujui.setujui.length === 0}
+                                    onClick={() => tanyaSetujui(`kumpulan ${formatWaktu(k.waktu)}`, k.setujui)}
+                                >
+                                    <Check aria-hidden /> Setujui {k.setujui.setujui.length}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={menunggu || k.hapus.length === 0}
+                                    onClick={() => setTanya({ aksi: "hapus", judul: `kumpulan ${formatWaktu(k.waktu)}`, ids: k.hapus, dilewati: "" })}
+                                >
+                                    <Trash2 aria-hidden /> Hapus {k.hapus.length}
+                                </Button>
+                            </span>
                         </li>
                     ))}
                 </ul>
-                <Button variant="destructive" size="sm" disabled={menunggu} onClick={() => setTanya({ judul: "semua draf", ids: draf.map((a) => a.id) })}>
-                    <Trash2 aria-hidden /> Hapus semua draf ({draf.length})
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="brand" size="sm" disabled={menunggu || semua.setujui.setujui.length === 0} onClick={() => tanyaSetujui("semua kumpulan", semua.setujui)}>
+                        <Check aria-hidden /> Setujui semua draf ({semua.setujui.setujui.length})
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={menunggu || semua.hapus.length === 0}
+                        onClick={() => setTanya({ aksi: "hapus", judul: "semua draf", ids: semua.hapus, dilewati: "" })}
+                    >
+                        <Trash2 aria-hidden /> Hapus semua draf ({semua.hapus.length})
+                    </Button>
+                </div>
             </div>
             <AlertDialog open={!!tanya} onOpenChange={(b) => !b && setTanya(null)}>
-                <AlertDialogContent data-testid="dialog-hapus-draf">
+                <AlertDialogContent data-testid="dialog-draf-massal">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus {tanya?.ids.length} draf area?</AlertDialogTitle>
+                        <AlertDialogTitle>{tanya?.aksi === "setujui" ? `Setujui ${n} poligon?` : `Hapus ${n} draf area?`}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {tanya?.ids.length} draf dari {tanya?.judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.
+                            {tanya?.aksi === "setujui"
+                                ? `${n} draf dari ${tanya.judul} menjadi poligon resmi dan langsung dipakai gerbang lokasi.`
+                                : `${n} draf dari ${tanya?.judul} akan dihapus permanen. Area yang sudah disetujui, batas kawasan, dan area berisi aset tidak ikut terhapus.`}
                         </AlertDialogDescription>
+                        {tanya?.dilewati && (
+                            <p className="text-sm text-muted-foreground" data-testid="dilewati">
+                                {tanya.dilewati}
+                            </p>
+                        )}
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Batal</AlertDialogCancel>
                         <AlertDialogAction
-                            variant="destructive"
+                            variant={tanya?.aksi === "setujui" ? "brand" : "destructive"}
                             onClick={() => {
-                                const ids = tanya?.ids ?? [];
+                                const t = tanya;
                                 setTanya(null);
-                                jalankan(() => hapusDrafMassal({ ids }));
+                                if (!t) return;
+                                jalankan(() => (t.aksi === "setujui" ? setujuiDrafMassal({ ids: t.ids }) : hapusDrafMassal({ ids: t.ids })));
                             }}
                         >
-                            Hapus {tanya?.ids.length} draf
+                            {tanya?.aksi === "setujui" ? `Setujui ${n} poligon` : `Hapus ${n} draf`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

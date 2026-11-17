@@ -40,7 +40,7 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
   expect(rows).toHaveLength(4);
   const [satu, dua] = rows;
 
-  const kumpulan = page.getByTestId("hapus-draf").getByRole("listitem").filter({ hasText: unik });
+  const kumpulan = page.getByTestId("draf-massal").getByRole("listitem").filter({ hasText: unik });
   await expect(kumpulan).toContainText("4 draf");
 
   // Area 1 disetujui, area 2 berisi aset: keduanya tidak boleh ikut terhapus.
@@ -60,7 +60,7 @@ test("hapus satu kumpulan impor: hanya draf tanpa aset, area disetujui tetap ada
     await expect(kumpulan).toContainText("2 draf");
 
     await kumpulan.getByRole("button", { name: "Hapus 2" }).click();
-    const dialog = page.getByTestId("dialog-hapus-draf");
+    const dialog = page.getByTestId("dialog-draf-massal");
     await expect(dialog).toContainText("Hapus 2 draf area?");
     await dialog.getByRole("button", { name: "Batal" }).click();
     await expect(dialog).toBeHidden();

@@ -5,7 +5,7 @@
  * (aksiAdmin), memakai JSON, dan memvalidasi ulang geometri di peladen. Poligon hasil impor
  * dan suntingan disimpan sebagai draf; gerbang hanya memakai poligon yang sudah disetujui.
  */
-import { and, count, eq, inArray, isNotNull, isNull, ne, notExists } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, ne, notExists, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -14,6 +14,7 @@ import { areas, assets, assetTypes, inspections } from "@/db/schema";
 import { AREA_JENIS } from "@/lib/domain/constants";
 import { type GeometriArea, normalkanGeometri, titikDalamPoligon, validasiGeometri } from "@/lib/geo/geometri";
 import { kodeDariLabel, MAKS_FITUR_IMPOR } from "@/lib/geo/impor";
+import { kalimatDilewati, pilahSetujuiMassal } from "../lib/draf-massal";
 import { aksiAdmin, catatAudit, langgarUnik, type HasilAksi } from "../server/aksi";
 
 const geometri = z.unknown().superRefine((g, ctx) => {
@@ -218,6 +219,51 @@ export async function setujuiPoligon(masukan: z.input<typeof skemaId>): Promise<
         });
         segarkan();
         return { ok: true, pesan: "Poligon disetujui dan dipakai gerbang lokasi." };
+    });
+}
+
+const skemaSetujuiMassal = z.object({
+    ids: z.array(z.number().int().positive()).min(1, "Tidak ada draf yang dipilih.").max(2000),
+});
+
+/**
+ * Menyetujui banyak draf sekaligus (mis. satu kumpulan impor). Peladen memilah ulang dengan
+ * aturan yang sama dengan editor: calon batas kawasan dan geometri tidak sah dilewati.
+ */
+export async function setujuiDrafMassal(
+    masukan: z.input<typeof skemaSetujuiMassal>,
+): Promise<HasilAksi<{ jumlah: number; kawasan: number; tidakSah: number }>> {
+    return aksiAdmin(skemaSetujuiMassal, masukan, async (d, user) => {
+        const ids = [...new Set(d.ids)];
+        const pilih = { id: areas.id, nama: areas.nama, jenis: areas.jenis, polygon: areas.polygon, polygonDraf: areas.polygonDraf };
+        const [draf, semua] = await Promise.all([
+            db.select(pilih).from(areas).where(and(inArray(areas.id, ids), eq(areas.aktif, true), isNotNull(areas.polygonDraf))),
+            db.select(pilih).from(areas).where(eq(areas.aktif, true)),
+        ]);
+        const p = pilahSetujuiMassal(draf, semua);
+        const hilang = ids.length - draf.length; // tidak ada lagi / bukan draf
+        let jumlah = 0;
+        if (p.setujui.length) {
+            jumlah = await db.transaction(async (tx) => {
+                const r = await tx
+                    .update(areas)
+                    .set({ polygon: sql`${areas.polygonDraf}`, polygonDraf: null, poligonDisetujuiPada: new Date(), poligonDisetujuiOleh: user.id })
+                    .where(and(inArray(areas.id, p.setujui), isNotNull(areas.polygonDraf), ne(areas.jenis, "kawasan")))
+                    .returning({ id: areas.id });
+                await catatAudit(tx, user, "area.setujui_massal", "area", "-", {
+                    diminta: ids.length,
+                    disetujui: r.length,
+                    calonKawasan: p.kawasan.length,
+                    tidakSah: p.tidakSah.length,
+                });
+                return r.length;
+            });
+            segarkan();
+        }
+        const lewat = kalimatDilewati(p) + (hilang ? ` ${hilang} bukan draf lagi.` : "");
+        const data = { jumlah, kawasan: p.kawasan.length, tidakSah: p.tidakSah.length };
+        if (!jumlah) return { ok: false, status: 422, pesan: `Tidak ada draf yang dapat disetujui. ${lewat}`.trim() };
+        return { ok: true, pesan: `${jumlah} poligon disetujui dan dipakai gerbang lokasi. ${lewat}`.trim(), data };
     });
 }
 
