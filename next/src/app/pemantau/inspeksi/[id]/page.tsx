@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { tanggalIso, tglDmy, waktuDmyHm } from "@/features/laporan/format";
 import { detailInspeksi } from "@/features/laporan/queries";
+import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
+import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { labelLokasi, perluTinjauan } from "@/features/laporan/rakit";
 import { Lencana, LencanaGerbang, LencanaKesimpulan, LABEL_STATUS_TEMUAN, NADA_TINGKAT, Tabel, labelNilai } from "@/features/laporan/ui";
 import { requireRole } from "@/lib/auth/guards";
@@ -33,7 +35,7 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
   await requireRole("admin", "pemantau");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const d = await detailInspeksi(id);
+  const [d, perButir] = await Promise.all([detailInspeksi(id), fotoPerButir(id)]);
   if (!d || d.ins.status !== "final") notFound();
   const i = d.ins;
   const radius = radiusEfektif({ radiusAset: d.aset.radiusM, lokasiTipe: d.aset.lokasiTipe });
@@ -143,6 +145,15 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
           </ul>
         )}
       </section>
+
+      {perButir && (
+        <section aria-labelledby="judul-foto-butir" className="mt-6">
+          <h2 id="judul-foto-butir" className="mb-3 text-lg font-semibold">
+            Foto per butir
+          </h2>
+          <FotoPerButir data={perButir} />
+        </section>
+      )}
 
       <section aria-labelledby="judul-jawaban" className="mt-6">
         <h2 id="judul-jawaban" className="mb-3 text-lg font-semibold">

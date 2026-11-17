@@ -141,6 +141,23 @@ test("langkah demi langkah: beberapa jepretan, ulangi, hapus, lalu simpan semua 
   }
   // Satu foto untuk beberapa butir: tautan ke butir diturunkan dari langkahnya.
   expect(fotos.map((f) => f.kode).sort()).toEqual(["manometer", "manometer", "posisi", "segel", "selang", "tabung"]);
+
+  // Admin K3 dan Pemantau melihat foto per butir: satu foto "Tabung utuh" membuktikan empat butir.
+  for (const [akun, url] of [
+    ["admin", `/admin/tinjauan/${id}`],
+    ["pemantau", `/pemantau/inspeksi/${id}`],
+  ] as const) {
+    const ctx = await page.context().browser()!.newContext({ baseURL: test.info().project.use.baseURL });
+    const p = await ctx.newPage();
+    await masuk(p, akun);
+    await p.goto(url);
+    const daftar = p.getByTestId("foto-per-butir");
+    await expect(daftar.getByRole("img", { name: /^Foto Badan tabung/ })).toHaveCount(1);
+    await expect(daftar.getByRole("img", { name: /^Foto Handle dan tuas/ })).toHaveCount(1);
+    await expect(daftar.getByRole("img", { name: /^Foto Tekanan manometer/ })).toHaveCount(2);
+    await expect(daftar.getByRole("img", { name: /^Foto Volume isi tabung/ })).toHaveCount(1);
+    await ctx.close();
+  }
 });
 
 test("menutup kamera tanpa menyimpan membuang jepretan; kirim tanpa foto ditolak per langkah", async ({ page }) => {
