@@ -380,6 +380,53 @@ export const auditLogs = pgTable(
   (t) => [index().on(t.aksi, t.createdAt), index().on(t.entitas, t.entitasId)],
 );
 
+/* ---------- formulir pertanyaan klien (/tanya/{token}) ---------- */
+
+/**
+ * Jawaban klien atas daftar pertanyaan grill-me (src/features/tanya/pertanyaan.ts).
+ * Terpisah dari tabel domain: tidak ada FK ke data inspeksi. `formulir` = kunci satu set
+ * jawaban (saat ini satu: "rifaldy"), `nomor` = nomor pertanyaan di catatan ("1.2").
+ */
+export const tanyaJawaban = pgTable(
+    "tanya_jawaban",
+    {
+        id: id(),
+        formulir: varchar({ length: 32 }).notNull(),
+        nomor: varchar({ length: 8 }).notNull(),
+        jawaban: text().notNull().default(""),
+        /** Kode pilihan "a"/"b"/"c" bila pertanyaan punya pilihan. */
+        pilihan: varchar({ length: 4 }),
+        pakaiBawaan: boolean().notNull().default(false),
+        perluTanya: boolean().notNull().default(false),
+        ...ts(),
+    },
+    (t) => [uniqueIndex().on(t.formulir, t.nomor)],
+);
+
+/** Berkas pendukung per pertanyaan (foto formulir, contoh). Vercel Blob privat, maks 10 MB. */
+export const tanyaLampiran = pgTable(
+    "tanya_lampiran",
+    {
+        id: uuid().primaryKey().defaultRandom(),
+        formulir: varchar({ length: 32 }).notNull(),
+        nomor: varchar({ length: 8 }).notNull(),
+        storageKey: text().notNull(),
+        nama: text().notNull(),
+        contentType: varchar({ length: 128 }).notNull(),
+        bytes: integer().notNull(),
+        createdAt: createdAt(),
+    },
+    (t) => [index().on(t.formulir, t.nomor)],
+);
+
+/** Status kirim satu formulir. Tetap bisa disunting sesudah dikirim. */
+export const tanyaKiriman = pgTable("tanya_kiriman", {
+    formulir: varchar({ length: 32 }).primaryKey(),
+    dikirimPada: tstz().notNull().defaultNow(),
+    jumlahKirim: integer().notNull().default(1),
+    ...ts(),
+});
+
 /* ---------- relasi ---------- */
 
 export const divisionsRelations = relations(divisions, ({ many }) => ({
