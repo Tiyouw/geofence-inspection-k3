@@ -81,7 +81,7 @@ export type AreaPaket = { nama: string; polygon: GeometriArea | null; restricted
 export type GerbangPaket = {
   pengaturan: PengaturanGerbang;
   kawasan: { id: number; nama: string; polygon: GeometriArea } | null;
-  /** Area aset (yang dipakai paket ini) dan area lain berpoligon, terindeks id. */
+  /** Hanya area aset paket ini (bukan seluruh denah), terindeks id. */
   area: Record<number, AreaPaket>;
 };
 
@@ -214,10 +214,15 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     .limit(100);
 
   const [pengaturan, dataGerbang] = await Promise.all([pengaturanGerbang(), dataArea()]);
+  // Denah bersifat rahasia (ADR-10): perangkat hanya menerima poligon area aset unitnya sendiri
+  // dan batas kawasan. Area lain hanya dinilai di peladen.
+  const areaDipakai = new Set(aset.map((x) => x.areaId).filter((id): id is number => id !== null));
   const areaPaket: Record<number, AreaPaket> = {};
-  for (const [id, x] of dataGerbang.area) areaPaket[id] = { nama: x.nama, polygon: x.polygon, restricted: !!x.restricted };
+  for (const [id, x] of dataGerbang.area) {
+    if (areaDipakai.has(id)) areaPaket[id] = { nama: x.nama, polygon: x.polygon, restricted: !!x.restricted };
+  }
   // Area aset tanpa poligon tetap dikirim supaya nama dan tanda terbatasnya tampil.
-  const tanpaPoligon = [...new Set(aset.map((x) => x.areaId).filter((id): id is number => id !== null && !(id in areaPaket)))];
+  const tanpaPoligon = [...areaDipakai].filter((id) => !(id in areaPaket));
   if (tanpaPoligon.length) {
     const rows = await db.select({ id: areas.id, nama: areas.nama, restricted: areas.restricted }).from(areas).where(inArray(areas.id, tanpaPoligon));
     for (const r of rows) areaPaket[r.id] = { nama: r.nama, polygon: null, restricted: r.restricted };
