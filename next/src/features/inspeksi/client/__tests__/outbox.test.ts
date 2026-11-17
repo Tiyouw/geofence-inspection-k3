@@ -329,7 +329,7 @@ describe("kamera terpandu: kumpulan foto (PRD Aturan bukti 3-4)", () => {
     expect(await db.get("sent", id)).toBeDefined();
     const puts = panggilan.filter((p) => p.method === "PUT");
     expect(puts[0]!.key).toBe(puts[1]!.key);
-    expect(header[0]!.get("x-step")).toBe("tabung");
+    expect(new Set(header.map((h) => h.get("x-step")))).toEqual(new Set(["tabung", "manometer"]));
     expect(header[0]!.get("x-accuracy")).toBe("12");
     expect(header[0]!.get("x-lat")).toBe("-8.18");
     expect(header[0]!.get("x-taken-at")).toMatch(/^\d{4}-/);

@@ -126,8 +126,9 @@ test("langkah demi langkah: beberapa jepretan, ulangi, hapus, lalu simpan semua 
   await page.getByRole("button", { name: "Kirim", exact: true }).click();
   await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });
 
-  const fotos = await q<{ width: number; height: number; taken_at_device: Date | null; lat: string | null; content_type: string }>(
-    "select width, height, taken_at_device, lat, content_type from inspection_photos where inspection_id = $1",
+  const fotos = await q<{ width: number; height: number; taken_at_device: Date | null; lat: string | null; gps_accuracy: number | null; content_type: string; kode: string | null }>(
+    `select f.width, f.height, f.taken_at_device, f.lat, f.gps_accuracy, f.content_type, s.kode
+       from inspection_photos f left join photo_steps s on s.id = f.step_id where f.inspection_id = $1`,
     [id],
   );
   expect(fotos).toHaveLength(6);
@@ -136,7 +137,10 @@ test("langkah demi langkah: beberapa jepretan, ulangi, hapus, lalu simpan semua 
     expect(Math.max(f.width, f.height)).toBeLessThanOrEqual(1600);
     expect(f.taken_at_device).not.toBeNull();
     expect(f.lat).not.toBeNull();
+    expect(f.gps_accuracy).toBe(9);
   }
+  // Satu foto untuk beberapa butir: tautan ke butir diturunkan dari langkahnya.
+  expect(fotos.map((f) => f.kode).sort()).toEqual(["manometer", "manometer", "posisi", "segel", "selang", "tabung"]);
 });
 
 test("menutup kamera tanpa menyimpan membuang jepretan; kirim tanpa foto ditolak per langkah", async ({ page }) => {
@@ -153,4 +157,27 @@ test("menutup kamera tanpa menyimpan membuang jepretan; kirim tanpa foto ditolak
   await isiSemua(page);
   await page.getByRole("button", { name: "Kirim", exact: true }).click();
   await expect(page.getByTestId("galat-kirim")).toContainText(`Langkah foto yang belum diisi: ${LANGKAH_APAR.join(", ")}`);
+});
+
+test("aset di area terbatas: tanpa kamera, dikirim dengan QR + GPS, otomatis ditandai", async ({ page }) => {
+  const a = await aset("29D");
+  const [lama] = await q<{ area_id: number | null }>("select area_id from assets where id = $1", [a.id]);
+  const [area] = await q<{ id: number }>(
+    `insert into areas (kode, nama, jenis, restricted) values ('UJI-TERBATAS', 'Bengkel Kapal Selam (uji)', 'bengkel', true)
+     on conflict (kode) do update set restricted = true returning id`,
+  );
+  await q("update assets set area_id = $1 where id = $2", [area!.id, a.id]);
+  try {
+    const id = await bukaDraf(page, "29D");
+    await expect(page.getByTestId("area-terbatas")).toContainText("Area terbatas (tanpa foto)");
+    await expect(page.getByTestId("buka-kamera")).toHaveCount(0);
+    await isiSemua(page);
+    await page.getByRole("button", { name: "Kirim", exact: true }).click();
+    await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });
+    const [ins] = await q<{ restricted_area: boolean }>("select restricted_area from inspections where id = $1", [id]);
+    expect(ins!.restricted_area).toBe(true);
+    expect(await q("select 1 from inspection_photos where inspection_id = $1", [id])).toHaveLength(0);
+  } finally {
+    await q("update assets set area_id = $1 where id = $2", [lama!.area_id, a.id]);
+  }
 });

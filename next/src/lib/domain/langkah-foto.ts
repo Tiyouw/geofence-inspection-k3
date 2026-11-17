@@ -20,6 +20,8 @@ export type DefinisiLangkahFoto = {
 
 /** Langkah yang sudah diselesaikan ke id butir: dipakai klien dan peladen. */
 export type LangkahFoto = {
+  /** `photo_steps.id`; kosong untuk langkah cadangan yang tidak ada di basis data. */
+  id?: number;
   kode: string;
   judul: string;
   petunjuk: string | null;
@@ -128,19 +130,8 @@ export function fotoPerButir(langkah: LangkahFoto[], fotos: { photoId: string; l
   return out;
 }
 
-/**
- * Langkah sebuah tipe aset: dari definisi bila ada, selain itu cadangan per grup. Butir aktif
- * yang tidak terpetakan definisi dikumpulkan ke langkah "Butir lainnya", supaya tidak ada
- * butir tanpa bukti foto.
- */
-export function langkahUntukTipe(
-  def: DefinisiLangkahFoto[] | undefined,
-  grup: { kode: string | null; nama: string; items: { id: number; urut: number }[] }[],
-): LangkahFoto[] {
-  if (!def?.length) return langkahCadangan(grup);
-  const items = grup.flatMap((g) => g.items);
-  const langkah = selesaikanLangkah(def, items);
-  const lepas = butirTanpaLangkah(langkah, items.map((i) => i.id));
-  if (lepas.length) langkah.push({ kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: lepas });
-  return langkah;
+/** Tambahkan langkah "Butir lainnya" untuk butir aktif yang belum dibuktikan langkah mana pun. */
+export function lengkapiLangkah(langkah: LangkahFoto[], itemIds: number[]): LangkahFoto[] {
+  const lepas = butirTanpaLangkah(langkah, itemIds);
+  return lepas.length ? [...langkah, { kode: "lainnya", judul: "Butir lainnya", petunjuk: null, itemIds: lepas }] : langkah;
 }

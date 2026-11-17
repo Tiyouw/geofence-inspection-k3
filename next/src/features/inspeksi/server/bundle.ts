@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
+import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai, radiusEfektif } from "@/lib/domain/asset";
 import { jatuhTempo, periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
@@ -11,7 +11,7 @@ import type { LangkahFoto } from "@/lib/domain/langkah-foto";
 import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
-import { langkahFotoTipe, type GrupDenganUrut } from "./langkah";
+import { langkahPerTipe } from "./langkah";
 
 export type AsetPaket = {
   id: number;
@@ -75,14 +75,6 @@ function labelMedia(attr: Record<string, unknown> | null): string | null {
   return `${jenis ?? "APAR"}${kg ? ` / ${String(kg).replace(".", ",")} kg` : ""}`;
 }
 
-/**
- * PRD Aturan bukti 4. Tanda area terbatas ada di `areas.restricted` (skema sesi A);
- * sampai kolom itu ada, tidak ada aset yang terbatas.
- */
-export function asetDiAreaTerbatas(a: typeof assets.$inferSelect): boolean {
-  return (a as { restricted?: boolean }).restricted === true;
-}
-
 /** SPEC §7.3 butir 1: paket kerja inspektur untuk luring. */
 export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
   const key = randomBytes(32);
@@ -91,10 +83,11 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
   const awalBulan = new Date(`${mulai}T00:00:00+07:00`);
 
   const semua = await db
-    .select({ a: assets, t: assetTypes, unit: divisions.nama })
+    .select({ a: assets, t: assetTypes, unit: divisions.nama, terbatas: areas.restricted })
     .from(assets)
     .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
     .leftJoin(divisions, eq(divisions.id, assetTypes.ownerDivisionId))
+    .leftJoin(areas, eq(areas.id, assets.areaId))
     .where(and(eq(assets.aktif, true), eq(assetTypes.aktif, true)))
     .orderBy(asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
   // Otorisasi unit (PRD F2): paket hanya memuat aset milik unit inspektur.
@@ -106,7 +99,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     ? await db.select({ nama: divisions.nama }).from(divisions).where(eq(divisions.id, user.divisionId))
     : [];
 
-  const aset: AsetPaket[] = rows.map(({ a, t }) => ({
+  const aset: AsetPaket[] = rows.map(({ a, t, terbatas }) => ({
     id: a.id,
     kode: a.kode,
     assetTypeId: a.assetTypeId,
@@ -119,7 +112,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     radiusM: t.isMobile ? null : radiusEfektif({ radiusAset: a.radiusM, lokasiTipe: a.lokasiTipe }),
     media: labelMedia(a.attributes ?? null),
     tipeKotak: t.slug === "p3k" ? (bacaTipeKotak(a.attributes) ?? "A") : null,
-    areaTerbatas: asetDiAreaTerbatas(a),
+    areaTerbatas: terbatas === true,
     qrTokenHash: createHmac("sha256", key).update(a.qrToken).digest("hex"),
   }));
 
@@ -157,17 +150,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     });
   }
 
-  const langkahFoto: Record<number, LangkahFoto[]> = {};
-  const grupUrut = new Map<number, GrupDenganUrut[]>();
-  for (const { g, i } of butir) {
-    const list = grupUrut.get(g.assetTypeId) ?? [];
-    let grup = list.find((x) => x.nama === g.nama && x.kode === g.kode);
-    if (!grup) list.push((grup = { kode: g.kode, nama: g.nama, items: [] }));
-    grup.items.push({ id: i.id, urut: i.urut });
-    grupUrut.set(g.assetTypeId, list);
-  }
-  const slugTipe = new Map(rows.map(({ t }) => [t.id, t.slug]));
-  for (const [tipeId, grup] of grupUrut) langkahFoto[tipeId] = langkahFotoTipe(slugTipe.get(tipeId)!, grup);
+  const langkahFoto: Record<number, LangkahFoto[]> = Object.fromEntries(await langkahPerTipe(db, tipeIds));
 
   const sudah = await db
     .selectDistinct({ assetId: inspections.assetId })

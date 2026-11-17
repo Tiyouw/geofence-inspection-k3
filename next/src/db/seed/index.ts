@@ -21,6 +21,7 @@ import { seedP3kHydrant } from "./modul-p3k-hydrant";
 import { buatTokenQr, tebakLokasiTipe } from "../../lib/domain/asset";
 import { hariIniJakarta } from "../../lib/format";
 import { kunciFoto, sha256Hex, simpanFoto } from "../../lib/storage/photos";
+import { LANGKAH_FOTO_APAR, validasiDefinisiLangkah, type DefinisiLangkahFoto } from "../../lib/domain/langkah-foto";
 import { DIVISI, PEMILIK_TIPE, type AnswerType, type AssetTypeSlug, type Role, type Severity } from "../../lib/domain/constants";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL });
@@ -454,11 +455,49 @@ function kodeArea(nama: string): string {
   return nama.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "AREA";
 }
 
+/**
+ * Kamera terpandu (ADR-8): tulis langkah foto modul ke `photo_steps` / `photo_step_items`.
+ * Idempoten, kunci (tipe aset, kode). `urut` mengikuti urutan larik; `butir` = urut butir
+ * checklist tipe aset itu. Langkah yang tidak ada lagi di definisi dinonaktifkan, bukan dihapus
+ * (foto lama tetap menunjuk langkahnya).
+ */
+export async function seedLangkahFoto(tx: Tx, assetTypeId: number, def: DefinisiLangkahFoto[]) {
+  const butir = await tx
+    .select({ id: s.checklistItems.id, urut: s.checklistItems.urut })
+    .from(s.checklistItems)
+    .innerJoin(s.checklistGroups, eq(s.checklistGroups.id, s.checklistItems.checklistGroupId))
+    .where(eq(s.checklistGroups.assetTypeId, assetTypeId));
+  const galat = validasiDefinisiLangkah(def, butir.map((b) => b.urut));
+  if (galat.length) throw new Error(`Langkah foto tipe ${assetTypeId} tidak sah: ${galat.join(" ")}`);
+  const idDariUrut = new Map(butir.map((b) => [b.urut, b.id]));
+
+  // Geser urut lama dulu supaya urutan baru tidak bentrok dengan indeks unik (tipe, urut).
+  await tx
+    .update(s.photoSteps)
+    .set({ urut: sql`-${s.photoSteps.id}` })
+    .where(eq(s.photoSteps.assetTypeId, assetTypeId));
+  for (const [i, l] of def.entries()) {
+    const nilai = { urut: i + 1, judul: l.judul, petunjuk: l.petunjuk ?? null, aktif: true };
+    const [langkah] = await tx
+      .insert(s.photoSteps)
+      .values({ assetTypeId, kode: l.kode, ...nilai })
+      .onConflictDoUpdate({ target: [s.photoSteps.assetTypeId, s.photoSteps.kode], set: nilai })
+      .returning({ id: s.photoSteps.id });
+    await tx.delete(s.photoStepItems).where(eq(s.photoStepItems.stepId, langkah!.id));
+    await tx.insert(s.photoStepItems).values(l.butir.map((u) => ({ stepId: langkah!.id, checklistItemId: idDariUrut.get(u)! })));
+  }
+  await tx
+    .update(s.photoSteps)
+    .set({ aktif: false })
+    .where(and(eq(s.photoSteps.assetTypeId, assetTypeId), sql`${s.photoSteps.urut} < 0`));
+}
+
 async function main() {
   await db.transaction(async (tx) => {
     const div = await divisi(tx);
     const aparId = await tipeObjek(tx, div);
     await checklistApar(tx, aparId);
+    await seedLangkahFoto(tx, aparId, LANGKAH_FOTO_APAR);
     await petugas(tx, div);
     await akunDemo(tx, div);
     await apar(tx, aparId, div[DIVISI.satPk]!);

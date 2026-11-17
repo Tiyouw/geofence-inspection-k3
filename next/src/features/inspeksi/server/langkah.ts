@@ -1,39 +1,60 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { db as Db } from "@/db";
-import { checklistGroups, checklistItems } from "@/db/schema";
-import { LANGKAH_FOTO_APAR, langkahUntukTipe, type DefinisiLangkahFoto, type LangkahFoto } from "@/lib/domain/langkah-foto";
-
-/**
- * Definisi langkah foto per slug tipe aset. Modul checklist lain (P3K, hydrant, mobil pemadam)
- * menambah barisnya di sini. Setelah tabel `photo_steps` ada, sumbernya pindah ke basis data
- * (diatur Admin) dan peta ini menjadi isi seed.
- */
-export const DEFINISI_LANGKAH: Record<string, DefinisiLangkahFoto[]> = {
-  apar: LANGKAH_FOTO_APAR,
-};
-
-export type GrupDenganUrut = { kode: string | null; nama: string; items: { id: number; urut: number }[] };
-
-export function langkahFotoTipe(slug: string, grup: GrupDenganUrut[]): LangkahFoto[] {
-  return langkahUntukTipe(DEFINISI_LANGKAH[slug], grup);
-}
+import { assetTypes, checklistGroups, checklistItems, photoStepItems, photoSteps } from "@/db/schema";
+import { langkahCadangan, lengkapiLangkah, type LangkahFoto } from "@/lib/domain/langkah-foto";
 
 type Kueri = Pick<typeof Db, "select">;
 
-/** Langkah foto satu tipe aset, dari butir aktifnya (dipakai unggah foto dan finalisasi). */
-export async function langkahTipeAset(q: Kueri, tipe: { id: number; slug: string }): Promise<LangkahFoto[]> {
-  const rows = await q
-    .select({ g: checklistGroups, i: { id: checklistItems.id, urut: checklistItems.urut } })
-    .from(checklistItems)
-    .innerJoin(checklistGroups, eq(checklistGroups.id, checklistItems.checklistGroupId))
-    .where(and(eq(checklistGroups.assetTypeId, tipe.id), eq(checklistItems.aktif, true)))
-    .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut));
-  const grup: GrupDenganUrut[] = [];
-  for (const { g, i } of rows) {
-    let x = grup.find((y) => y.nama === g.nama && y.kode === g.kode);
-    if (!x) grup.push((x = { kode: g.kode, nama: g.nama, items: [] }));
-    x.items.push(i);
+/**
+ * Langkah kamera terpandu per tipe aset (ADR-8), dari `photo_steps` yang aktif. Tipe tanpa
+ * langkah memakai cadangan satu langkah per grup checklist; butir aktif yang belum terpetakan
+ * dikumpulkan ke "Butir lainnya", supaya setiap butir punya bukti foto.
+ */
+export async function langkahPerTipe(q: Kueri, tipeIds: number[]): Promise<Map<number, LangkahFoto[]>> {
+  const out = new Map<number, LangkahFoto[]>();
+  if (!tipeIds.length) return out;
+  const [butir, langkah] = await Promise.all([
+    q
+      .select({ tipe: checklistGroups.assetTypeId, kode: checklistGroups.kode, nama: checklistGroups.nama, id: checklistItems.id })
+      .from(checklistItems)
+      .innerJoin(checklistGroups, eq(checklistGroups.id, checklistItems.checklistGroupId))
+      .where(and(inArray(checklistGroups.assetTypeId, tipeIds), eq(checklistItems.aktif, true)))
+      .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut)),
+    q
+      .select({ s: photoSteps, itemId: photoStepItems.checklistItemId })
+      .from(photoSteps)
+      .innerJoin(assetTypes, eq(assetTypes.id, photoSteps.assetTypeId))
+      .leftJoin(photoStepItems, eq(photoStepItems.stepId, photoSteps.id))
+      .where(and(inArray(photoSteps.assetTypeId, tipeIds), eq(photoSteps.aktif, true)))
+      .orderBy(asc(photoSteps.urut)),
+  ]);
+
+  for (const tipe of tipeIds) {
+    const items = butir.filter((b) => b.tipe === tipe);
+    const aktif = new Set(items.map((b) => b.id));
+    const dariDb: LangkahFoto[] = [];
+    for (const { s, itemId } of langkah.filter((l) => l.s.assetTypeId === tipe)) {
+      let l = dariDb.find((x) => x.id === s.id);
+      if (!l) dariDb.push((l = { id: s.id, kode: s.kode ?? `langkah-${s.id}`, judul: s.judul, petunjuk: s.petunjuk, itemIds: [] }));
+      if (itemId !== null && aktif.has(itemId)) l.itemIds.push(itemId);
+    }
+    const terpakai = dariDb.filter((l) => l.itemIds.length > 0);
+    if (terpakai.length) {
+      out.set(tipe, lengkapiLangkah(terpakai, [...aktif]));
+    } else {
+      const grup: { kode: string | null; nama: string; items: { id: number }[] }[] = [];
+      for (const b of items) {
+        let g = grup.find((x) => x.kode === b.kode && x.nama === b.nama);
+        if (!g) grup.push((g = { kode: b.kode, nama: b.nama, items: [] }));
+        g.items.push({ id: b.id });
+      }
+      out.set(tipe, langkahCadangan(grup));
+    }
   }
-  return langkahFotoTipe(tipe.slug, grup);
+  return out;
+}
+
+export async function langkahTipeAset(q: Kueri, assetTypeId: number): Promise<LangkahFoto[]> {
+  return (await langkahPerTipe(q, [assetTypeId])).get(assetTypeId) ?? [];
 }
