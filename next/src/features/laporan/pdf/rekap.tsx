@@ -44,7 +44,7 @@ export function DokumenRekap({
   const adaFoto = foto && rekap.baris.some((b) => (foto.get(b.temuan.id)?.length ?? 0) > 0);
 
   return (
-    <Document title={`Rekapitulasi Temuan — ${periode}`} author="Sistem Inspeksi K3 PT PAL Indonesia" language="id">
+    <Document title={`Rekapitulasi Temuan — ${periode}`} author="Sistem Inspeksi K3 Perusahaan Galangan Kapal" language="id">
       <Page size="A4" style={{ ...gayaHalaman, fontSize: 8.5, paddingTop: 14 * MM, paddingBottom: 16 * MM, paddingHorizontal: 12 * MM }}>
         <Kop
           ukuranNama={11.5}

@@ -14,6 +14,6 @@ test("manifest PWA tersedia", async ({ request }) => {
   const res = await request.get("/manifest.webmanifest");
   expect(res.ok()).toBeTruthy();
   const m = await res.json();
-  expect(m.short_name).toBe("PAL-K3");
+  expect(m.short_name).toBe("Geofencing");
   expect(m.lang).toBe("id");
 });

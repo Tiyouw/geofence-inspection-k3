@@ -981,7 +981,7 @@ dompdf, **A4 lanskap**, margin 12/10/14 mm, font DejaVu Sans 7,5 pt (wajib untuk
 `PMS-{TIPE}-{tahun}-{bulan 2 digit}.pdf` (`LaporanController.php:45-57`, `resources/views/laporan/pms.blade.php`).
 Contoh: [samples/contoh-pms-apar-2026-10.pdf](samples/contoh-pms-apar-2026-10.pdf).
 
-1. **Kop**: kiri "PT PAL INDONESIA (PERSERO)" / "Divisi Keselamatan, Kesehatan Kerja dan Lindungan Lingkungan";
+1. **Kop**: kiri "PERUSAHAAN GALANGAN KAPAL" / "Geofencing: Sistem Inspeksi Sarana Tanggap Darurat K3" (anonim, PRD F19);
    kanan "PREVENTIVE MAINTENANCE SCHEDULE" / "Lampiran 03 dari 04" / "Dicetak {d M Y H:i} WIB".
 2. **Judul**: "LAPORAN PEMERIKSAAN BERKALA {TIPE}", lalu "Periode {Bulan} {Tahun} [· Gedung X] · {n} unit terdaftar".
 3. **Matriks** (kepala tabel berulang di tiap halaman):
@@ -1000,7 +1000,7 @@ Contoh: [samples/contoh-pms-apar-2026-10.pdf](samples/contoh-pms-apar-2026-10.pd
    Hasil pemeriksaan "Layak a · Layak dengan catatan b · Tidak layak c" · Temuan berat terbuka "{n} butir" ·
    (bila > 0) Perlu tinjauan "{n} pemeriksaan memiliki catatan posisi yang perlu ditinjau Admin K3 sebelum laporan disahkan."
 7. **Tanda tangan** 3 kolom: "Diperiksa oleh / Petugas K3", "Diverifikasi oleh / Supervisor K3LH", "Disetujui oleh / Kepala Divisi K3LH", masing-masing garis + "Nama dan tanggal".
-8. **Kaki tetap** tiap halaman: "Dokumen dihasilkan Sistem Inspeksi K3 PT PAL Indonesia. Baris berlatar abu menandakan unit yang belum diperiksa pada periode ini."
+8. **Kaki tetap** tiap halaman: "Dokumen dihasilkan Sistem Inspeksi K3 Perusahaan Galangan Kapal. Baris berlatar abu menandakan unit yang belum diperiksa pada periode ini."
 
 [ATURAN] Dua dimensi simbol tidak boleh digabung (✓/X = fungsi, O/Ø = kondisi) (uji `InspectionAnswerTest::empat_simbol_pms_tidak_saling_tertukar`).
 

@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Geofencing — Inspeksi K3 APAR",
-    short_name: "PAL-K3",
-    description: "Inspeksi APAR berbasis QR dan lokasi.",
+    name: "Geofencing — Inspeksi K3",
+    short_name: "Geofencing",
+    description: "Inspeksi sarana tanggap darurat berbasis QR, lokasi, dan foto.",
     lang: "id",
     start_url: "/petugas",
     scope: "/",

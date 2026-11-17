@@ -55,7 +55,7 @@ export function DesktopShell({ user, nav, children }: { user: SessionUser; nav: 
             </SheetContent>
           </Sheet>
           <Brand accentPin compact />
-          <span className="font-semibold">PAL-K3</span>
+          <span className="font-semibold">Geofencing</span>
         </header>
         <main id="isi" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           {children}
