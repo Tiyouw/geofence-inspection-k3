@@ -1,0 +1,11 @@
+kode,tipe_kotak,gedung,lantai,lokasi_teks,lat,lng
+P3K-01,B,Gedung PIP,Lt. 1,Lobi dekat meja jaga,-8.186230,113.706250
+P3K-02,A,Gedung PIP,Lt. 1,Pantri Lorong Tengah,-8.186275,113.706360
+P3K-03,A,Gedung PIP,Lt. 2,Ruang rapat Lorong Timur,-8.186190,113.706230
+P3K-04,A,Gedung PIP,Lt. 2,Lorong Barat dekat tangga,-8.186320,113.706180
+P3K-05,B,Gedung PIP,Lt. 3,Ruang staf Lorong Tengah,-8.186260,113.706300
+P3K-06,C,Workshop Fabrikasi,Lt. 1,Bay 1 dinding utara,-8.185760,113.706210
+P3K-07,C,Workshop Fabrikasi,Lt. 1,Bay 4 dekat ruang mandor,-8.185755,113.706280
+P3K-08,B,Workshop Fabrikasi,Lt. 1,Bay 6 pintu keluar,-8.185750,113.706330
+P3K-09,A,Area Terbuka,-,Pos 1 jaga,-8.186520,113.706000
+P3K-10,A,Area Terbuka,-,Pos 3 jaga,-8.186630,113.706140
