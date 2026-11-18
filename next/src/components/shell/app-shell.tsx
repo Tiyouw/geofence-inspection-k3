@@ -40,11 +40,11 @@ export function DesktopShell({ user, nav, children }: { user: SessionUser; nav: 
   const home = nav[0]?.href ?? "/";
   return (
     <div className="flex min-h-dvh">
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block print:hidden">
         <SidebarBody user={user} nav={nav} homeHref={home} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-primary px-4 text-white lg:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-primary px-4 text-white lg:hidden print:hidden">
           <Sheet>
             <SheetTrigger aria-label="Buka menu" className="-ml-1 rounded-md p-1.5 hover:bg-white/10">
               <Menu className="size-5" />

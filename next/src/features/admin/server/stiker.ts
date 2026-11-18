@@ -1,39 +1,63 @@
 import "server-only";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { assets, assetTypes } from "@/db/schema";
-import { urlStiker } from "../lib/stiker";
+import { areas, assets, assetTypes } from "@/db/schema";
+import { urlStiker, type SaringStiker } from "../lib/stiker";
 
-export type FilterStiker = { tipe?: string; gedung?: string; lantai?: string; kode: string[] };
+/** Area berpoligon disetujui (bukan kawasan): pilihan penyaring Area. */
+const areaDisetujui = and(
+    eq(areas.aktif, true),
+    ne(areas.jenis, "kawasan"),
+    isNotNull(areas.polygon),
+    isNotNull(areas.poligonDisetujuiPada),
+);
+
+/** Pilihan penyaring lembar stiker: jenis objek, area berpoligon disetujui, lantai yang dipakai. */
+export async function pilihanStiker() {
+    const [tipe, area, lantai, [belum]] = await Promise.all([
+        db.select({ slug: assetTypes.slug, nama: assetTypes.nama }).from(assetTypes).orderBy(asc(assetTypes.urut)),
+        db.select({ id: areas.id, nama: areas.nama }).from(areas).where(areaDisetujui).orderBy(asc(areas.nama)),
+        db
+            .selectDistinct({ l: assets.lantai })
+            .from(assets)
+            .where(sql`${assets.aktif} and ${assets.lantai} is not null and trim(${assets.lantai}) not in ('', '-', '–', '—')`)
+            .orderBy(asc(assets.lantai)),
+        db.select({ n: sql<number>`count(*)::int` }).from(assets).where(and(eq(assets.aktif, true), isNull(assets.areaId))),
+    ]);
+    return { tipe, area, lantai: lantai.map((r) => r.l!).sort((a, b) => a.localeCompare(b, "id", { numeric: true })), belumBerarea: belum?.n ?? 0 };
+}
 
 /**
- * Aset aktif untuk lembar stiker, urut gedung, lantai, kode (StikerController.php).
+ * Aset aktif untuk lembar stiker, urut area, lantai, kode (StikerController.php).
  * SATU-SATUNYA kueri yang memilih qr_token untuk ditampilkan; hanya dipanggil dari /stiker (admin).
  */
-export async function asetStiker(f: FilterStiker) {
+export async function asetStiker(f: SaringStiker) {
     return db
         .select({
             id: assets.id,
             kode: assets.kode,
             gedung: assets.gedung,
+            area: areas.nama,
             lantai: assets.lantai,
             lokasiTeks: assets.lokasiTeks,
             qrToken: assets.qrToken,
             tipe: assetTypes.nama,
+            slug: assetTypes.slug,
         })
         .from(assets)
         .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+        .leftJoin(areas, eq(areas.id, assets.areaId))
         .where(
             and(
                 eq(assets.aktif, true),
-                f.tipe ? eq(assetTypes.slug, f.tipe) : undefined,
-                f.gedung ? eq(assets.gedung, f.gedung) : undefined,
+                f.tipe.length ? inArray(assetTypes.slug, f.tipe) : undefined,
+                f.area === "belum" ? isNull(assets.areaId) : f.area !== undefined ? eq(assets.areaId, f.area) : undefined,
                 f.lantai ? eq(assets.lantai, f.lantai) : undefined,
                 f.kode.length ? inArray(assets.kode, f.kode) : undefined,
             ),
         )
-        .orderBy(asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
+        .orderBy(sql`${areas.nama} asc nulls last`, asc(assets.gedung), asc(assets.lantai), asc(assets.kode));
 }
 
 /**
