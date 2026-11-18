@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./tema.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -35,6 +36,24 @@
   --color-peran-admin: var(--peran-admin);
   --color-peran-pemantau: var(--peran-pemantau);
   --color-peran-inspektur: var(--peran-inspektur);
+  /* Arah A (tema.css): warna modul, permukaan peran, radius */
+  --color-modul-apar: var(--modul-apar);
+  --color-modul-apar-rona: var(--modul-apar-rona);
+  --color-modul-p3k: var(--modul-p3k);
+  --color-modul-p3k-rona: var(--modul-p3k-rona);
+  --color-modul-hydrant: var(--modul-hydrant);
+  --color-modul-hydrant-rona: var(--modul-hydrant-rona);
+  --color-modul-damkar: var(--modul-damkar);
+  --color-modul-damkar-rona: var(--modul-damkar-rona);
+  --color-peran-utama: var(--peran-utama);
+  --color-peran-utama-rona: var(--peran-utama-rona);
+  --color-peran-utama-tua: var(--peran-utama-tua);
+  --color-peran-permukaan-2: var(--peran-permukaan-2);
+  --color-peran-sorot: var(--peran-sorot);
+  --radius-kartu: var(--a-radius-kartu);
+  --radius-kontrol: var(--a-radius-kontrol);
+  --radius-dialog: var(--a-radius-dialog);
+  --font-a: var(--font-a);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -209,26 +228,6 @@
     outline: 3px solid var(--ring);
     outline-offset: 2px;
   }
-}
-
-/*
- * Palet peran Inspektur (arah A, tema.css): token --peran-* dipakai pemetaan [data-peran] di tema.css.
- * Nilainya palet inspektur yang sudah ada (deep current + aksi utama amber lewat --brand). Sebelum
- * tema.css ada, blok ini tidak berpengaruh. Boleh dipindah ke tema.css bersama palet peran lain.
- */
-[data-peran="inspektur"] {
-  --peran-utama: #031e25;
-  --peran-utama-teks: #ffffff;
-  --peran-utama-rona: #e3edef;
-  --peran-utama-tua: #01141a;
-  --peran-latar: #f4f7f8;
-  --peran-permukaan: #ffffff;
-  --peran-permukaan-2: #f9fbfb;
-  --peran-tinta: #162b33;
-  --peran-redup: #5f727a;
-  --peran-garis: #dbe4e7;
-  --peran-garis-kuat: #cbd7db;
-  --peran-sorot: #eef2f3;
 }
 
 /* Area Pemantau (hanya lihat): bilah samping slate gelap, beda dari teal-navy admin. */
