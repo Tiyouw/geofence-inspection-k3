@@ -7,7 +7,7 @@ test.describe("dasbor admin", () => {
     });
 
     test("menampilkan kepatuhan, progres empat modul, tiga antrean, dan peta tanpa token", async ({ page }) => {
-        await expect(page.getByRole("heading", { name: /^Halo, / })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: /^Ringkasan / })).toBeVisible();
         await expect(page.getByRole("heading", { name: /Ringkasan kepatuhan/ })).toBeVisible();
         const antrean = page.getByRole("navigation", { name: "Antrean keputusan" });
         for (const t of ["Temuan berat", "Perlu tinjauan", "Belum diperiksa"]) {
