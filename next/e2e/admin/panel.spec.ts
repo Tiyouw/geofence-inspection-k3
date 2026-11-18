@@ -17,7 +17,7 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
             ["/admin/jadwal", "Jadwal"],
             ["/admin/lokasi", "Lokasi & area"],
             ["/admin/checklist", "Checklist"],
-            ["/admin/audit", "Jejak audit"],
+            ["/admin/audit", "Riwayat perubahan"],
         ] as const) {
             const res = await page.goto(url);
             expect(res?.status(), url).toBe(200);

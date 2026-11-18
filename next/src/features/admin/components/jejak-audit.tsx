@@ -98,10 +98,13 @@ export function JejakAudit({ rows, rujukan, sekarang }: { rows: BarisAudit[]; ru
         <div className="flex flex-col gap-6" data-testid="jejak-audit">
             {kelompokkanPerHari(rows).map((g) => (
                 <section key={g.hari} aria-labelledby={`hari-${g.hari}`}>
-                    <h2 id={`hari-${g.hari}`} className="mb-2 text-sm font-semibold text-muted-foreground">
-                        {judulHari(g.hari, hariIni)}
-                    </h2>
-                    <ol className="divide-y rounded-xl border bg-card">
+                    <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
+                        <h2 id={`hari-${g.hari}`} className="text-[13px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
+                            {judulHari(g.hari, hariIni)}
+                        </h2>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{g.rows.length} kegiatan</span>
+                    </div>
+                    <ol className="rounded-kartu border bg-card py-1">
                         {g.rows.map((b) => (
                             <Kejadian key={b.id} b={b} rujukan={rujukan} />
                         ))}
@@ -117,10 +120,25 @@ function Kejadian({ b, rujukan }: { b: BarisAudit; rujukan: Rujukan }) {
     const Ikon = IKON[u.ikon];
     const adaPerubahan = u.detail.some((d) => d.dari !== undefined);
     return (
-        <li className="flex min-w-0 gap-3 px-3 py-3 sm:px-4" data-aksi={b.aksi} data-testid="kejadian">
+        <li
+            className="group/kejadian relative flex min-w-0 gap-3 px-3 py-3 sm:gap-4 sm:px-5"
+            data-aksi={b.aksi}
+            data-testid="kejadian"
+        >
+            {/* Garis lini masa yang menyambung ikon antar-kejadian dalam satu hari. */}
+            <span
+                aria-hidden
+                className="absolute top-0 bottom-0 left-[1.75rem] w-px bg-border group-first/kejadian:top-6 group-last/kejadian:bottom-auto group-last/kejadian:h-6 sm:left-[6.25rem]"
+            />
+            <time
+                dateTime={b.createdAt.toISOString()}
+                className="hidden w-14 shrink-0 pt-2 text-right text-sm font-semibold tabular-nums text-muted-foreground sm:block"
+            >
+                {jamMenit(b.createdAt)}
+            </time>
             <span
                 className={cn(
-                    "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full",
+                    "relative z-[1] mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full ring-4 ring-card",
                     NADA_KATEGORI[u.kategori],
                 )}
                 title={u.label}
@@ -128,11 +146,11 @@ function Kejadian({ b, rujukan }: { b: BarisAudit; rujukan: Rujukan }) {
                 <Ikon className="size-4" aria-hidden />
                 <span className="sr-only">{u.label}</span>
             </span>
-            <div className="min-w-0 flex-1">
-                <p className="text-sm leading-relaxed break-words">
+            <div className="min-w-0 flex-1 pt-1">
+                <p className="text-[15px] leading-relaxed break-words">
                     <time
                         dateTime={b.createdAt.toISOString()}
-                        className="mr-2 inline-block text-xs font-medium tabular-nums text-muted-foreground"
+                        className="mr-2 inline-block text-xs font-semibold tabular-nums text-muted-foreground sm:hidden"
                     >
                         {jamMenit(b.createdAt)}
                     </time>
@@ -149,14 +167,14 @@ function Kejadian({ b, rujukan }: { b: BarisAudit; rujukan: Rujukan }) {
                 </p>
                 <details className="group mt-1">
                     <summary
-                        className="inline-flex cursor-pointer list-none items-center gap-1 rounded text-xs font-medium text-muted-foreground select-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden"
+                        className="-ml-1 inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-kontrol px-1 text-xs font-semibold text-muted-foreground select-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden"
                         aria-label={`Lihat detail: ${kalimatTeks(u)}`}
                     >
                         <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
                         <span className="group-open:hidden">Lihat detail</span>
                         <span className="hidden group-open:inline">Tutup detail</span>
                     </summary>
-                    <div className="mt-2 flex flex-col gap-3 rounded-lg bg-muted/50 p-3 text-sm">
+                    <div className="mt-1 flex flex-col gap-3 rounded-kontrol border bg-peran-permukaan-2 p-3 text-sm sm:p-4">
                         <p className="text-xs text-muted-foreground">
                             {u.label} · {KATEGORI_AUDIT[u.kategori].label}
                             {b.olehNip ? ` · NIP ${b.olehNip}` : ""}
