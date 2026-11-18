@@ -83,19 +83,19 @@ export default async function DaftarPengguna({ searchParams }: PageProps<"/admin
                         {rows.map((u) => (
                             <tr key={u.id}>
                                 <td className="font-mono text-xs">{u.nip}</td>
-                                <td>
+                                <td data-label="Nama">
                                     <Link href={`/admin/pengguna/${u.id}`} className="font-medium hover:underline">
                                         {u.name}
                                     </Link>
                                     {u.isDemo && <Lencana className="ml-2">Demo</Lencana>}
                                 </td>
-                                <td>{ROLE_LABEL[u.role]}</td>
-                                <td>{u.divisi ?? "-"}</td>
-                                <td>{u.jabatan ?? "-"}</td>
-                                <td className="whitespace-nowrap">
+                                <td data-label="Peran">{ROLE_LABEL[u.role]}</td>
+                                <td data-label="Divisi">{u.divisi ?? "-"}</td>
+                                <td data-label="Jabatan">{u.jabatan ?? "-"}</td>
+                                <td data-label="Terakhir masuk" className="whitespace-nowrap">
                                     {u.lastLoginAt ? formatWaktu(u.lastLoginAt) : "Belum pernah"}
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     {u.aktif ? (
                                         <Lencana nada="success">Aktif</Lencana>
                                     ) : (

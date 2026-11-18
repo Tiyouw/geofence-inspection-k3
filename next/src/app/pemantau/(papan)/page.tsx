@@ -1,3 +1,4 @@
+import { IlustrasiModul, modulDari } from "@/components/ilustrasi/modul";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Download, FileText, IdCard } from "lucide-react";
@@ -214,12 +215,12 @@ export default async function PemantauHome() {
           </CardHeader>
           <CardContent className="space-y-3" data-testid="progres-modul">
             {progres.perModul.map((m) => (
-              <Bilah
-                key={m.slug}
-                label={`${m.nama} · ${m.mingguan ? "minggu ini" : "bulan ini"}`}
-                nilai={m.sudah}
-                total={m.total}
-              />
+              <div key={m.slug} className="flex items-center gap-3">
+                <IlustrasiModul modul={modulDari(m.slug)} ukuran={40} />
+                <div className="min-w-0 flex-1">
+                  <Bilah label={`${m.nama} · ${m.mingguan ? "minggu ini" : "bulan ini"}`} nilai={m.sudah} total={m.total} />
+                </div>
+              </div>
             ))}
           </CardContent>
         </Card>

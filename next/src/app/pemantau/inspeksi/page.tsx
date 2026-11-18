@@ -58,29 +58,29 @@ export default async function DaftarInspeksiPage({ searchParams }: PageProps<"/p
                   </Link>
                   {r.offline && <span className="ml-1 text-xs text-muted-foreground">(luring)</span>}
                 </td>
-                <td>
+                <td data-label="Aset">
                   <span className="font-semibold">{r.kode}</span>
                   <span className="block text-xs text-muted-foreground">{labelLokasi(r)}</span>
                 </td>
-                <td>
+                <td data-label="Inspektur">
                   {r.petugas}
                   {r.qrVerified && <span className="block text-xs text-muted-foreground">QR ✓</span>}
                 </td>
-                <td>
+                <td data-label="Gerbang">
                   <LencanaGerbang status={r.gateStatus} />
                 </td>
-                <td className="whitespace-nowrap tabular-nums">
+                <td data-label="Jarak" className="whitespace-nowrap tabular-nums">
                   {r.jarakM != null ? `${r.jarakM} m` : "-"}
                   {r.gpsAccuracy != null && <span className="block text-xs text-muted-foreground">±{r.gpsAccuracy} m</span>}
                 </td>
-                <td>
+                <td data-label="Kesimpulan">
                   <LencanaKesimpulan k={r.kesimpulan} />
                 </td>
-                <td className={r.durasiDetik != null && r.durasiDetik < DURASI_WAJAR_DETIK ? "font-semibold text-danger tabular-nums" : "tabular-nums"}>
+                <td data-label="Durasi" className={r.durasiDetik != null && r.durasiDetik < DURASI_WAJAR_DETIK ? "font-semibold text-danger tabular-nums" : "tabular-nums"}>
                   {r.durasiDetik != null ? `${r.durasiDetik} dtk` : "-"}
                 </td>
-                <td className="tabular-nums">{r.jumlahFoto}</td>
-                <td title={r.catatanReview ?? undefined}>{r.ditinjauPada ? waktuDmyHm(r.ditinjauPada) : "-"}</td>
+                <td data-label="Foto" className="tabular-nums">{r.jumlahFoto}</td>
+                <td data-label="Ditinjau" title={r.catatanReview ?? undefined}>{r.ditinjauPada ? waktuDmyHm(r.ditinjauPada) : "-"}</td>
               </tr>
             ))}
           </tbody>

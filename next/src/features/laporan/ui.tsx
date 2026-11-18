@@ -2,6 +2,7 @@
  * Potongan tampilan papan pantau. Warna hanya lewat token semantik (globals.css),
  * supaya rancangan kanvas bisa mengubah rupa tanpa menyentuh halaman.
  */
+import { Tabel as TabelAdmin } from "@/features/admin/components/ui";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { AnswerType, GateStatus, Kesimpulan, Severity } from "@/lib/domain/constants";
@@ -141,17 +142,11 @@ export function Halaman({ dasar, halaman, total, per }: { dasar: string; halaman
   );
 }
 
-/** Tabel ringkas dengan gaya bersama. */
+/** Tabel ringkas dengan gaya bersama: tabel admin yang bertumpuk jadi kartu di layar sempit. */
 export function Tabel({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
-      <table aria-label={label} className="w-full text-sm [&_td]:px-3 [&_td]:py-2.5 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground [&_thead]:bg-muted/60 [&_tr]:border-b [&_tbody_tr:last-child]:border-0">
-        {children}
-      </table>
-    </div>
-  );
+  return <TabelAdmin label={label}>{children}</TabelAdmin>;
 }
 
 export function Kosong({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{children}</p>;
+  return <p className="rounded-kartu border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{children}</p>;
 }
