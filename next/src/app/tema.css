@@ -37,6 +37,10 @@
 /* ---------- Palet per peran ---------- */
 
 [data-peran="admin"] {
+  /* Aksi utama "brand" memakai warna peran (amber hanya untuk inspektur). */
+  --brand: var(--peran-utama);
+  --brand-foreground: var(--peran-utama-teks);
+  --brand-hover: var(--peran-utama-tua);
   --peran-utama: #0e6b6a;
   --peran-utama-teks: #ffffff;
   --peran-utama-rona: #e2efee;
@@ -52,6 +56,10 @@
 }
 
 [data-peran="pemantau"] {
+  /* Aksi utama "brand" memakai warna peran (amber hanya untuk inspektur). */
+  --brand: var(--peran-utama);
+  --brand-foreground: var(--peran-utama-teks);
+  --brand-hover: var(--peran-utama-tua);
   --peran-utama: #33557a;
   --peran-utama-teks: #ffffff;
   --peran-utama-rona: #e3ebf4;
