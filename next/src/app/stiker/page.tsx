@@ -1,57 +1,29 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { headers } from "next/headers";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Info, Printer, ScanLine } from "lucide-react";
+import { PageHeader } from "@/components/shell/app-shell";
+import { IkonModul } from "@/features/admin/components/ikon-modul";
+import { SaringStiker } from "@/features/admin/components/saring-stiker";
 import { TombolCetak } from "@/features/admin/components/tombol-cetak";
-import { Pilihan } from "@/features/admin/components/ui";
+import { Kosong } from "@/features/admin/components/ui";
 import {
     TATA_LETAK,
     bagiLembar,
-    parseDaftarKode,
+    cssStiker,
+    parseSaringStiker,
     parseTata,
-    ukuranLabel,
     type KodeTata,
 } from "@/features/admin/lib/stiker";
 import { catatAudit } from "@/features/admin/server/aksi";
-import { daftarGedung, pilihanAset } from "@/features/admin/server/aset";
-import { asetStiker, qrSvg, tokenTercetak } from "@/features/admin/server/stiker";
+import { asetStiker, pilihanStiker, qrSvg, tokenTercetak } from "@/features/admin/server/stiker";
 import { db } from "@/db";
 import { requireRole } from "@/lib/auth/guards";
+import { formatAngka } from "@/lib/format";
 import { labelLokasi } from "@/lib/domain/label-aset";
 
 export const metadata: Metadata = { title: "Lembar Stiker QR" };
 
-const satu = (v: string | string[] | undefined) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
-
-/** Ukuran dalam milimeter, bukan piksel: hasil cetak harus pas di kertas label yang dipotong pabrik. */
-function gaya(kode: KodeTata): string {
-    const t = TATA_LETAK[kode];
-    const { qrMm, kodeMm } = ukuranLabel(kode);
-    return `
-  .stiker-lembar { width: 210mm; min-height: 297mm; background: #fff; margin: 16px auto; padding: 8mm 5mm;
-    display: grid; grid-template-columns: repeat(${t.kolom}, ${t.lebar}mm); grid-auto-rows: ${t.tinggi}mm;
-    justify-content: center; align-content: start; box-shadow: 0 2px 10px rgba(0,0,0,.15); color: #000; }
-  .stiker-label { width: ${t.lebar}mm; height: ${t.tinggi}mm; display: flex; align-items: center; gap: 2mm; padding: 2mm;
-    overflow: hidden; outline: 1px dashed #ced4da; outline-offset: -1px; font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
-  .stiker-qr { flex: 0 0 auto; line-height: 0; }
-  .stiker-qr svg { display: block; width: ${qrMm}mm; height: auto; }
-  .stiker-teks { flex: 1; min-width: 0; }
-  .stiker-jenis { font-size: 2.4mm; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
-  .stiker-kode { font-size: ${kodeMm}mm; font-weight: 800; letter-spacing: .2px; line-height: 1.1; }
-  .stiker-lokasi { font-size: 2.5mm; line-height: 1.25; margin-top: .8mm; }
-  .stiker-perintah { font-size: 2.3mm; margin-top: 1mm; font-weight: 600; }
-  .stiker-token { font-family: ui-monospace, 'Courier New', monospace; font-size: 1.9mm; color: #495057;
-    word-break: normal; overflow-wrap: anywhere; line-height: 1.2; margin-top: .6mm; }
-  @media print {
-    body { background: #fff !important; }
-    .stiker-layar { display: none !important; }
-    .stiker-lembar { margin: 0; box-shadow: none; padding: 8mm 5mm; break-after: page; }
-    .stiker-lembar:last-child { break-after: auto; }
-    .stiker-label { outline: none; }
-    @page { size: A4 portrait; margin: 0; }
-  }`;
-}
+const PILIHAN_TATA = (Object.keys(TATA_LETAK) as KodeTata[]).map((kode) => ({ kode, nama: TATA_LETAK[kode].nama }));
 
 /**
  * Lembar stiker QR untuk dicetak lewat dialog cetak peramban (SPEC §4.4, L7). Bukan PDF: pengelola
@@ -60,14 +32,9 @@ function gaya(kode: KodeTata): string {
 export default async function LembarStiker({ searchParams }: PageProps<"/stiker">) {
     const user = await requireRole("admin");
     const sp = await searchParams;
-    const kodeTata = parseTata(satu(sp.tata));
+    const kodeTata = parseTata(typeof sp.tata === "string" ? sp.tata : undefined);
     const tata = TATA_LETAK[kodeTata];
-    const filter = {
-        tipe: satu(sp.tipe),
-        gedung: satu(sp.gedung),
-        lantai: satu(sp.lantai),
-        kode: parseDaftarKode(satu(sp.kode)),
-    };
+    const filter = parseSaringStiker(sp);
 
     const h = await headers();
     const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
@@ -75,109 +42,110 @@ export default async function LembarStiker({ searchParams }: PageProps<"/stiker"
         h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
     const origin = `${proto}://${host}`;
 
-    const [aset, { tipe }, gedung] = await Promise.all([asetStiker(filter), pilihanAset(), daftarGedung()]);
+    const [aset, pilihan] = await Promise.all([asetStiker(filter), pilihanStiker()]);
     const label = await Promise.all(aset.map(async (a) => ({ ...a, svg: await qrSvg(origin, a.qrToken) })));
     const lembar = bagiLembar(label, tata.kolom * tata.baris);
     // Membuka lembar = melihat token semua aset terpilih: dicatat.
     await catatAudit(db, user, "stiker.lihat", "asset", "-", { jumlah: aset.length, tata: kodeTata, ...filter });
 
-    return (
-        <div className="min-h-dvh bg-muted">
-            <style>{gaya(kodeTata)}</style>
-            <header className="stiker-layar flex flex-wrap items-center justify-between gap-3 bg-primary px-5 py-3 text-primary-foreground">
-                <h1 className="text-base font-semibold">Lembar Stiker QR</h1>
-                <nav aria-label="Pindah halaman pengelolaan" className="flex gap-4 text-sm">
-                    <Link href="/admin" className="underline">
-                        Panel admin
-                    </Link>
-                    <Link href="/admin/aset" className="underline">
-                        Aset
-                    </Link>
-                    <Link href="/laporan" className="underline">
-                        Laporan bulanan
-                    </Link>
-                </nav>
-            </header>
+    const perJenis = pilihan.tipe
+        .map((t) => ({ ...t, n: aset.filter((a) => a.slug === t.slug).length }))
+        .filter((t) => t.n > 0);
 
-            <div className="stiker-layar sticky top-0 z-10 border-b bg-card px-5 py-4">
-                <form method="get" className="flex max-w-6xl flex-wrap items-end gap-3" aria-label="Saring stiker">
-                    <label className="flex flex-col gap-1 text-xs font-medium">
-                        Tata letak label
-                        <Pilihan name="tata" defaultValue={kodeTata} className="min-w-64">
-                            {Object.entries(TATA_LETAK).map(([k, t]) => (
-                                <option key={k} value={k}>
+    return (
+        <>
+            <style>{cssStiker(kodeTata)}</style>
+            <div className="stiker-layar">
+                <PageHeader
+                    title="Lembar stiker QR"
+                    description="Pilih aset, periksa pratinjau, lalu cetak di kertas label A4."
+                    actions={<TombolCetak />}
+                />
+                <SaringStiker
+                    key={JSON.stringify([kodeTata, filter])}
+                    tata={kodeTata}
+                    nilai={filter}
+                    pilihan={{ tata: PILIHAN_TATA, ...pilihan }}
+                />
+                <div
+                    className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"
+                    aria-live="polite"
+                    data-testid="ringkasan-stiker"
+                >
+                    <p>
+                        <strong className="font-semibold tabular-nums">{formatAngka(aset.length)}</strong> stiker
+                        <span className="text-muted-foreground"> · </span>
+                        <strong className="font-semibold tabular-nums">{formatAngka(lembar.length)}</strong> lembar A4
+                    </p>
+                    {perJenis.length > 0 && (
+                        <ul className="flex flex-wrap gap-1.5" aria-label="Jumlah per jenis objek">
+                            {perJenis.map((t) => (
+                                <li
+                                    key={t.slug}
+                                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                                >
+                                    <IkonModul slug={t.slug} className="size-3.5" />
                                     {t.nama}
-                                </option>
+                                    <span className="font-semibold text-foreground tabular-nums">{t.n}</span>
+                                </li>
                             ))}
-                        </Pilihan>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium">
-                        Jenis objek
-                        <Pilihan name="tipe" defaultValue={filter.tipe ?? ""}>
-                            <option value="">Semua</option>
-                            {tipe.map((t) => (
-                                <option key={t.id} value={t.slug}>
-                                    {t.nama}
-                                </option>
-                            ))}
-                        </Pilihan>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium">
-                        Gedung
-                        <Pilihan name="gedung" defaultValue={filter.gedung ?? ""}>
-                            <option value="">Semua</option>
-                            {gedung.map((g) => (
-                                <option key={g}>{g}</option>
-                            ))}
-                        </Pilihan>
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium">
-                        Lantai
-                        <Input
-                            name="lantai"
-                            defaultValue={filter.lantai ?? ""}
-                            placeholder="mis. Lt. 2"
-                            className="w-28"
-                        />
-                    </label>
-                    <label className="flex min-w-52 flex-1 flex-col gap-1 text-xs font-medium">
-                        Kode aset tertentu
-                        <Input name="kode" defaultValue={filter.kode.join(", ")} placeholder="01D, 14A" />
-                    </label>
-                    <Button type="submit">Terapkan</Button>
-                    <TombolCetak />
-                </form>
-                <p className="mt-3 max-w-[70ch] text-sm text-muted-foreground">
-                    {aset.length} stiker pada {lembar.length} lembar. Tempelkan stiker di dinding tepat di atas dudukan
-                    objek, bukan pada badan tabung: tabung dapat dipindahkan atau ditukar saat pengisian ulang,
-                    sedangkan titik pemasangan tetap. Pada dialog cetak, matikan penskalaan (pilih Ukuran asli atau
-                    100%) agar ukuran label tidak bergeser.
-                </p>
+                        </ul>
+                    )}
+                </div>
             </div>
 
             {lembar.length === 0 ? (
-                <div className="stiker-lembar" style={{ display: "block", padding: "20mm" }}>
-                    <p>Tidak ada aset yang cocok dengan penyaring. Longgarkan penyaring lalu terapkan ulang.</p>
+                <div className="stiker-layar">
+                    <Kosong>Tidak ada aset yang cocok dengan saringan. Longgarkan saringan di atas.</Kosong>
                 </div>
             ) : (
-                lembar.map((isi, i) => (
-                    <section key={i} className="stiker-lembar" aria-label={`Lembar ${i + 1}`}>
-                        {isi.map((a) => (
-                            <div key={a.id} className="stiker-label" data-kode={a.kode}>
-                                {/* SVG dibuat peladen oleh pustaka qrcode dari URL /i/{token}; tidak memuat masukan pengguna. */}
-                                <div className="stiker-qr" dangerouslySetInnerHTML={{ __html: a.svg }} />
-                                <div className="stiker-teks">
-                                    <div className="stiker-jenis">{a.tipe || "Objek K3"}</div>
-                                    <div className="stiker-kode">{a.kode}</div>
-                                    <div className="stiker-lokasi">{labelLokasi(a)}</div>
-                                    <div className="stiker-perintah">Pindai sebelum memeriksa</div>
-                                    <div className="stiker-token">{tokenTercetak(a.qrToken)}</div>
-                                </div>
-                            </div>
+                <section
+                    aria-label="Pratinjau cetak"
+                    className="stiker-pratinjau overflow-x-auto rounded-xl border bg-muted/60 p-3 sm:p-6"
+                >
+                    <div className="stiker-layar mb-4 flex flex-wrap items-start gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                        <p className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                            <Printer className="size-3.5" aria-hidden /> Pratinjau cetak · A4 potret · {tata.nama}
+                        </p>
+                        <p className="inline-flex max-w-[70ch] items-start gap-1.5">
+                            <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+                            <span>
+                                Pada dialog cetak pilih Ukuran asli (100%) agar label tidak bergeser. Tempel stiker di
+                                dinding tepat di atas dudukan objek, bukan pada badan tabung: tabung bisa dipindah
+                                atau ditukar saat isi ulang, titik pemasangan tetap.
+                            </span>
+                        </p>
+                    </div>
+                    <div className="stiker-pratinjau-isi">
+                        {lembar.map((isi, i) => (
+                            <section key={i} className="stiker-lembar" aria-label={`Lembar ${i + 1}`}>
+                                {isi.map((a) => (
+                                    <div key={a.id} className="stiker-label" data-kode={a.kode}>
+                                        {/* SVG dibuat peladen oleh pustaka qrcode dari URL /i/{token}; tidak memuat masukan pengguna. */}
+                                        <div className="stiker-qr" dangerouslySetInnerHTML={{ __html: a.svg }} />
+                                        <div className="stiker-teks">
+                                            <div className="stiker-jenis">
+                                                <IkonModul slug={a.slug} />
+                                                {a.tipe || "Objek K3"}
+                                            </div>
+                                            <div className="stiker-kode">{a.kode}</div>
+                                            {(a.area || a.gedung) && (
+                                                <div className="stiker-area">{a.area || a.gedung}</div>
+                                            )}
+                                            <div className="stiker-lokasi">{labelLokasi(a)}</div>
+                                            <div className="stiker-perintah">
+                                                <ScanLine aria-hidden />
+                                                Pindai sebelum memeriksa
+                                            </div>
+                                            <div className="stiker-token">{tokenTercetak(a.qrToken)}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
                         ))}
-                    </section>
-                ))
+                    </div>
+                </section>
             )}
-        </div>
+        </>
     );
 }
