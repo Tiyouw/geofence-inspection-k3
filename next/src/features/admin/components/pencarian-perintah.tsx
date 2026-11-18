@@ -63,11 +63,12 @@ export function PencarianPerintah() {
             <button
                 type="button"
                 onClick={() => setBuka(true)}
-                className="flex h-9 w-full max-w-sm items-center gap-2 rounded-lg border bg-card px-3 text-sm text-muted-foreground hover:bg-muted"
+                aria-label="Cari aset, temuan, inspeksi"
+                className="flex size-10 items-center justify-center gap-2 rounded-kontrol border bg-card text-sm text-muted-foreground hover:bg-muted sm:h-10 sm:w-full sm:max-w-md sm:justify-start sm:px-3"
             >
-                <Search className="size-4" aria-hidden />
-                <span className="flex-1 text-left">Cari aset, temuan, inspeksi…</span>
-                <kbd className="rounded border bg-muted px-1.5 font-mono text-[11px]">Ctrl K</kbd>
+                <Search className="size-4 shrink-0" aria-hidden />
+                <span className="hidden flex-1 text-left sm:block">Cari aset, temuan, inspeksi…</span>
+                <kbd className="hidden rounded border bg-muted px-1.5 font-mono text-[11px] lg:inline">Ctrl K</kbd>
             </button>
             <CommandDialog
                 open={buka}
