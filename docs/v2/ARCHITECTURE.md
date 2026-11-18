@@ -199,7 +199,12 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 - Berkas: Blob store `pal-k3-foto` (privat, sin1) → `BLOB_READ_WRITE_TOKEN`.
 - Lainnya, diatur dengan `vercel env add` (sensitif, tidak pernah ditulis ke repo):
   `AUTH_SECRET`, `AUTH_TRUST_HOST`, `DEMO_MODE`, opsional `DEMO_*_PASSWORD`.
-- Migrasi dan seed ke Neon dijalankan dari mesin pengembang:
+- Migrasi berjalan **otomatis saat build produksi Vercel** (`prebuild` → `scripts/migrasi-deploy.mjs`,
+  `src/db/migrasi-deploy.ts`): migrasi tertunda dijalankan sebelum `next build`. Bila ada pernyataan
+  tidak aditif (DROP, RENAME, ubah tipe, SET NOT NULL, TRUNCATE, DELETE), build digagalkan dan versi
+  lama tetap melayani; jalankan manual setelah ditinjau. Insiden 18 Nov 2026: migrasi 0003 terlewat,
+  /admin/jadwal 500.
+- Seed (dan migrasi manual bila build menolak) ke Neon dijalankan dari mesin pengembang:
   `vercel env pull <berkas-sementara> --environment=preview`, muat berkas itu, lalu
   `pnpm db:migrate && DEMO_MODE=true pnpm db:seed`. Variabel sensitif (mis. `DEMO_MODE`,
   `AUTH_SECRET`) tertarik kosong, jadi set manual saat seed. Hapus berkas sementara sesudahnya.
