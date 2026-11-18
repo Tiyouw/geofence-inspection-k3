@@ -106,7 +106,7 @@ export function DesktopShell({
         <SidebarBody user={user} nav={nav} homeHref={home} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 lg:h-16 lg:bg-background/95 lg:px-8 lg:backdrop-blur print:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4 lg:relative lg:h-16 lg:bg-background lg:px-8 print:hidden">
           <Link href={home} className="text-foreground lg:hidden">
             <Brand accentPin compact />
           </Link>

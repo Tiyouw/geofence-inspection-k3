@@ -14,7 +14,7 @@ test.describe("tinjauan inspeksi oleh Administrator K3", () => {
 
         await page.goto("/admin/tinjauan");
         await expect(page.getByRole("link", { name: /Perlu tinjauan/ })).toHaveAttribute("aria-current", "page");
-        await expect(page.getByRole("link", { name: /^Tinjauan \(\d+\)$/ })).toBeVisible();
+        await expect(page.getByRole("navigation", { name: "Menu utama" }).getByRole("link", { name: /^Tinjauan.*antrean \d+$/ })).toBeVisible();
 
         // Angka antrean di dasbor = lencana tab.
         const lencanaTab = Number(
