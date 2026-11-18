@@ -14,6 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed/index.ts",
+    "db:demo": "tsx src/db/seed/demo-cli.ts seed",
+    "db:demo:reset": "tsx src/db/seed/demo-cli.ts reset",
     "db:studio": "drizzle-kit studio",
     "migrasi": "tsx scripts/migrate-from-laravel.ts",
     "format": "prettier --write .",
