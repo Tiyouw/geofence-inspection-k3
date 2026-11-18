@@ -19,6 +19,11 @@ const WARNA: Record<ModulIlustrasi, { utama: string; rona: string }> = {
   mobil_pemadam: { utama: "var(--modul-damkar, #B7790A)", rona: "var(--modul-damkar-rona, #F8EDD3)" },
 };
 
+/** Warna utama dan rona modul (CSS var), mis. untuk batang progres atau tanda di kalender. */
+export function warnaModul(m: ModulIlustrasi): { utama: string; rona: string } {
+  return WARNA[m];
+}
+
 export const LABEL_MODUL_ILUSTRASI: Record<ModulIlustrasi, string> = {
   apar: "APAR",
   p3k: "Kotak P3K",
