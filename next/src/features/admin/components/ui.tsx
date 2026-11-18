@@ -28,7 +28,7 @@ export function Lencana({
     return (
         <span
             className={cn(
-                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
                 NADA[nada],
                 className,
             )}
@@ -50,34 +50,39 @@ export function Kartu({
     className?: string;
 }) {
     return (
-        <section className={cn("rounded-xl border bg-card text-card-foreground", className)}>
+        <section className={cn("rounded-kartu border bg-card text-card-foreground", className)}>
             {(judul || aksi) && (
-                <header className="flex items-center justify-between gap-3 border-b px-5 py-3">
-                    {judul && <h2 className="text-sm font-semibold">{judul}</h2>}
+                <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-1">
+                    {judul && <h2 className="text-base font-bold">{judul}</h2>}
                     {aksi}
                 </header>
             )}
-            <div className="p-5">{children}</div>
+            <div className="p-5 pt-3">{children}</div>
         </section>
     );
 }
 
-/** Tabel data sederhana dengan gulir mendatar di layar sempit. */
+/**
+ * Tabel data. Di layar sempit (< md) baris menjadi kartu bertumpuk, jadi tidak ada gulir mendatar;
+ * beri `data-label="Judul kolom"` pada <td> agar judulnya tampil di atas nilainya.
+ */
 export function Tabel({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
     return (
-        <div className={cn("overflow-x-auto rounded-xl border bg-card", className)}>
-            <table aria-label={label} className="w-full text-sm [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:whitespace-nowrap [&_th]:text-muted-foreground [&_thead]:border-b [&_thead]:bg-muted/60 [&_tbody_tr]:border-b [&_tbody_tr:last-child]:border-0 [&_tbody_tr:hover]:bg-muted/40">
+        <div className={cn("rounded-kartu border bg-card md:overflow-x-auto", className)}>
+            <table aria-label={label} className="w-full text-sm max-md:block max-md:[&_tbody]:block max-md:[&_thead]:sr-only max-md:[&_tbody_tr]:flex max-md:[&_tbody_tr]:flex-col max-md:[&_tbody_tr]:gap-1 max-md:[&_tbody_tr]:px-4 max-md:[&_tbody_tr]:py-3 max-md:[&_td]:!p-0 max-md:[&_td[data-label]]:before:block max-md:[&_td[data-label]]:before:text-xs max-md:[&_td[data-label]]:before:text-muted-foreground max-md:[&_td[data-label]]:before:content-[attr(data-label)] [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:whitespace-nowrap [&_th]:text-muted-foreground [&_thead]:border-b [&_thead]:bg-muted/60 [&_tbody_tr]:border-b [&_tbody_tr:last-child]:border-0 [&_tbody_tr:hover]:bg-muted/40">
                 {children}
             </table>
         </div>
     );
 }
 
-export function Kosong({ children }: { children: ReactNode }) {
+/** Keadaan kosong; `ilustrasi` mis. <IlustrasiModul> dari components/ilustrasi/modul. */
+export function Kosong({ children, ilustrasi }: { children: ReactNode; ilustrasi?: ReactNode }) {
     return (
-        <p className="rounded-xl border border-dashed bg-card px-5 py-10 text-center text-sm text-muted-foreground">
-            {children}
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-kartu border border-dashed bg-card px-5 py-10 text-center text-sm text-muted-foreground">
+            {ilustrasi}
+            <p className="max-w-md">{children}</p>
+        </div>
     );
 }
 
@@ -136,7 +141,7 @@ export function Paginasi({
     const terakhir = Math.max(1, Math.ceil(total / per));
     if (terakhir <= 1) return null;
     const tombol =
-        "rounded-lg border px-3 py-1.5 text-sm hover:bg-muted aria-disabled:pointer-events-none aria-disabled:opacity-40";
+        "inline-flex min-h-10 items-center rounded-kontrol border bg-card px-3 text-sm font-semibold hover:bg-muted aria-disabled:pointer-events-none aria-disabled:opacity-40";
     return (
         <nav aria-label="Halaman" className="mt-4 flex items-center justify-between gap-3 text-sm">
             <span className="text-muted-foreground">

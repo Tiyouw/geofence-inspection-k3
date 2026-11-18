@@ -43,7 +43,7 @@ test.describe("lembar stiker QR (L7, C3, B10)", () => {
         await masuk(page, "admin");
         await page.goto("/stiker");
         await expect(page.getByRole("navigation", { name: "Menu utama" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Lembar stiker QR" })).toHaveAttribute("aria-current", "page");
+        await expect(page.getByRole("navigation", { name: "Menu utama" }).getByRole("link", { name: "Stiker QR" })).toHaveAttribute("aria-current", "page");
         await expect(page.getByRole("button", { name: "Terapkan" })).toHaveCount(0);
         const semua = await jumlahRingkasan(page);
         expect(semua).toBeGreaterThan(0);
