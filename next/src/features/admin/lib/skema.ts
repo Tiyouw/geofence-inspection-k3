@@ -126,3 +126,16 @@ export function galatKolom(error: z.ZodError): Record<string, string[]> {
     }
     return hasil;
 }
+
+const tanggalTeks = (label: string) =>
+    z.string({ error: `${label} wajib diisi.` }).regex(/^\d{4}-\d{2}-\d{2}$/, `${label} tidak sah.`);
+
+/** Kelompok jadwal di kalender: tipe + tempat ('' = tanpa gedung) + periode. */
+export const skemaKelompokJadwal = z.object({
+    tipe: z.string().min(1, "Jenis peralatan wajib dipilih.").max(64),
+    tempat: z.string().max(200),
+    periode: tanggalTeks("Periode"),
+});
+
+/** Menjadwalkan (atau memindahkan) satu kelompok ke tanggal rencana. */
+export const skemaJadwalkan = skemaKelompokJadwal.extend({ tanggal: tanggalTeks("Tanggal") });

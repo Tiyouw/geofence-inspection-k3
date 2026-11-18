@@ -501,9 +501,11 @@ export const schedules = pgTable(
     jatuhTempo: date({ mode: "string" }).notNull(),
     inspectionId: uuid().references(() => inspections.id, { onDelete: "set null" }),
     status: scheduleStatusEnum().notNull().default("belum"),
+    /** Tanggal rencana pemeriksaan di kalender admin (redesain A); null = belum dijadwalkan. */
+    tanggalRencana: date({ mode: "string" }),
     ...ts(),
   },
-  (t) => [uniqueIndex().on(t.assetId, t.periode), index().on(t.periode, t.status)],
+  (t) => [uniqueIndex().on(t.assetId, t.periode), index().on(t.periode, t.status), index().on(t.tanggalRencana)],
 );
 
 /** Pengaturan kunci-nilai, mis. toleransi gerbang (SETTING_GERBANG di constants.ts). */

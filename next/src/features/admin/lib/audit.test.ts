@@ -252,6 +252,8 @@ describe("uraikan: kalimat sehari-hari", () => {
             "pengguna.nonaktifkan",
             "pengguna.terbitkan_sandi",
             "tipe.ubah_periode",
+            "jadwal.rencana",
+            "jadwal.batal_rencana",
             "aset.buat",
             "aset.ubah",
             "aset.ganti_token",
