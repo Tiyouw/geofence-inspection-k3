@@ -1,7 +1,7 @@
 "use client";
 
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
-import { Check } from "lucide-react";
+import { Check, CircleCheck, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 } from "../client/aksi";
 import { statusAntrean } from "../client/status";
 import type { AsetPaket, DrafLokal } from "../client/types";
+import { GambarAset, KARTU, KONTROL, lokasiAset } from "./a";
 import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
@@ -69,17 +70,21 @@ function Terkirim({ id }: { id: string }) {
   const s = data.sent.find((x) => x.inspectionId === id)!;
   return (
     <div className="space-y-5" data-testid="hasil-terkirim">
-      <div className="rounded-2xl bg-success-soft p-5 text-success">
-        <Check className="mb-2 size-8" aria-hidden />
-        <h1 className="text-xl font-semibold">Inspeksi {s.kode} terkirim</h1>
-        <p className="text-sm">Waktu resmi {formatWaktu(s.inspectedAt)}</p>
+      <div className="flex items-start gap-4 rounded-[var(--a-radius-kartu,16px)] bg-success-soft p-5 text-success">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-success text-white">
+          <Check className="size-7" aria-hidden />
+        </span>
+        <div>
+          <h1 className="text-xl font-bold">Inspeksi {s.kode} terkirim</h1>
+          <p className="text-sm">Waktu resmi {formatWaktu(s.inspectedAt)}</p>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {s.kesimpulan && <LencanaKesimpulan k={s.kesimpulan} />}
         <LencanaGerbang status={s.gateStatus} />
       </div>
       {s.temuan && s.temuan.length > 0 && (
-        <Card className="gap-0 py-0">
+        <Card className="gap-0 rounded-[var(--a-radius-kartu,16px)] py-0">
           <CardContent className="space-y-2 p-4">
             <p className="text-sm font-semibold">Temuan ({s.temuan.length})</p>
             <ul className="space-y-2">
@@ -101,10 +106,10 @@ function Terkirim({ id }: { id: string }) {
 function AksiLanjut() {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Button asChild variant="brand" size="lg" className="h-14 text-base">
+      <Button asChild variant="brand" size="lg" className={cn(KONTROL, "h-14 text-base")}>
         <a href="/petugas/pindai">Pindai berikutnya</a>
       </Button>
-      <Button asChild variant="outline" size="lg" className="h-14 text-base">
+      <Button asChild variant="outline" size="lg" className={cn(KONTROL, "h-14 text-base")}>
         <a href="/petugas">Ke beranda</a>
       </Button>
     </div>
@@ -170,24 +175,41 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
   const st = statusAntrean(draf, data.ops, data.fotoPerInspeksi[draf.inspectionId], daring);
 
   return (
-    <div className={cn("space-y-5", bisaUbah && "pb-24")}>
-      <div>
-        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-          {aset.tipe}
-          {aset.media ? ` · ${aset.media}` : ""}
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{aset.kode}</h1>
-        <p className="text-sm text-muted-foreground">{[aset.lokasiTeks, aset.gedung, aset.lantai].filter(Boolean).join(" · ")}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Dipindai {formatWaktu(draf.scannedAtDevice)}
-          {draf.qrVerification === "offline_cache" && " · dicocokkan luring"}
-        </p>
+    <div className={cn("space-y-5", bisaUbah && "pb-20")}>
+      <div className="flex items-center gap-4">
+        <GambarAset aset={aset} ukuran={76} />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+            {aset.tipe}
+            {aset.media ? ` · ${aset.media}` : ""}
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{aset.kode}</h1>
+          <p className="text-sm text-muted-foreground">{lokasiAset(aset)}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Dipindai {formatWaktu(draf.scannedAtDevice)}
+            {draf.qrVerification === "offline_cache" && " · dicocokkan luring"}
+          </p>
+        </div>
       </div>
+
+      {bisaUbah && (
+        <div aria-hidden>
+          <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
+            <span>{terisi < items.length ? "Isi checklist" : "Checklist lengkap · periksa foto lalu kirim"}</span>
+            <span className="tabular-nums">
+              {terisi} / {items.length} butir
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-success transition-[width] duration-(--durasi)" style={{ width: `${items.length ? (terisi / items.length) * 100 : 0}%` }} />
+          </div>
+        </div>
+      )}
 
       {draf.status !== "draf" && (
         <div
           data-testid="status-kirim"
-          className={cn("space-y-3 rounded-2xl p-4", st.perluTindakan ? "bg-danger-soft text-danger" : "bg-info-soft text-info")}
+          className={cn("space-y-3 rounded-[var(--a-radius-kartu,16px)] p-4", st.perluTindakan ? "bg-danger-soft text-danger" : "bg-info-soft text-info")}
         >
           <p className="font-semibold">
             {st.perluTindakan ? "Perlu tindakan" : "Masuk antrean, akan dikirim otomatis saat ada sinyal"}
@@ -229,18 +251,19 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
       <KartuLokasi aset={aset} paket={paket} draf={draf} status={statusGps} keadaan={lokasi} bisaUbah={bisaUbah} />
 
       {grup.map((g) => (
-        <section key={`${g.kode}-${g.nama}`} className="space-y-3" aria-label={g.nama}>
-          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+        <section key={`${g.kode}-${g.nama}`} className="space-y-2" aria-label={g.nama}>
+          <h2 className="px-0.5 text-[13px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
             {g.kode ? `${g.kode}. ` : ""}
             {g.nama}
           </h2>
+          <div className={cn(KARTU, "divide-y divide-border/70 px-4")}>
           {g.items.map((item) => {
             const jl = draf.jawaban[item.id];
             const j = jl ? { ...jl, checklistItemId: item.id } : undefined;
             const sev = severityJawaban(item, j) ?? temuan.find((t) => t.checklistItemId === item.id)?.severity ?? null;
             return (
-              <Card key={item.id} className="gap-0 py-0" data-testid={`butir-${item.id}`}>
-                <CardContent className="space-y-3 p-4">
+              <div key={item.id} className="space-y-3 py-4" data-testid={`butir-${item.id}`}>
+                <div className="space-y-3">
                   <div>
                     <p className="font-medium">{item.label}</p>
                     {item.dasarHukum && <p className="text-xs text-muted-foreground">{item.dasarHukum}</p>}
@@ -248,23 +271,27 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
                   </div>
                   <IsianButir item={item} nilai={j} bisaUbah={bisaUbah} p3k={p3k} onJawab={(isi) => void jawab(item.id, isi)} />
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">{terjawab(item, j) ? "Tersimpan di perangkat" : item.wajib ? "Wajib diisi" : ""}</span>
+                    <span className={cn("inline-flex items-center gap-1", terjawab(item, j) ? "text-muted-foreground" : "font-medium text-warning")}>
+                      {terjawab(item, j) && <CircleCheck className="size-3.5 text-success" aria-hidden />}
+                      {terjawab(item, j) ? "Tersimpan di perangkat" : item.wajib ? "Wajib diisi" : ""}
+                    </span>
                     {sev && <LencanaSeverity s={sev} />}
                   </div>
                   {bisaUbah && terjawab(item, j) && (
                     <CatatanButir awal={j?.catatan ?? ""} onSimpan={(c) => void jawab(item.id, { catatan: c })} />
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
+          </div>
         </section>
       ))}
 
       <BuktiFoto draf={draf} langkah={langkah} labelButir={labelButir} areaTerbatas={!!aset.areaTerbatas} bisaUbah={bisaUbah} />
 
       <section className="space-y-4" aria-label="Kesimpulan">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Kesimpulan</h2>
+        <h2 className="px-0.5 text-[13px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">Kesimpulan</h2>
         {temuan.length > 0 && (
           <p className="text-sm text-muted-foreground">
             {temuan.length} temuan. Usulan: <b>{LABEL_KESIMPULAN[usulan]}</b>
@@ -292,10 +319,19 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
                 berubah();
               }}
               className={cn(
-                "min-h-14 rounded-xl border p-3 text-left text-base font-medium",
-                draf.kesimpulan === k ? "border-primary bg-primary text-primary-foreground" : "bg-card",
+                "flex min-h-14 items-center gap-3 rounded-[var(--a-radius-kontrol,10px)] border p-3 text-left text-base font-semibold",
+                draf.kesimpulan === k ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card",
               )}
             >
+              <span
+                aria-hidden
+                className={cn(
+                  "grid size-5 shrink-0 place-items-center rounded-full border-2",
+                  draf.kesimpulan === k ? "border-primary-foreground" : "border-muted-foreground/50",
+                )}
+              >
+                {draf.kesimpulan === k && <span className="size-2.5 rounded-full bg-primary-foreground" />}
+              </span>
               {LABEL_KESIMPULAN[k]}
             </button>
           ))}
@@ -346,15 +382,15 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
       )}
 
       {bisaUbah && (
-        <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 border-t bg-card/95 backdrop-blur">
-          <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-2.5">
+        <div className="fixed inset-x-3 bottom-[calc(84px+env(safe-area-inset-bottom))] z-20 mx-auto max-w-[30rem] rounded-[var(--a-radius-kartu,16px)] border border-border/80 bg-card/95 shadow-[0_10px_24px_-14px_rgb(3_30_37/0.45)] backdrop-blur">
+          <div className="flex items-center gap-3 py-2 pr-2 pl-4">
             <p className="flex-1 text-sm" data-testid="penghitung">
               Pemeriksaan terisi <b>{terisi}</b> / {items.length}
             </p>
             <Button
               variant="brand"
               size="lg"
-              className="h-14 px-8 text-base"
+              className={cn(KONTROL, "h-12 px-8 text-base font-bold")}
               onClick={() => void kirim()}
               disabled={mengirim || !lokasi.bolehKirim}
             >
@@ -429,10 +465,11 @@ function IsianButir({
               disabled={!bisaUbah}
               onClick={() => onJawab({ nilai: p.nilai })}
               className={cn(
-                "min-h-14 rounded-xl border px-3 py-2 text-base font-medium",
-                aktif ? (p.buruk ? "border-danger bg-danger text-white" : "border-success bg-success text-white") : "bg-card",
+                "inline-flex min-h-13 items-center justify-center gap-1.5 rounded-[var(--a-radius-kontrol,10px)] border px-3 py-2 text-base font-semibold transition-colors duration-(--durasi-cepat)",
+                aktif ? (p.buruk ? "border-danger bg-danger text-white" : "border-success bg-success text-white") : "border-border bg-card",
               )}
             >
+              {pilihan.length === 2 && (p.buruk ? <X className="size-4" aria-hidden /> : <Check className="size-4" aria-hidden />)}
               {p.label}
             </button>
           );
