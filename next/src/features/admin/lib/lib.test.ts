@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { batasPeta, halamanAman, parseTab, persen, titikPeta, type AsetPeta } from "./dasbor";
 import { jatuhTempoPeriode, labelJadwal } from "./label";
+import { NAV_ADMIN, NAV_PEMANTAU } from "@/components/shell/nav";
 import { escapeLike, halamanUntuk, polaMengandung, tindakanUntuk } from "./pencarian";
 import { mundurBulan, parsePeriode, periodeDari, periodeJakarta, sisaHariBulan } from "./periode";
 import { buatSandiAcak } from "./sandi";
@@ -138,6 +139,12 @@ describe("pencarian (K2, K4, K5)", () => {
         expect(hrefs.every((h) => h.startsWith("/pemantau"))).toBe(true);
         expect(tindakanUntuk("pemantau")).toEqual([]);
         expect(tindakanUntuk("admin").map((t) => t.judul)).toContain("Tambah aset");
+    });
+
+    it("formulir pertanyaan klien bukan bagian sistem inspeksi: tidak ada di menu maupun palet (hanya lewat URL langsung)", () => {
+        const semua = [...NAV_ADMIN, ...NAV_PEMANTAU].map((n) => n.href);
+        const palet = [...halamanUntuk("admin"), ...tindakanUntuk("admin")].map((h) => h.href);
+        for (const h of [...semua, ...palet]) expect(h).not.toMatch(/tanya/);
     });
 });
 
