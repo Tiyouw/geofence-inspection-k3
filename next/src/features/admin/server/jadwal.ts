@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, assetTypes, inspections, schedules, users } from "@/db/schema";
+import { areas, assets, assetTypes, inspections, schedules, users } from "@/db/schema";
 import { jatuhTempoUntuk, mingguan, periodeDalamBulan } from "@/lib/domain/jadwal";
 import type { Periode } from "../lib/periode";
 
@@ -36,7 +36,7 @@ export async function jadwalPeriode(p: Periode, tipeSlug: string) {
         .from(assets)
         .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
         .innerJoin(
-            sql`unnest(array[${daftarPeriode}]::date[]) as p(periode)`,
+            sql`unnest(string_to_array(${daftarPeriode.join(",")}, ',')::date[]) as p(periode)`,
             sql`true`,
         )
         .leftJoin(schedules, and(eq(schedules.assetId, assets.id), sql`${schedules.periode} = p.periode`))
@@ -70,4 +70,102 @@ export async function daftarTipe() {
         })
         .from(assetTypes)
         .orderBy(asc(assetTypes.urut));
+}
+
+/* ---------- Kalender jadwal (redesain A) ---------- */
+
+/** Tempat pengelompokan aset di kalender: nama area, atau teks gedung lama, atau '' (tanpa gedung). */
+const tempatSql = sql<string>`coalesce(${areas.nama}, ${assets.gedung}, '')`;
+
+export type KelompokRencana = {
+    tanggal: string;
+    tipeSlug: string;
+    tipeNama: string;
+    tempat: string;
+    periode: string;
+    jumlah: number;
+    selesai: number;
+};
+
+/**
+ * Pemeriksaan yang sudah direncanakan pada [awal, akhir] (inklusif, "YYYY-MM-DD"),
+ * dikelompokkan per tanggal, tipe, tempat, dan periode.
+ */
+export async function rencanaKalender(awal: string, akhir: string): Promise<KelompokRencana[]> {
+    const rows = await db
+        .select({
+            tanggal: sql<string>`to_char(${schedules.tanggalRencana}, 'YYYY-MM-DD')`,
+            tipeSlug: assetTypes.slug,
+            tipeNama: assetTypes.nama,
+            tempat: tempatSql,
+            periode: sql<string>`to_char(${schedules.periode}, 'YYYY-MM-DD')`,
+            jumlah: sql<number>`count(*)::int`,
+            selesai: sql<number>`count(*) filter (where ${schedules.status} <> 'belum')::int`,
+        })
+        .from(schedules)
+        .innerJoin(assets, eq(assets.id, schedules.assetId))
+        .innerJoin(assetTypes, eq(assetTypes.id, assets.assetTypeId))
+        .leftJoin(areas, eq(areas.id, assets.areaId))
+        .where(and(eq(assets.aktif, true), sql`${schedules.tanggalRencana} between ${awal}::date and ${akhir}::date`))
+        .groupBy(schedules.tanggalRencana, assetTypes.slug, assetTypes.nama, assetTypes.urut, tempatSql, schedules.periode)
+        .orderBy(asc(schedules.tanggalRencana), asc(assetTypes.urut), asc(tempatSql));
+    return rows;
+}
+
+export type KelompokBelum = {
+    tipeSlug: string;
+    tipeNama: string;
+    tempat: string;
+    periode: string;
+    jatuhTempo: string;
+    jumlah: number;
+};
+
+/**
+ * Aset aktif yang belum punya tanggal rencana untuk periode yang dimulai di bulan `p`
+ * (dan belum diperiksa, tenggat belum lewat), dikelompokkan per tipe, tempat, dan periode: daftar "Belum dijadwalkan".
+ */
+export async function belumDijadwalkan(p: Periode, hariIni: string): Promise<KelompokBelum[]> {
+    const tipe = await db
+        .select({ id: assetTypes.id, slug: assetTypes.slug, nama: assetTypes.nama, periodeHari: assetTypes.periodeHari })
+        .from(assetTypes)
+        .where(eq(assetTypes.aktif, true))
+        .orderBy(asc(assetTypes.urut));
+    const hasil: KelompokBelum[] = [];
+    for (const t of tipe) {
+        const daftar = periodeDalamBulan(p.tanggal, t.periodeHari);
+        const rows = await db
+            .select({
+                tempat: tempatSql,
+                periode: sql<string>`to_char(p.periode, 'YYYY-MM-DD')`,
+                jumlah: sql<number>`count(*)::int`,
+            })
+            .from(assets)
+            .innerJoin(sql`unnest(string_to_array(${daftar.join(",")}, ',')::date[]) as p(periode)`, sql`true`)
+            .leftJoin(areas, eq(areas.id, assets.areaId))
+            .leftJoin(schedules, and(eq(schedules.assetId, assets.id), sql`${schedules.periode} = p.periode`))
+            .where(
+                and(
+                    eq(assets.aktif, true),
+                    eq(assets.assetTypeId, t.id),
+                    sql`${schedules.tanggalRencana} is null`,
+                    sql`coalesce(${schedules.status}, 'belum') = 'belum'`,
+                ),
+            )
+            .groupBy(tempatSql, sql`p.periode`)
+            .orderBy(sql`p.periode`, asc(tempatSql));
+        for (const r of rows) {
+            // Periode yang tenggatnya sudah lewat tidak bisa dijadwalkan lagi (terlihat di Daftar per aset).
+            if (jatuhTempoUntuk(r.periode, t.periodeHari) < hariIni) continue;
+            hasil.push({
+                tipeSlug: t.slug,
+                tipeNama: t.nama,
+                tempat: r.tempat,
+                periode: r.periode,
+                jatuhTempo: jatuhTempoUntuk(r.periode, t.periodeHari),
+                jumlah: r.jumlah,
+            });
+        }
+    }
+    return hasil;
 }

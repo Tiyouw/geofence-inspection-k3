@@ -28,7 +28,7 @@ export const KATEGORI_AUDIT = {
     inspeksi: { label: "Inspeksi", awalan: ["inspeksi"] },
     pengguna: { label: "Pengguna", awalan: ["pengguna"] },
     masuk: { label: "Masuk aplikasi", awalan: ["masuk"] },
-    jadwal: { label: "Jadwal", awalan: ["tipe", "cron"] },
+    jadwal: { label: "Jadwal", awalan: ["tipe", "cron", "jadwal"] },
     lainnya: { label: "Lainnya", awalan: [] },
 } as const satisfies Record<string, { label: string; awalan: readonly string[] }>;
 
@@ -607,6 +607,30 @@ const PENERJEMAH: Record<string, Penerjemah> = {
         label: "Menerbitkan sandi",
         kalimat: ["menerbitkan kata sandi sementara untuk ", { tegas: namaPengguna(k.r, k.id, teks(k.d.nip)) }],
     }),
+
+    "jadwal.rencana": (k) => {
+        const nama = k.id !== null ? (k.r.tipe.get(k.id) ?? `tipe #${k.id}`) : "peralatan";
+        const tanggal = teks(k.d.tanggal);
+        return {
+            ikon: "jadwal",
+            label: "Menjadwalkan pemeriksaan",
+            kalimat: [
+                "menjadwalkan pemeriksaan ",
+                { tegas: nama },
+                ` di ${teks(k.d.tempat) ?? "tanpa gedung"}`,
+                tanggal ? ` pada ${formatTanggal(`${tanggal}T12:00:00+07:00`, { day: "numeric", month: "long", year: "numeric" })}` : "",
+                angka(k.d.jumlah) !== null ? ` (${angka(k.d.jumlah)} unit)` : "",
+            ],
+        };
+    },
+    "jadwal.batal_rencana": (k) => {
+        const nama = k.id !== null ? (k.r.tipe.get(k.id) ?? `tipe #${k.id}`) : "peralatan";
+        return {
+            ikon: "jadwal",
+            label: "Melepas jadwal",
+            kalimat: ["melepas jadwal pemeriksaan ", { tegas: nama }, ` di ${teks(k.d.tempat) ?? "tanpa gedung"}`],
+        };
+    },
 
     "tipe.ubah_periode": (k) => {
         const dari = angka(k.d.dari);
