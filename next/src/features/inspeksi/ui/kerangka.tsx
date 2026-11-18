@@ -4,6 +4,7 @@ import { CloudUpload, History, House, ScanLine, UserRound, type LucideIcon } fro
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/shell/brand";
+import { PeranDokumen } from "@/components/shell/peran-dokumen";
 import { cn } from "@/lib/utils";
 import { useInspektur } from "./konteks";
 import { IndikatorKoneksi } from "./status-bar";
@@ -71,6 +72,8 @@ function NavPil() {
 export function KerangkaInspektur({ children }: { children: ReactNode }) {
   return (
     <div data-peran="inspektur" className="flex min-h-dvh flex-col bg-background text-foreground">
+      {/* Dialog, menu, dan toast di portal <body> ikut palet dan huruf inspektur. */}
+      <PeranDokumen peran="inspektur" />
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur pt-[env(safe-area-inset-top)] print:hidden">
         <div className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 px-4">
           <a href="/petugas" className="flex items-center gap-2 text-foreground">
