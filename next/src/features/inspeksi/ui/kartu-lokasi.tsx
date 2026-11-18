@@ -8,7 +8,7 @@
  * - Pratinjau gerbang memakai fungsi yang sama dengan peladen (`nilaiGerbang`); keputusan
  *   resmi tetap di peladen.
  */
-import { CircleCheck, Crosshair, LocateOff, MapPin, MapPinX, SignalLow, Truck } from "lucide-react";
+import { CircleCheck, Crosshair, LocateOff, MapPin, MapPinX, TriangleAlert, Truck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatWaktu } from "@/lib/format";
@@ -134,7 +134,7 @@ function vonis(g: HasilGerbang, aset: AsetPaket, terblokir: boolean, adaGps: boo
   if (!adaGps) return { nada: "mut", Ikon: Crosshair, judul: "Mencari posisi" };
   if (g.hasil === "ditolak") return { nada: "bad", Ikon: MapPinX, judul: "Di luar galangan" };
   if (g.status === "sesuai") return { nada: "ok", Ikon: CircleCheck, judul: "Lokasi sesuai" };
-  if (g.alasan === "gps_lemah") return { nada: "warn", Ikon: SignalLow, judul: "Perlu tinjauan: GPS lemah" };
+  if (g.alasan === "gps_lemah") return { nada: "warn", Ikon: TriangleAlert, judul: "Perlu tinjauan: GPS lemah" };
   return { nada: "warn", Ikon: MapPin, judul: "Perlu tinjauan: di luar gedung" };
 }
 

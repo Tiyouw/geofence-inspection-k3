@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CameraOff, Keyboard, LocateFixed, MapPinOff, ShieldAlert, SignalLow, SwitchCamera } from "lucide-react";
+import { Camera, CameraOff, Keyboard, LocateFixed, MapPinOff, ShieldAlert, SwitchCamera, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,7 +136,7 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
         </Pita>
       )}
       {gps.status === "lemah" && (
-        <Pita nada="warn" ikon={<SignalLow className="mt-0.5 size-5 shrink-0" aria-hidden />} judul={`Sinyal GPS lemah (±${gps.akurasi} m)`} data-testid="pindai-gps-lemah">
+        <Pita nada="warn" ikon={<TriangleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />} judul={`Sinyal GPS lemah (±${gps.akurasi} m)`} data-testid="pindai-gps-lemah">
           Melangkahlah ke dekat pintu atau area terbuka. Inspeksi tetap bisa dikirim dan akan ditinjau.
         </Pita>
       )}
@@ -298,7 +298,7 @@ function CipGps({ g }: { g: CekGps }) {
   if (g.status === "lemah")
     return (
       <Cip nada="warn">
-        <SignalLow className="size-3.5" aria-hidden />±{g.akurasi} m
+        <LocateFixed className="size-3.5" aria-hidden />±{g.akurasi} m
       </Cip>
     );
   if (g.status === "baik")

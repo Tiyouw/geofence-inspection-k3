@@ -13,6 +13,9 @@ import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan } from "./lencana";
 import { AjakanPasang } from "./pasang-aplikasi";
 
+/** Daftar belum diperiksa dipotong supaya beranda tetap ringkas; urut tenggat terdekat dulu. */
+const TAMPIL_AWAL = 8;
+
 const tgl = (d: string, o: Intl.DateTimeFormatOptions) => formatTanggal(`${d}T12:00:00+07:00`, o);
 
 /** Sisa hari sampai akhir hari tenggat (WIB). */
@@ -30,6 +33,7 @@ function labelTenggat(sisa: number): { teks: string; nada: "bad" | "warn" | "mut
 export function Beranda({ namaDepan }: { namaDepan: string }) {
   const { data, daring, siap } = useInspektur();
   const [now, setNow] = useState(() => Date.now());
+  const [semua, setSemua] = useState(false);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
@@ -169,7 +173,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
             </div>
           ) : (
             <ul className={cn(KARTU, "divide-y divide-border/70 px-4")}>
-              {belumUrut.map((a) => {
+              {(semua ? belumUrut : belumUrut.slice(0, TAMPIL_AWAL)).map((a) => {
                 const t = tenggatAset(a);
                 const lb = t ? labelTenggat(sisaHari(t, now)) : null;
                 return (
@@ -186,6 +190,15 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
                 );
               })}
             </ul>
+          )}
+          {belum.length > TAMPIL_AWAL && (
+            <button
+              type="button"
+              onClick={() => setSemua((x) => !x)}
+              className={cn(KONTROL, "h-11 w-full border bg-card text-sm font-semibold")}
+            >
+              {semua ? "Tampilkan lebih sedikit" : `Tampilkan semua (${belum.length})`}
+            </button>
           )}
           {belum.length > 0 && <p className="px-0.5 text-sm text-muted-foreground">Formulir terbuka setelah stiker QR aset dipindai di lokasi.</p>}
         </section>

@@ -3,6 +3,7 @@
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Camera, CameraOff, Check, ChevronLeft, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { MAKS_JEPRETAN_LANGKAH, type LangkahFoto } from "@/lib/domain/langkah-foto";
@@ -153,12 +154,14 @@ export function KameraTerpandu({
     };
   };
 
-  return (
+  // Portal ke body: leluhur beranimasi (#isi) membuat position:fixed terkurung di kolom isi.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Kamera terpandu"
       data-testid="kamera-terpandu"
+      data-peran="inspektur"
       className="fixed inset-0 z-50 flex animate-muncul flex-col bg-black text-white"
     >
       {mode === "kamera" ? (
@@ -242,7 +245,8 @@ export function KameraTerpandu({
         </div>
       )}
       {dialogKonfirmasi}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
