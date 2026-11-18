@@ -1,0 +1,105 @@
+/*
+ * Tema arah A "Terang & Ramah" (redesain v2, kanvas 62dbf4ec2845) — satu berkas token untuk SEMUA peran.
+ *
+ * Arah A menentukan bentuk (huruf, radius, permukaan, gaya ilustrasi); tiap peran memakai PALETNYA SENDIRI
+ * (keputusan pemilik). Palet dipilih dengan atribut pada akar kerangka peran:
+ *
+ *   <div data-peran="admin">      Admin K3      teal
+ *   <div data-peran="pemantau">   Pemantau      biru batu
+ *   <div data-peran="inspektur">  Inspektur     (blok ditambahkan sesi PWA inspektur)
+ *
+ * Komponen hanya memakai token semantik: token shadcn (--primary, --background, --sidebar, ...) di dalam
+ * [data-peran] dipetakan ke token --peran-*, jadi Button/Card/Badge ikut berganti palet tanpa diubah.
+ * Di luar [data-peran] (halaman publik, peran yang belum pindah) tidak ada yang berubah.
+ *
+ * Warna status (success/warning/danger/info) TETAP sama di semua peran: lihat globals.css.
+ */
+
+:root {
+  /* Bentuk arah A (sama untuk semua peran) */
+  --a-radius-kartu: 16px;
+  --a-radius-kontrol: 10px;
+  --a-radius-dialog: 20px;
+
+  /* Warna modul (sama untuk semua peran) dan ronanya untuk latar lembut/ilustrasi */
+  --modul-apar: #c8432b;
+  --modul-apar-rona: #fbe7e2;
+  --modul-p3k: #23845a;
+  --modul-p3k-rona: #e0f1e8;
+  --modul-hydrant: #2c64a6;
+  --modul-hydrant-rona: #e2ebf6;
+  --modul-damkar: #b7790a;
+  --modul-damkar-rona: #f8edd3;
+  /* Garis/detail gelap di dalam ilustrasi modul */
+  --modul-detail: #2b2f36;
+}
+
+/* ---------- Palet per peran ---------- */
+
+[data-peran="admin"] {
+  --peran-utama: #0e6b6a;
+  --peran-utama-teks: #ffffff;
+  --peran-utama-rona: #e2efee;
+  --peran-utama-tua: #0b4f4e;
+  --peran-latar: #f6f4ef;
+  --peran-permukaan: #ffffff;
+  --peran-permukaan-2: #faf9f6;
+  --peran-tinta: #1e2420;
+  --peran-redup: #5e655f;
+  --peran-garis: #e6e2d9;
+  --peran-garis-kuat: #d6d1c5;
+  --peran-sorot: #f1eee7;
+}
+
+[data-peran="pemantau"] {
+  --peran-utama: #33557a;
+  --peran-utama-teks: #ffffff;
+  --peran-utama-rona: #e3ebf4;
+  --peran-utama-tua: #243f5c;
+  --peran-latar: #f2f4f7;
+  --peran-permukaan: #ffffff;
+  --peran-permukaan-2: #f8f9fb;
+  --peran-tinta: #1c2430;
+  --peran-redup: #586273;
+  --peran-garis: #e1e5eb;
+  --peran-garis-kuat: #cdd3dc;
+  --peran-sorot: #eceff4;
+}
+
+/* [data-peran="inspektur"] { ... }  ditambahkan oleh sesi PWA inspektur, dengan nama token yang sama. */
+
+/* ---------- Pemetaan ke token komponen ---------- */
+
+[data-peran] {
+  --background: var(--peran-latar);
+  --foreground: var(--peran-tinta);
+  --card: var(--peran-permukaan);
+  --card-foreground: var(--peran-tinta);
+  --popover: var(--peran-permukaan);
+  --popover-foreground: var(--peran-tinta);
+  --primary: var(--peran-utama);
+  --primary-foreground: var(--peran-utama-teks);
+  --secondary: var(--peran-sorot);
+  --secondary-foreground: var(--peran-tinta);
+  --muted: var(--peran-sorot);
+  --muted-foreground: var(--peran-redup);
+  --accent: var(--peran-utama-rona);
+  --accent-foreground: var(--peran-utama-tua);
+  --border: var(--peran-garis);
+  --input: var(--peran-garis-kuat);
+  --ring: var(--peran-utama);
+  --radius: var(--a-radius-kontrol);
+
+  --sidebar: var(--peran-permukaan);
+  --sidebar-foreground: var(--peran-tinta);
+  --sidebar-primary: var(--peran-utama);
+  --sidebar-primary-foreground: var(--peran-utama-teks);
+  --sidebar-accent: var(--peran-utama-rona);
+  --sidebar-accent-foreground: var(--peran-utama-tua);
+  --sidebar-border: var(--peran-garis);
+  --sidebar-ring: var(--peran-utama);
+
+  font-family: var(--font-a), var(--font-sans), system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
