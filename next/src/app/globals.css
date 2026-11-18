@@ -211,6 +211,26 @@
   }
 }
 
+/*
+ * Palet peran Inspektur (arah A, tema.css): token --peran-* dipakai pemetaan [data-peran] di tema.css.
+ * Nilainya palet inspektur yang sudah ada (deep current + aksi utama amber lewat --brand). Sebelum
+ * tema.css ada, blok ini tidak berpengaruh. Boleh dipindah ke tema.css bersama palet peran lain.
+ */
+[data-peran="inspektur"] {
+  --peran-utama: #031e25;
+  --peran-utama-teks: #ffffff;
+  --peran-utama-rona: #e3edef;
+  --peran-utama-tua: #01141a;
+  --peran-latar: #f4f7f8;
+  --peran-permukaan: #ffffff;
+  --peran-permukaan-2: #f9fbfb;
+  --peran-tinta: #162b33;
+  --peran-redup: #5f727a;
+  --peran-garis: #dbe4e7;
+  --peran-garis-kuat: #cbd7db;
+  --peran-sorot: #eef2f3;
+}
+
 /* Area Pemantau (hanya lihat): bilah samping slate gelap, beda dari teal-navy admin. */
 [data-area="pemantau"] {
   --sidebar: #1e293b;
