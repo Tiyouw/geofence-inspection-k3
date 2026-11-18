@@ -20,7 +20,7 @@ test("sandi salah ditolak dengan pesan", async ({ page }) => {
 test("admin masuk ke /admin dan bisa membuka /pemantau", async ({ page }) => {
   await masuk(page, "admin");
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Ringkasan" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /^Ringkasan / })).toBeVisible();
   await page.goto("/pemantau");
   await expect(page.getByRole("heading", { name: "Papan pantau" })).toBeVisible();
   await page.goto("/petugas");
