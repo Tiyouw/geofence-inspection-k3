@@ -6,7 +6,7 @@
  *
  *   <div data-peran="admin">      Admin K3      teal
  *   <div data-peran="pemantau">   Pemantau      biru batu
- *   <div data-peran="inspektur">  Inspektur     (blok ditambahkan sesi PWA inspektur)
+ *   <div data-peran="inspektur">  Inspektur     deep current, aksi utama amber (--brand)
  *
  * Komponen hanya memakai token semantik: token shadcn (--primary, --background, --sidebar, ...) di dalam
  * [data-peran] dipetakan ke token --peran-*, jadi Button/Card/Badge ikut berganti palet tanpa diubah.
@@ -66,7 +66,21 @@
   --peran-sorot: #eceff4;
 }
 
-/* [data-peran="inspektur"] { ... }  ditambahkan oleh sesi PWA inspektur, dengan nama token yang sama. */
+/* Inspektur: palet yang sudah ada (deep current; aksi utama amber tetap lewat --brand). */
+[data-peran="inspektur"] {
+  --peran-utama: #031e25;
+  --peran-utama-teks: #ffffff;
+  --peran-utama-rona: #e3edef;
+  --peran-utama-tua: #01141a;
+  --peran-latar: #f4f7f8;
+  --peran-permukaan: #ffffff;
+  --peran-permukaan-2: #f9fbfb;
+  --peran-tinta: #162b33;
+  --peran-redup: #5f727a;
+  --peran-garis: #dbe4e7;
+  --peran-garis-kuat: #cbd7db;
+  --peran-sorot: #eef2f3;
+}
 
 /* ---------- Pemetaan ke token komponen ---------- */
 
