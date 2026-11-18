@@ -1,4 +1,5 @@
 import "server-only";
+import { capKoordinatAktif } from "@/lib/foto/pengaturan";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -77,6 +78,8 @@ export type PaketKerja = {
   asetUnitLain: { qrTokenHash: string; unit: string | null }[];
   /** Data gerbang lokasi untuk pratinjau di perangkat; keputusan resmi tetap di peladen. */
   gerbang: GerbangPaket;
+  /** Cap foto (lapisan tampilan, bukan dibakar ke JPEG): nama inspektur dan pengaturan koordinat. */
+  cap?: { inspektur: string; koordinat: boolean };
 };
 
 export type AreaPaket = { nama: string; polygon: GeometriArea | null; restricted: boolean };
@@ -216,7 +219,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     .orderBy(desc(inspections.inspectedAt))
     .limit(100);
 
-  const [pengaturan, dataGerbang] = await Promise.all([pengaturanGerbang(), dataArea()]);
+  const [pengaturan, dataGerbang, capKoordinat] = await Promise.all([pengaturanGerbang(), dataArea(), capKoordinatAktif()]);
   // Denah bersifat rahasia (ADR-10): perangkat hanya menerima poligon area aset unitnya sendiri
   // dan batas kawasan. Area lain hanya dinilai di peladen.
   const areaDipakai = new Set(aset.map((x) => x.areaId).filter((id): id is number => id !== null));
@@ -255,6 +258,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     sudahDiperiksa: sudah.map((s) => s.assetId),
     unit: unitSendiri?.nama ?? null,
     asetUnitLain,
+    cap: { inspektur: user.name, koordinat: capKoordinat },
     terkirim: milikSendiri.map((m) => ({ ...m, inspectedAt: m.inspectedAt!.toISOString() })),
   };
 }
