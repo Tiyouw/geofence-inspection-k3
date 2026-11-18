@@ -37,7 +37,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
 
   await masuk(page, "admin");
   await page.goto("/admin/lokasi");
-  await expect(page.getByRole("heading", { name: "Area dan poligon" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lokasi & area" })).toBeVisible();
   await expect(page.getByTestId("peta-area")).toBeVisible();
 
   await page.getByTestId("berkas-geojson").setInputFiles({
