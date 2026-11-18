@@ -12,7 +12,8 @@ import { gayaHalaman, Kop, Sel, TandaTangan, barisTabel, kepalaTabel, s, wadahTa
 
 const MM = 72 / 25.4;
 
-export type FotoLampiran = { data: Buffer; format: "jpg" | "png"; diunggah: Date };
+/** `cap`: baris cap foto (barisCap) yang ditumpuk di atas gambar; berkas JPEG tidak diubah. */
+export type FotoLampiran = { data: Buffer; format: "jpg" | "png"; diunggah: Date; cap?: string[] };
 
 const KOLOM = [
     ["No", "4%", true],
@@ -194,11 +195,32 @@ export function DokumenRekap({
                                     <View style={{ flexDirection: "row", gap: 8 }}>
                                         {daftar.map((f, i) => (
                                             <View key={i} style={{ width: "48%" }}>
-                                                {/* eslint-disable-next-line jsx-a11y/alt-text -- Image react-pdf tidak punya atribut alt */}
-                                                <Image
-                                                    src={{ data: f.data, format: f.format }}
-                                                    style={{ height: 150, objectFit: "contain", backgroundColor: "#f5f5f5" }}
-                                                />
+                                                <View style={{ position: "relative" }}>
+                                                    {/* eslint-disable-next-line jsx-a11y/alt-text -- Image react-pdf tidak punya atribut alt */}
+                                                    <Image
+                                                        src={{ data: f.data, format: f.format }}
+                                                        style={{ height: 150, objectFit: "contain", backgroundColor: "#f5f5f5" }}
+                                                    />
+                                                    {f.cap && (
+                                                        <View
+                                                            style={{
+                                                                position: "absolute",
+                                                                left: 0,
+                                                                right: 0,
+                                                                bottom: 0,
+                                                                backgroundColor: "rgba(0,0,0,0.62)",
+                                                                paddingHorizontal: 4,
+                                                                paddingVertical: 3,
+                                                            }}
+                                                        >
+                                                            {f.cap.map((b, n) => (
+                                                                <Text key={n} style={{ fontSize: 6, color: "#fff", fontWeight: n === 0 ? "bold" : "normal" }}>
+                                                                    {b}
+                                                                </Text>
+                                                            ))}
+                                                        </View>
+                                                    )}
+                                                </View>
                                                 <Text style={{ fontSize: 6.5, color: "#555", marginTop: 2 }}>
                                                     {`Diunggah ${waktuDmyHm(f.diunggah)} WIB`}
                                                 </Text>

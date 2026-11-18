@@ -4,7 +4,7 @@
  */
 import { pesanAsetUnitLain } from "@/lib/domain/akses";
 import { MAKS_FOTO } from "@/lib/domain/constants";
-import { langkahCadangan, MAKS_JEPRETAN_LANGKAH, periksaFotoLangkah, type LangkahFoto } from "@/lib/domain/langkah-foto";
+import { langkahCadangan, MAKS_JEPRETAN_LANGKAH, maksFotoInspeksi, periksaFotoLangkah, type LangkahFoto } from "@/lib/domain/langkah-foto";
 import { ambilToken, bangunTemuan, miripNomorAset, periksaKirim, usulanKesimpulan, type ButirChecklist } from "@/lib/domain/inspeksi";
 import type { KonteksP3k } from "@/lib/domain/modul/p3k";
 import { getMeta, setMeta, type DbAkun } from "./db";
@@ -299,7 +299,8 @@ export async function kirimInspeksi(
   const galat = periksaKirim(
     items,
     { jawaban, jumlahFoto: fotos.length, galatFoto, kesimpulan: d.kesimpulan, catatan: d.catatan, rekomendasi: d.rekomendasi, p3k },
-    MAKS_FOTO,
+    // Batas sama dengan peladen (inspeksi.ts): kamera terpandu boleh 5 jepretan per langkah.
+    Math.max(MAKS_FOTO, maksFotoInspeksi(opsi.langkah)),
   );
   if (galat.length) return { ok: false, galat };
 

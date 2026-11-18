@@ -47,7 +47,8 @@ async function tanpaKendaliTulis(page: Page) {
   await expect(page.locator('main form[method="post" i]')).toHaveCount(0);
   // Kendali zoom peta Leaflet (+/−) dan kontrol Pilihan filter (combobox) bukan kendali tulis.
   const tombol = await page
-    .locator("main button:not(.leaflet-control *):not([role=combobox]), main [role=button]:not(.leaflet-control *)")
+    // Tombol pembuka foto besar (data-lihat-foto) hanya menampilkan, bukan kendali tulis.
+    .locator("main button:not(.leaflet-control *):not([role=combobox]):not([data-lihat-foto]), main [role=button]:not(.leaflet-control *)")
     .allInnerTexts();
   expect(tombol.filter((t) => !/Tampilkan|Terapkan/.test(t))).toEqual([]);
 }

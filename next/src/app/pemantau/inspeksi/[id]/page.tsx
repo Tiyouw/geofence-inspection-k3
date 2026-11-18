@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { CapFoto } from "@/components/foto/cap-foto";
+import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { pengaturanGerbang } from "@/lib/geo/data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -35,7 +38,7 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
   await requireRole("admin", "pemantau");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const [d, perButir] = await Promise.all([detailInspeksi(id), fotoPerButir(id)]);
+  const [d, perButir, koordinatCap, gerbang] = await Promise.all([detailInspeksi(id), fotoPerButir(id), capKoordinatAktif(), pengaturanGerbang()]);
   if (!d || d.ins.status !== "final") notFound();
   const i = d.ins;
   const titik: TitikTampil[] = [];
@@ -152,9 +155,21 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-testid="galeri-foto">
             {d.foto.map((f, n) => (
               <li key={f.id} className="overflow-hidden rounded-lg border bg-card">
-                <a href={`/api/foto/${f.id}`} target="_blank" rel="noopener" aria-label={`Buka foto ${n + 1} ukuran penuh`}>
+                <a href={`/api/foto/${f.id}`} target="_blank" rel="noopener" aria-label={`Buka foto ${n + 1} ukuran penuh`} className="relative block">
                   {/* eslint-disable-next-line @next/next/no-img-element -- foto privat lewat rute bersesi, bukan aset statis */}
                   <img src={`/api/foto/${f.id}`} alt={`Foto bukti ${n + 1} inspeksi ${d.aset.kode}`} loading="lazy" className="aspect-[4/3] w-full bg-muted object-cover" />
+                  <CapFoto
+                    ringkas
+                    data={{
+                      waktu: f.takenAtDevice ?? f.uploadedAt,
+                      area: d.area?.nama ?? d.aset.gedung,
+                      kode: d.aset.kode,
+                      inspektur: d.petugas,
+                      akurasiM: f.gpsAccuracy,
+                      ambangLemahM: gerbang.akurasiLemahM,
+                      koordinat: koordinatCap && f.lat != null && f.lng != null ? { lat: f.lat, lng: f.lng } : null,
+                    }}
+                  />
                 </a>
                 <p className="px-2 py-1.5 text-xs text-muted-foreground">
                   {f.takenAtDevice ? `Diambil ${waktuDmyHm(f.takenAtDevice)}` : `Diunggah ${waktuDmyHm(f.uploadedAt)}`} WIB

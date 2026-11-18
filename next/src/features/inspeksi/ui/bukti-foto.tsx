@@ -60,7 +60,7 @@ export function BuktiFoto({
 
   if (areaTerbatas) {
     return (
-      <section className="space-y-2 rounded-2xl bg-muted p-4" aria-label="Foto bukti" data-testid="area-terbatas">
+      <section className="space-y-2 rounded-[var(--a-radius-kartu,16px)] bg-info-soft p-4" aria-label="Foto bukti" data-testid="area-terbatas">
         <p className="flex items-center gap-2 font-semibold">
           <ShieldOff className="size-4" aria-hidden /> Area terbatas (tanpa foto)
         </p>
@@ -90,7 +90,7 @@ export function BuktiFoto({
   return (
     <section className="space-y-3" aria-label="Foto bukti">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Foto bukti</h2>
+        <h2 className="text-[13px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">Foto bukti</h2>
         <p className="text-xs text-muted-foreground" data-testid="progres-foto">
           {lengkap}/{langkah.length} langkah
         </p>
@@ -99,7 +99,7 @@ export function BuktiFoto({
       {bisaUbah && (
         <Button
           size="lg"
-          className="h-14 w-full text-base"
+          className="h-14 w-full rounded-[var(--a-radius-kontrol,10px)] text-base font-bold"
           data-testid="buka-kamera"
           onClick={() => setKamera(adaSesi || lengkap < langkah.length ? pertamaKosong : 0)}
         >
@@ -112,7 +112,7 @@ export function BuktiFoto({
         {langkah.map((l, i) => {
           const f = perLangkah(l.kode);
           return (
-            <li key={l.kode} className="rounded-xl border bg-card p-3" data-testid={`langkah-${l.kode}`}>
+            <li key={l.kode} className="rounded-[var(--a-radius-kartu,16px)] border border-border/80 bg-card p-3.5" data-testid={`langkah-${l.kode}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">
@@ -147,7 +147,7 @@ export function BuktiFoto({
       </ol>
 
       {tanpaLangkah.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-dashed p-3">
+        <div className="space-y-2 rounded-[var(--a-radius-kartu,16px)] border border-dashed p-3">
           <p className="text-sm font-medium">Foto tanpa langkah</p>
           <p className="text-xs text-muted-foreground">Diambil sebelum kamera terpandu. Hapus, lalu ambil ulang per langkah.</p>
           <div className="flex gap-2 overflow-x-auto">

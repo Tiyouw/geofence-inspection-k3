@@ -1,21 +1,9 @@
 import { ShieldOff } from "lucide-react";
 import type { ButirDenganFoto, FotoBukti } from "../server/foto-butir";
-import { formatWaktu } from "@/lib/format";
+import { MiniaturBukti } from "./miniatur-bukti";
 
 function Miniatur({ f, alt }: { f: FotoBukti; alt: string }) {
-  const waktu = formatWaktu(f.takenAtDevice ?? f.uploadedAt);
-  return (
-    <a
-      href={`/api/foto/${f.id}`}
-      target="_blank"
-      rel="noopener"
-      className="block size-16 shrink-0 overflow-hidden rounded-md border bg-muted transition-opacity hover:opacity-90"
-      title={`${f.langkah ?? "Foto"} · ${waktu}${f.gpsAccuracy != null ? ` · GPS ±${f.gpsAccuracy} m` : ""}`}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- foto privat lewat rute bersesi */}
-      <img src={`/api/foto/${f.id}`} alt={alt} loading="lazy" className="size-full object-cover" />
-    </a>
-  );
+  return <MiniaturBukti id={f.id} alt={alt} cap={f.cap} judul={f.langkah ?? "Foto bukti"} />;
 }
 
 /**

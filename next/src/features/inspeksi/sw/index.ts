@@ -2,7 +2,7 @@
 /**
  * Service worker PAL-K3, dibundel ke public/sw.js oleh scripts/build-sw.mjs (jangan sunting public/sw.js).
  *
- * - Halaman lapangan (/petugas, /petugas/pindai, /petugas/isi, /petugas/riwayat): jaringan dulu
+ * - Halaman lapangan (/petugas, /pindai, /isi, /riwayat, /antrean, /profil): jaringan dulu
  *   dengan batas 4 detik, jatuh ke salinan terakhir saat luring/sinyal lemah. Query diabaikan
  *   sehingga /petugas/isi?id=… memakai cangkang yang sama.
  * - /i/{token} saat luring: dialihkan ke pemindai lokal /petugas/pindai?token=… (SPEC §7.3 butir 2).
@@ -21,7 +21,7 @@ const PRECACHE = `pal-k3-precache-${VERSION}`;
 const STATIC = "pal-k3-static";
 const HALAMAN = "pal-k3-halaman";
 const PRECACHE_URLS = ["/offline", "/icons/icon-192.png", "/icons/icon.svg"];
-const HALAMAN_LAPANGAN = ["/petugas", "/petugas/pindai", "/petugas/isi", "/petugas/riwayat"];
+const HALAMAN_LAPANGAN = ["/petugas", "/petugas/pindai", "/petugas/isi", "/petugas/riwayat", "/petugas/antrean", "/petugas/profil"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(PRECACHE).then((c) => c.addAll(PRECACHE_URLS)).then(() => self.skipWaiting()));

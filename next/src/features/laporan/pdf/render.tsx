@@ -1,4 +1,7 @@
 import "server-only";
+import { barisCap } from "@/lib/foto/cap";
+import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { pengaturanGerbang } from "@/lib/geo/data";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { bacaFoto } from "@/lib/storage/photos";
 import { ambilKartu, fotoUntukTemuan, type DataPeriodeLengkap } from "../queries";
@@ -29,7 +32,7 @@ export async function renderRekap(isi: IsiRekap, dicetak: Date, denganFoto: bool
   let foto: Map<number, FotoLampiran[]> | null = null;
   if (denganFoto && baris.length) {
     foto = new Map();
-    const sumber = await fotoUntukTemuan(baris.map((b) => b.temuan.id));
+    const [sumber, koordinat, gerbang] = await Promise.all([fotoUntukTemuan(baris.map((b) => b.temuan.id)), capKoordinatAktif(), pengaturanGerbang()]);
     let sisa = MAKS_FOTO_LAMPIRAN;
     for (const b of baris) {
       for (const f of sumber.get(b.temuan.id) ?? []) {
@@ -39,7 +42,20 @@ export async function renderRekap(isi: IsiRekap, dicetak: Date, denganFoto: bool
         const berkas = await bacaFoto(f.storageKey);
         if (!berkas) continue;
         const list = foto.get(b.temuan.id) ?? [];
-        list.push({ data: await keBuffer(berkas.stream), format, diunggah: f.uploadedAt });
+        list.push({
+          data: await keBuffer(berkas.stream),
+          format,
+          diunggah: f.uploadedAt,
+          cap: barisCap({
+            waktu: f.takenAtDevice ?? f.uploadedAt,
+            area: f.area ?? f.gedung,
+            kode: f.kode,
+            inspektur: f.inspektur,
+            akurasiM: f.gpsAccuracy,
+            ambangLemahM: gerbang.akurasiLemahM,
+            koordinat: koordinat && f.lat != null && f.lng != null ? { lat: f.lat, lng: f.lng } : null,
+          }),
+        });
         foto.set(b.temuan.id, list);
         sisa--;
       }

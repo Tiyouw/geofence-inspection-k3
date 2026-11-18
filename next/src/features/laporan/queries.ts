@@ -163,7 +163,21 @@ export type DataPeriodeLengkap = NonNullable<Awaited<ReturnType<typeof ambilData
  * Diambil dari inspeksi yang melahirkan tiap temuan; paling banyak `perTemuan` foto per temuan.
  */
 export async function fotoUntukTemuan(idTemuan: number[], perTemuan = 2) {
-  if (!idTemuan.length) return new Map<number, { id: string; storageKey: string; contentType: string; uploadedAt: Date }[]>();
+  type Baris = {
+    id: string;
+    storageKey: string;
+    contentType: string;
+    uploadedAt: Date;
+    takenAtDevice: Date | null;
+    gpsAccuracy: number | null;
+    lat: number | null;
+    lng: number | null;
+    kode: string;
+    gedung: string | null;
+    area: string | null;
+    inspektur: string;
+  };
+  if (!idTemuan.length) return new Map<number, Baris[]>();
   const rows = await db
     .select({
       issueId: issues.id,
@@ -171,9 +185,22 @@ export async function fotoUntukTemuan(idTemuan: number[], perTemuan = 2) {
       storageKey: inspectionPhotos.storageKey,
       contentType: inspectionPhotos.contentType,
       uploadedAt: inspectionPhotos.uploadedAt,
+      // Bahan cap foto (lapisan di PDF; JPEG tidak diubah).
+      takenAtDevice: inspectionPhotos.takenAtDevice,
+      gpsAccuracy: inspectionPhotos.gpsAccuracy,
+      lat: inspectionPhotos.lat,
+      lng: inspectionPhotos.lng,
+      kode: assets.kode,
+      gedung: assets.gedung,
+      area: areas.nama,
+      inspektur: users.name,
     })
     .from(issues)
     .innerJoin(inspectionPhotos, eq(inspectionPhotos.inspectionId, issues.inspectionId))
+    .innerJoin(inspections, eq(inspections.id, issues.inspectionId))
+    .innerJoin(assets, eq(assets.id, inspections.assetId))
+    .innerJoin(users, eq(users.id, inspections.userId))
+    .leftJoin(areas, eq(areas.id, assets.areaId))
     .where(inArray(issues.id, idTemuan))
     .orderBy(asc(inspectionPhotos.uploadedAt));
   const out = new Map<number, (typeof rows)[number][]>();
@@ -359,7 +386,7 @@ export async function detailInspeksi(id: string) {
     .where(eq(inspectionAnswers.inspectionId, id))
     .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut));
   const foto = await db
-    .select({ id: inspectionPhotos.id, uploadedAt: inspectionPhotos.uploadedAt, takenAtDevice: inspectionPhotos.takenAtDevice, width: inspectionPhotos.width, height: inspectionPhotos.height })
+    .select({ id: inspectionPhotos.id, uploadedAt: inspectionPhotos.uploadedAt, takenAtDevice: inspectionPhotos.takenAtDevice, width: inspectionPhotos.width, height: inspectionPhotos.height, gpsAccuracy: inspectionPhotos.gpsAccuracy, lat: inspectionPhotos.lat, lng: inspectionPhotos.lng })
     .from(inspectionPhotos)
     .where(eq(inspectionPhotos.inspectionId, id))
     .orderBy(asc(inspectionPhotos.uploadedAt));

@@ -138,6 +138,16 @@ describe("isian di perangkat", () => {
     expect(d.gps?.accuracy).toBe(30);
   });
 
+  it("batas foto sama dengan peladen: 5 jepretan per langkah lolos pemeriksaan lokal (PWA-PLAN)", async () => {
+    const id = await drafLengkap();
+    // drafLengkap sudah 2 foto; tambah sampai 9 (2 langkah x 5 = 10 > batas lama 6).
+    for (let n = 0; n < 4; n++) await jepret(id, "tabung");
+    for (let n = 0; n < 3; n++) await jepret(id, "manometer");
+    await simpanSemuaFoto(db, id);
+    expect((await db.getAllFromIndex("photos", "byInspection", id)).length).toBe(9);
+    expect((await kirimInspeksi(db, id, items, bukti())).ok).toBe(true);
+  });
+
   it("kirim menjalankan pemeriksaan lokal dulu", async () => {
     const r = await mulaiDariTeks(db, TOKEN, { daring: false });
     if (!r.ok) throw new Error();

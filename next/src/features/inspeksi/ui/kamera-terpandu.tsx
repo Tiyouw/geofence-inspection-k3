@@ -3,6 +3,7 @@
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Camera, CameraOff, Check, ChevronLeft, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { PesanMuncul } from "@/components/ui/pesan-muncul";
 import { MAKS_JEPRETAN_LANGKAH, type LangkahFoto } from "@/lib/domain/langkah-foto";
@@ -12,6 +13,8 @@ import { uuidv7 } from "../client/ids";
 import { kompresBingkai } from "../client/kompres";
 import { bukaKamera } from "../client/qr";
 import type { FotoLokal, GpsBacaan } from "../client/types";
+import { CapFoto } from "@/components/foto/cap-foto";
+import type { DataCap } from "@/lib/foto/cap";
 import { useInspektur } from "./konteks";
 
 type FotoTampil = FotoLokal & { url: string };
@@ -63,7 +66,7 @@ export function KameraTerpandu({
   gpsDraf: GpsBacaan | null;
   onTutup: (disimpan: boolean) => void;
 }) {
-  const { db, berubah } = useInspektur();
+  const { db, berubah, data } = useInspektur();
   const [versi, setVersi] = useState(0);
   const fotos = useFotoDraf(inspectionId, versi);
   const [mode, setMode] = useState<"kamera" | "tinjau">("kamera");
@@ -136,12 +139,29 @@ export function KameraTerpandu({
     segarkan();
   };
 
-  return (
+  const capDari = (f: FotoTampil): DataCap => {
+    const paket = data.paket;
+    const aset = paket?.aset.find((a) => a.id === data.drafts.find((d) => d.inspectionId === inspectionId)?.assetId);
+    const area = aset?.areaId != null ? (paket?.gerbang?.area[aset.areaId]?.nama ?? null) : null;
+    return {
+      waktu: f.takenAtDevice,
+      area: area ?? aset?.gedung ?? null,
+      kode: aset?.kode ?? "",
+      inspektur: paket?.cap?.inspektur ?? null,
+      akurasiM: f.akurasi ?? null,
+      ambangLemahM: paket?.gerbang?.pengaturan.akurasiLemahM,
+      koordinat: paket?.cap?.koordinat && f.lat != null && f.lng != null ? { lat: f.lat, lng: f.lng } : null,
+    };
+  };
+
+  // Portal ke body: leluhur beranimasi (#isi) membuat position:fixed terkurung di kolom isi.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Kamera terpandu"
       data-testid="kamera-terpandu"
+      data-peran="inspektur"
       className="fixed inset-0 z-50 flex animate-muncul flex-col bg-black text-white"
     >
       {mode === "kamera" ? (
@@ -209,8 +229,11 @@ export function KameraTerpandu({
 
       {lihat && (
         <div className="absolute inset-0 z-20 flex animate-muncul flex-col bg-black/95" data-testid="pratinjau-foto">
-          {/* eslint-disable-next-line @next/next/no-img-element -- blob lokal */}
-          <img src={lihat.url} alt="Pratinjau foto" className="min-h-0 flex-1 object-contain" />
+          <div className="relative min-h-0 flex-1">
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob lokal */}
+            <img src={lihat.url} alt="Pratinjau foto" className="absolute inset-0 size-full object-contain" />
+            <CapFoto data={capDari(lihat)} />
+          </div>
           <div className="grid grid-cols-2 gap-3 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Button variant="outline" className="h-14 border-white/30 bg-transparent text-base text-white" onClick={() => setLihat(null)}>
               Kembali
@@ -222,7 +245,8 @@ export function KameraTerpandu({
         </div>
       )}
       {dialogKonfirmasi}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

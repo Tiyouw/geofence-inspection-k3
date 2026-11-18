@@ -4,7 +4,7 @@ import { masuk } from "../helpers";
 test("inspektur masuk ke beranda petugas di ponsel", async ({ page }) => {
   await masuk(page, "inspektur");
   await expect(page).toHaveURL(/\/petugas$/);
-  await expect(page.getByRole("link", { name: /Pindai QR APAR/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Pindai stiker/ })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Menu petugas" })).toBeVisible();
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/petugas$/);
