@@ -7,6 +7,9 @@
  * sudah ada tidak ditimpa, kecuali akun demo (supaya sandi demo selalu sesuai env).
  *
  *   pnpm db:seed
+ *
+ * Data demo v2 yang lengkap (area poligon, semua modul, setiap hasil gerbang, tinjauan) ada di
+ * lapisan terpisah bertanda DEMO-: `pnpm db:demo` / `pnpm db:demo:reset` (demo-cli.ts).
  */
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"], quiet: true });
@@ -445,11 +448,12 @@ async function areaDariGedung(tx: Tx) {
     .where(and(isNull(s.assets.areaId), isNotNull(s.assets.gedung)));
   for (const { gedung: nama } of gedung) {
     const kode = kodeArea(nama!);
-    const [area] = await tx
+    // Area yang sudah ada (mis. hasil impor denah pemilik dengan kode sama) tidak pernah diubah.
+    await tx
       .insert(s.areas)
       .values({ kode, nama: nama!, jenis: tebakLokasiTipe(nama!) === "bengkel" ? "bengkel" : "gedung", parentId: kawasan!.id })
-      .onConflictDoUpdate({ target: s.areas.kode, set: { nama: nama! } })
-      .returning();
+      .onConflictDoNothing({ target: s.areas.kode });
+    const [area] = await tx.select().from(s.areas).where(eq(s.areas.kode, kode));
     await tx
       .update(s.assets)
       .set({ areaId: area!.id })
@@ -507,6 +511,16 @@ export async function seedLangkahFoto(tx: Tx, assetTypeId: number, def: Definisi
  */
 async function poligonContoh(tx: Tx) {
   if (process.env.DEMO_MODE !== "true") return;
+  // Basis data yang sudah punya poligon disetujui (mis. denah asli pemilik) tidak diberi kotak sintetis.
+  const [ada] = await tx
+    .select({ id: s.areas.id })
+    .from(s.areas)
+    .where(and(isNotNull(s.areas.polygon), sql`${s.areas.kode} not like 'DEMO-%'`))
+    .limit(1);
+  if (ada) {
+    console.log("Poligon contoh dilewati: sudah ada poligon disetujui.");
+    return;
+  }
   const M = 111_195;
   const kotak = (titik: { lat: number; lng: number }[], margin: number): s.GeoJsonPolygon => {
     const lat0 = Math.min(...titik.map((t) => t.lat));
