@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Info, Printer, ScanLine } from "lucide-react";
+import { IlustrasiModul, modulDari } from "@/components/ilustrasi/modul";
 import { PageHeader } from "@/components/shell/app-shell";
 import { IkonModul } from "@/features/admin/components/ikon-modul";
 import { SaringStiker } from "@/features/admin/components/saring-stiker";
@@ -52,63 +53,71 @@ export default async function LembarStiker({ searchParams }: PageProps<"/stiker"
         .map((t) => ({ ...t, n: aset.filter((a) => a.slug === t.slug).length }))
         .filter((t) => t.n > 0);
 
+    const ringkasan = (
+        <div className="rounded-kartu border bg-card p-4 sm:p-5" aria-live="polite" data-testid="ringkasan-stiker">
+            <h2 className="sr-only">Ringkasan</h2>
+            <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
+                <span>
+                    <strong className="text-3xl font-bold text-foreground tabular-nums">{formatAngka(aset.length)}</strong> stiker
+                </span>
+                <span aria-hidden>·</span>
+                <span>
+                    <strong className="text-lg font-bold text-foreground tabular-nums">{formatAngka(lembar.length)}</strong> lembar A4
+                </span>
+            </p>
+            {perJenis.length > 0 && (
+                <ul className="mt-3 grid grid-cols-2 gap-2" aria-label="Jumlah per jenis objek">
+                    {perJenis.map((t) => (
+                        <li key={t.slug} className="flex items-center gap-2 rounded-kontrol bg-peran-permukaan-2 p-1.5 pr-2 text-xs">
+                            <IlustrasiModul modul={modulDari(t.slug)} ukuran={28} />
+                            <span className="min-w-0 flex-1 truncate">{t.nama}</span>
+                            <span className="font-bold text-foreground tabular-nums">{t.n}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+
     return (
         <>
             <style>{cssStiker(kodeTata)}</style>
             <div className="stiker-layar">
                 <PageHeader
-                    title="Lembar stiker QR"
-                    description="Pilih aset, periksa pratinjau, lalu cetak di kertas label A4."
+                    title="Stiker QR"
+                    description="Pilih aset dan ukuran label, periksa pratinjau, lalu cetak di kertas label A4."
                     actions={<TombolCetak />}
                 />
-                <SaringStiker
-                    key={JSON.stringify([kodeTata, filter])}
-                    tata={kodeTata}
-                    nilai={filter}
-                    pilihan={{ tata: PILIHAN_TATA, ...pilihan }}
-                />
-                <div
-                    className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"
-                    aria-live="polite"
-                    data-testid="ringkasan-stiker"
-                >
-                    <p>
-                        <strong className="font-semibold tabular-nums">{formatAngka(aset.length)}</strong> stiker
-                        <span className="text-muted-foreground"> · </span>
-                        <strong className="font-semibold tabular-nums">{formatAngka(lembar.length)}</strong> lembar A4
-                    </p>
-                    {perJenis.length > 0 && (
-                        <ul className="flex flex-wrap gap-1.5" aria-label="Jumlah per jenis objek">
-                            {perJenis.map((t) => (
-                                <li
-                                    key={t.slug}
-                                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                                >
-                                    <IkonModul slug={t.slug} className="size-3.5" />
-                                    {t.nama}
-                                    <span className="font-semibold text-foreground tabular-nums">{t.n}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
             </div>
+            <SaringStiker
+                key={JSON.stringify([kodeTata, filter])}
+                tata={kodeTata}
+                nilai={filter}
+                pilihan={{ tata: PILIHAN_TATA, ...pilihan }}
+                ringkasan={ringkasan}
+            />
 
             {lembar.length === 0 ? (
                 <div className="stiker-layar">
-                    <Kosong>Tidak ada aset yang cocok dengan saringan. Longgarkan saringan di atas.</Kosong>
+                    <Kosong ilustrasi={<IlustrasiModul modul="apar" ukuran={88} />}>
+                        Tidak ada aset yang cocok dengan saringan. Longgarkan saringan di atas.
+                    </Kosong>
                 </div>
             ) : (
                 <section
                     aria-label="Pratinjau cetak"
-                    className="stiker-pratinjau overflow-x-auto rounded-xl border bg-muted/60 p-3 sm:p-6"
+                    className="stiker-pratinjau overflow-x-auto rounded-kartu border bg-peran-sorot p-3 sm:p-6"
                 >
-                    <div className="stiker-layar mb-4 flex flex-wrap items-start gap-x-6 gap-y-2 text-xs text-muted-foreground">
-                        <p className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                            <Printer className="size-3.5" aria-hidden /> Pratinjau cetak · A4 potret · {tata.nama}
-                        </p>
-                        <p className="inline-flex max-w-[70ch] items-start gap-1.5">
-                            <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+                    <div className="stiker-layar mb-4 flex flex-wrap items-start gap-x-6 gap-y-3 text-sm text-muted-foreground">
+                        <h2 className="inline-flex items-center gap-2 text-base font-bold text-foreground">
+                            <span className="grid size-6 place-items-center rounded-full bg-primary text-xs text-primary-foreground" aria-hidden>
+                                3
+                            </span>
+                            <Printer className="size-4" aria-hidden /> Pratinjau cetak
+                            <span className="text-sm font-normal text-muted-foreground">A4 potret · {tata.nama}</span>
+                        </h2>
+                        <p className="inline-flex max-w-[75ch] items-start gap-2 rounded-kontrol bg-info-soft p-3 text-foreground/85">
+                            <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
                             <span>
                                 Pada dialog cetak pilih Ukuran asli (100%) agar label tidak bergeser. Tempel stiker di
                                 dinding tepat di atas dudukan objek, bukan pada badan tabung: tabung bisa dipindah
