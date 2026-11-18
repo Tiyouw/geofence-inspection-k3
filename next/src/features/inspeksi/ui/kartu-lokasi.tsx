@@ -8,12 +8,11 @@
  * - Pratinjau gerbang memakai fungsi yang sama dengan peladen (`nilaiGerbang`); keputusan
  *   resmi tetap di peladen.
  */
-import { Crosshair, LocateOff, SignalLow } from "lucide-react";
+import { CircleCheck, Crosshair, LocateOff, MapPin, MapPinX, SignalLow, Truck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { formatWaktu } from "@/lib/format";
-import { labelAkurasi } from "@/lib/geo/akurasi";
+import { labelAkurasi, labelJarak } from "@/lib/geo/akurasi";
 import {
   LANGKAH_LOKASI_ANDROID,
   nilaiGerbang,
@@ -127,6 +126,29 @@ function pesanPratinjau(g: HasilGerbang, aset: AsetPaket, paket: PaketKerja): st
   return "";
 }
 
+type Vonis = { nada: "ok" | "warn" | "bad" | "mut"; Ikon: typeof Crosshair; judul: string };
+
+function vonis(g: HasilGerbang, aset: AsetPaket, terblokir: boolean, adaGps: boolean): Vonis {
+  if (aset.bergerak) return { nada: "mut", Ikon: Truck, judul: "Objek bergerak" };
+  if (terblokir) return { nada: "bad", Ikon: LocateOff, judul: "Lokasi mati" };
+  if (!adaGps) return { nada: "mut", Ikon: Crosshair, judul: "Mencari posisi" };
+  if (g.hasil === "ditolak") return { nada: "bad", Ikon: MapPinX, judul: "Di luar galangan" };
+  if (g.status === "sesuai") return { nada: "ok", Ikon: CircleCheck, judul: "Lokasi sesuai" };
+  if (g.alasan === "gps_lemah") return { nada: "warn", Ikon: SignalLow, judul: "Perlu tinjauan: GPS lemah" };
+  return { nada: "warn", Ikon: MapPin, judul: "Perlu tinjauan: di luar gedung" };
+}
+
+const WARNA_VONIS: Record<Vonis["nada"], string> = {
+  ok: "bg-success-soft text-success",
+  warn: "bg-warning-soft text-warning",
+  bad: "bg-danger-soft text-danger",
+  mut: "bg-muted text-muted-foreground",
+};
+
+/**
+ * Hasil gerbang lokasi di formulir (arah A): ikon dan judul keputusan, pesan yang sama dengan
+ * peladen, akurasi dan jarak, lalu aksi Coba lagi / Ambil ulang posisi.
+ */
 export function KartuLokasi({
   aset,
   paket,
@@ -145,75 +167,99 @@ export function KartuLokasi({
   const g = keadaan.gerbang;
   const terblokir = !keadaan.bolehKirim && (status === "ditolak" || status === "gagal" || status === "tidak_didukung");
   const terbatas = !!aset.areaTerbatas;
+  const v = vonis(g, aset, terblokir, !!draf.gps);
+  const namaArea = aset.areaId != null ? (paket.gerbang?.area[aset.areaId]?.nama ?? null) : null;
 
   return (
-    <Card className={cn("gap-0 py-0 transition-colors duration-300", terblokir && "border-danger/40")} data-testid="kartu-lokasi">
-      <CardContent className="space-y-2 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Lokasi</p>
-          {aset.bergerak ? (
-            <LencanaGerbang status="tidak_berlaku" />
-          ) : g.hasil === "ditolak" ? (
-            <span className="inline-flex items-center rounded-md bg-danger-soft px-2 py-0.5 text-[11px] font-medium text-danger">Di luar galangan</span>
-          ) : (
-            g.status && <LencanaGerbang status={g.status} />
+    <section
+      aria-label="Lokasi"
+      className={cn(
+        "space-y-3 rounded-[var(--a-radius-kartu,16px)] border bg-card p-4 transition-colors duration-300",
+        v.nada === "bad" ? "border-danger/40" : "border-border/80",
+      )}
+      data-testid="kartu-lokasi"
+    >
+      <div className="flex items-start gap-3">
+        <span className={cn("grid size-11 shrink-0 place-items-center rounded-[var(--a-radius-kontrol,10px)]", WARNA_VONIS[v.nada])}>
+          <v.Ikon className="size-6" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+            <p className="text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase">Lokasi</p>
+            {aset.bergerak ? <LencanaGerbang status="tidak_berlaku" /> : g.status && !terblokir && draf.gps ? <LencanaGerbang status={g.status} /> : null}
+          </div>
+          <p className="text-lg leading-snug font-bold">{v.judul}</p>
+        </div>
+      </div>
+
+      {aset.bergerak ? (
+        <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
+          Objek bergerak: lokasi tidak diperiksa. Posisi tetap direkam sebagai informasi.
+        </p>
+      ) : terblokir ? (
+        <div className="space-y-3" role="alert" data-testid="lokasi-mati">
+          <p className="text-sm font-medium text-danger" data-testid="pesan-gps">
+            {status === "tidak_didukung" ? "Perangkat ini tidak mendukung lokasi. Inspeksi tidak dapat dikirim dari perangkat ini." : PESAN_LOKASI_MATI}
+          </p>
+          {status !== "tidak_didukung" && (
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+              {LANGKAH_LOKASI_ANDROID.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ol>
           )}
         </div>
+      ) : !draf.gps ? (
+        <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
+          Mencari posisi…
+        </p>
+      ) : (
+        <p className={cn("text-sm", g.hasil === "ditolak" ? "text-danger" : "text-foreground/85")} data-testid="pesan-gps">
+          {pesanPratinjau(g, aset, paket)}
+        </p>
+      )}
 
-        {aset.bergerak ? (
-          <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
-            Objek bergerak: lokasi tidak diperiksa. Posisi tetap direkam sebagai informasi.
-          </p>
-        ) : terblokir ? (
-          <div className="space-y-3" role="alert" data-testid="lokasi-mati">
-            <p className="flex gap-2 text-sm font-medium text-danger" data-testid="pesan-gps">
-              <LocateOff className="mt-0.5 size-4 shrink-0" aria-hidden />
-              {status === "tidak_didukung" ? "Perangkat ini tidak mendukung lokasi. Inspeksi tidak dapat dikirim dari perangkat ini." : PESAN_LOKASI_MATI}
-            </p>
-            {status !== "tidak_didukung" && (
-              <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-                {LANGKAH_LOKASI_ANDROID.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-              </ol>
-            )}
-          </div>
-        ) : !draf.gps ? (
-          <p className="text-sm text-muted-foreground" data-testid="pesan-gps">
-            Mencari posisi…
-          </p>
-        ) : (
-          <p
-            className={cn("flex gap-2 text-sm", g.hasil === "ditolak" ? "text-danger" : "text-muted-foreground")}
-            data-testid="pesan-gps"
-          >
-            {keadaan.lemah && <SignalLow className="mt-0.5 size-4 shrink-0" aria-hidden />}
-            {pesanPratinjau(g, aset, paket)}
-          </p>
-        )}
+      {terbatas && !aset.bergerak && (
+        <p className="rounded-[var(--a-radius-kontrol,10px)] bg-info-soft px-3 py-2 text-sm text-info">Area terbatas: inspeksi ini akan ditinjau.</p>
+      )}
 
-        {terbatas && !aset.bergerak && (
-          <p className="text-xs text-muted-foreground">Area terbatas: inspeksi ini akan ditinjau.</p>
-        )}
+      {draf.gps && !aset.bergerak && (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {namaArea && (
+            <>
+              <dt className="text-muted-foreground">Area aset</dt>
+              <dd className="font-medium">{namaArea}</dd>
+            </>
+          )}
+          <dt className="text-muted-foreground">Akurasi</dt>
+          <dd className="font-medium tabular-nums">
+            {labelAkurasi(draf.gps.accuracy)} · {formatWaktu(draf.gps.capturedAt)}
+          </dd>
+          {g.jarakKeAreaM !== null && g.jarakKeAreaM > 0 && (
+            <>
+              <dt className="text-muted-foreground">Jarak ke area</dt>
+              <dd className="font-medium tabular-nums">{labelJarak(g.jarakKeAreaM)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+      {draf.gps && aset.bergerak && (
+        <p className="text-xs text-muted-foreground">
+          Akurasi {labelAkurasi(draf.gps.accuracy)} · {formatWaktu(draf.gps.capturedAt)}
+        </p>
+      )}
 
-        {draf.gps && (
-          <p className="text-xs text-muted-foreground">
-            Akurasi {labelAkurasi(draf.gps.accuracy)} · {formatWaktu(draf.gps.capturedAt)}
-          </p>
-        )}
-
-        {bisaUbah && (status !== "tidak_didukung" || aset.bergerak) && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={keadaan.ambilUlang}
-            disabled={status === "mencari" && !draf.gps}
-            data-testid="coba-lagi-lokasi"
-          >
-            <Crosshair className="size-3.5" aria-hidden /> {terblokir ? "Coba lagi" : "Ambil ulang posisi"}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+      {bisaUbah && (status !== "tidak_didukung" || aset.bergerak) && (
+        <Button
+          variant={terblokir ? "brand" : "outline"}
+          className={cn("h-11", terblokir && "w-full")}
+          onClick={keadaan.ambilUlang}
+          disabled={status === "mencari" && !draf.gps}
+          data-testid="coba-lagi-lokasi"
+        >
+          <Crosshair className="size-4" aria-hidden /> {terblokir ? "Coba lagi" : "Ambil ulang posisi"}
+        </Button>
+      )}
+    </section>
   );
 }
