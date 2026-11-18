@@ -8,7 +8,7 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
 
     test("setiap daftar dan formulir buat merender", async ({ page }) => {
         for (const [url, judul] of [
-            ["/admin/aset", "Aset & APAR"],
+            ["/admin/aset", "Aset"],
             ["/admin/aset/baru", "Tambah aset"],
             ["/admin/tinjauan?tab=semua", "Tinjauan inspeksi"],
             ["/admin/temuan", "Temuan"],

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Plus, SlidersHorizontal } from "lucide-react";
+import { Check, Plus, QrCode, SlidersHorizontal } from "lucide-react";
+import { IlustrasiModul, modulDari } from "@/components/ilustrasi/modul";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,9 @@ import { AREA_BELUM, PER_HALAMAN_ASET, daftarAset, hitungBelumLengkap, parseFilt
 import { requireRole } from "@/lib/auth/guards";
 import { labelLantai } from "@/lib/domain/asset";
 import { formatTanggal } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Aset & APAR" };
+export const metadata: Metadata = { title: "Aset" };
 
 export default async function DaftarAset({ searchParams }: PageProps<"/admin/aset">) {
     await requireRole("admin");
@@ -41,18 +43,42 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
     return (
         <>
             <PageHeader
-                title="Aset & APAR"
-                description="Data induk sarana K3: identitas, penempatan, titik koordinat, dan radius gerbang GPS."
+                title="Aset"
+                description="Semua peralatan K3 yang diperiksa: di mana letaknya, kapan terakhir dicek. Klik nomor aset untuk rinciannya."
                 actions={
-                    <Button asChild variant="brand">
-                        <Link href="/admin/aset/baru">
-                            <Plus aria-hidden /> Tambah aset
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <Link href="/stiker">
+                                <QrCode aria-hidden /> Cetak stiker
+                            </Link>
+                        </Button>
+                        <Button asChild>
+                            <Link href="/admin/aset/baru">
+                                <Plus aria-hidden /> Tambah aset
+                            </Link>
+                        </Button>
+                    </div>
                 }
             />
 
-            <form method="get" className="mb-4 rounded-xl border bg-card p-4" role="search" aria-labelledby="judul-filter-aset">
+            <nav aria-label="Jenis peralatan" className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+                {[{ slug: "", nama: "Semua" }, ...pilihan.tipe].map((t) => (
+                    <Link
+                        key={t.slug || "semua"}
+                        href={`/admin/aset${qs({ ...param, tipe: t.slug || undefined })}`}
+                        aria-current={(f.tipe ?? "") === t.slug ? "page" : undefined}
+                        className={cn(
+                            "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border bg-card pr-4 text-sm font-semibold transition-colors hover:border-ring aria-[current=page]:border-foreground aria-[current=page]:bg-foreground aria-[current=page]:text-background",
+                            t.slug ? "pl-1.5" : "pl-4",
+                        )}
+                    >
+                        {t.slug && <IlustrasiModul modul={modulDari(t.slug)} ukuran={32} />}
+                        {t.nama}
+                    </Link>
+                ))}
+            </nav>
+
+            <form method="get" className="mb-4 rounded-kartu border bg-card p-4" role="search" aria-labelledby="judul-filter-aset">
                 <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                     <h2 id="judul-filter-aset" className="flex items-center gap-2 text-sm font-semibold">
                         <SlidersHorizontal className="size-4 text-muted-foreground" aria-hidden /> Filter
@@ -62,21 +88,11 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                     </p>
                 </div>
                 {f.gedung && <input type="hidden" name="gedung" value={f.gedung} />}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+                {f.tipe && <input type="hidden" name="tipe" value={f.tipe} />}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                    <label className="col-span-2 flex flex-col gap-1 text-xs font-medium">
                         Cari
                         <Input name="q" defaultValue={f.q} placeholder="Nomor, gedung, atau lokasi" />
-                    </label>
-                    <label className="flex flex-col gap-1 text-xs font-medium">
-                        Tipe objek
-                        <Pilihan name="tipe" defaultValue={f.tipe ?? ""}>
-                            <option value="">Semua tipe</option>
-                            {pilihan.tipe.map((t) => (
-                                <option key={t.id} value={t.slug}>
-                                    {t.nama}
-                                </option>
-                            ))}
-                        </Pilihan>
                     </label>
                     <label className="flex flex-col gap-1 text-xs font-medium">
                         Area
@@ -114,7 +130,7 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                             <option value="1">Jatuh tempo inspeksi</option>
                         </Pilihan>
                     </label>
-                    <div className="flex items-end justify-end gap-2 sm:col-span-2 lg:col-span-5">
+                    <div className="col-span-2 flex items-end justify-end gap-2 lg:col-span-6">
                         <Button asChild variant="ghost">
                             <Link href="/admin/aset">Hapus filter</Link>
                         </Button>
@@ -133,18 +149,18 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
             </form>
 
             {rows.length === 0 ? (
-                <Kosong>Tidak ada aset yang cocok dengan filter.</Kosong>
+                <Kosong ilustrasi={<IlustrasiModul modul={modulDari(f.tipe)} ukuran={96} />}>Tidak ada aset yang cocok dengan filter. Coba hapus salah satu filter.</Kosong>
             ) : (
                 <Tabel>
                     <thead>
                         <tr>
                             <th>Nomor</th>
-                            <th>Tipe</th>
+                            <th>Jenis</th>
                             <th>Area</th>
                             <th>Lantai</th>
                             <th>Lokasi</th>
                             <th>Titik</th>
-                            <th>Divisi</th>
+                            <th>Unit kerja</th>
                             <th>Terakhir dicek</th>
                             <th>Status</th>
                         </tr>
@@ -152,13 +168,14 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                     <tbody>
                         {rows.map((a) => (
                             <tr key={a.id}>
-                                <td className="font-medium">
-                                    <Link href={`/admin/aset/${a.id}`} className="hover:underline">
+                                <td className="font-semibold">
+                                    <Link href={`/admin/aset/${a.id}`} className="inline-flex items-center gap-2.5 hover:underline">
+                                        <IlustrasiModul modul={modulDari(a.tipe)} ukuran={36} />
                                         {a.kode}
                                     </Link>
                                 </td>
-                                <td>{a.tipe}</td>
-                                <td>
+                                <td data-label="Jenis">{a.tipe}</td>
+                                <td data-label="Area">
                                     {a.area ??
                                         (a.isMobile ? (
                                             "Bergerak"
@@ -168,11 +185,11 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                                             </Link>
                                         ))}
                                 </td>
-                                <td>{labelLantai(a.lantai) ?? "-"}</td>
-                                <td className="max-w-56 truncate" title={a.lokasiTeks}>
+                                <td data-label="Lantai">{labelLantai(a.lantai) ?? "-"}</td>
+                                <td data-label="Lokasi" className="max-w-56 truncate" title={a.lokasiTeks}>
                                     {a.lokasiTeks.length > 40 ? a.lokasiTeks.slice(0, 40) + "…" : a.lokasiTeks}
                                 </td>
-                                <td>
+                                <td data-label="Titik di peta">
                                     {a.lat != null && a.lng != null ? (
                                         <span title={`${a.lat}, ${a.lng}`} aria-label={`Koordinat ${a.lat}, ${a.lng}`}>
                                             <Check className="size-4 text-success" aria-hidden />
@@ -181,8 +198,8 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </td>
-                                <td>{a.divisi ?? "-"}</td>
-                                <td className="whitespace-nowrap">
+                                <td data-label="Unit kerja">{a.divisi ?? "-"}</td>
+                                <td data-label="Terakhir dicek" className="whitespace-nowrap">
                                     {a.terakhirDicek
                                         ? formatTanggal(a.terakhirDicek + "T00:00:00+07:00", { dateStyle: "short" })
                                         : "belum pernah"}
