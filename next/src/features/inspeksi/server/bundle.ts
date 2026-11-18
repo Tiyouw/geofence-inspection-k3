@@ -22,6 +22,8 @@ export type AsetPaket = {
   kode: string;
   assetTypeId: number;
   tipe: string;
+  /** Slug tipe aset (ilustrasi modul); paket lama tanpa slug memakai nama tipe. */
+  slug?: string;
   gedung: string | null;
   lantai: string | null;
   lokasiTeks: string;
@@ -121,6 +123,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     kode: a.kode,
     assetTypeId: a.assetTypeId,
     tipe: t.nama,
+    slug: t.slug,
     gedung: a.gedung,
     lantai: labelLantai(a.lantai),
     lokasiTeks: a.lokasiTeks,

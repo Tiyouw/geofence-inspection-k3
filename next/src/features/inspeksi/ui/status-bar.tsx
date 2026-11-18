@@ -3,28 +3,36 @@
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { CloudOff, LogOut, Wifi } from "lucide-react";
 import { useTransition } from "react";
+import { cn } from "@/lib/utils";
 import { keluar } from "@/app/(publik)/masuk/actions";
 import { bersihkanPerangkat, useInspektur } from "./konteks";
 
-/** Indikator koneksi + jumlah antrean di bilah atas (SPEC §7.9). */
+/** Indikator koneksi + jumlah antrean di bilah atas (SPEC §7.9). Ketuk untuk membuka Antrean. */
 export function IndikatorKoneksi() {
   const { daring, data } = useInspektur();
   const antre = data.drafts.filter((d) => d.status !== "draf").length;
   return (
-    <span className="flex items-center gap-2 text-xs text-white/85" role="status" aria-live="polite">
-      {daring ? <Wifi className="size-4" aria-hidden /> : <CloudOff className="size-4" aria-hidden />}
-      <span className="hidden min-[380px]:inline">{daring ? "Daring" : "Luring"}</span>
+    <a href="/petugas/antrean" className="flex items-center gap-1.5 text-xs font-semibold" role="status" aria-live="polite">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+          daring ? "bg-success-soft text-success" : "bg-warning-soft text-warning",
+        )}
+      >
+        {daring ? <Wifi className="size-3.5" aria-hidden /> : <CloudOff className="size-3.5" aria-hidden />}
+        {daring ? "Daring" : "Luring"}
+      </span>
       {antre > 0 && (
-        <span data-testid="lencana-antrean" className="rounded-full bg-info px-2 py-0.5 font-semibold text-white">
+        <span data-testid="lencana-antrean" className="rounded-full bg-info-soft px-2.5 py-1 text-info tabular-nums">
           {daring ? `${antre} dalam antrean` : `${antre} menunggu sinyal`}
         </span>
       )}
-    </span>
+    </a>
   );
 }
 
 /** Keluar dengan peringatan bila antrean belum kosong, lalu kosongkan data perangkat. */
-export function TombolKeluar() {
+export function TombolKeluar({ className }: { className?: string }) {
   const { data, userId } = useInspektur();
   const [pending, start] = useTransition();
   const belum = data.drafts.filter((d) => d.status !== "draf").length;
@@ -34,7 +42,10 @@ export function TombolKeluar() {
     <button
       type="button"
       disabled={pending}
-      className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white"
+      className={cn(
+        "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-(--a-radius-kontrol,10px) border border-danger/30 bg-card text-base font-semibold text-danger hover:bg-danger-soft",
+        className,
+      )}
       onClick={async () => {
         if (
           belum > 0 &&
@@ -54,8 +65,8 @@ export function TombolKeluar() {
         });
       }}
     >
-      <LogOut className="size-4" aria-hidden />
-      <span className="sr-only min-[420px]:not-sr-only">Keluar</span>
+      <LogOut className="size-5" aria-hidden />
+      Keluar
     </button>
     {dialogKonfirmasi}
     </>
