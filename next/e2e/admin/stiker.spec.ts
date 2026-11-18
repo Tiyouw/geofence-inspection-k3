@@ -81,10 +81,13 @@ test.describe("lembar stiker QR (L7, C3, B10)", () => {
         await expect(page).toHaveURL(/\/stiker$/);
         await expect.poll(() => jumlahRingkasan(page)).toBe(semua);
 
-        // Belum berarea: hanya aset tanpa area (mis. mobil pemadam).
+        // Belum berarea: hanya aset tanpa area (mis. mobil pemadam); jumlahnya sama dengan di pilihan.
         await pilih(saring.getByRole("combobox", { name: "Area" }), /^Belum berarea \(\d+\)$/);
         await expect(page).toHaveURL(/area=belum/);
-        await expect(page.locator(".stiker-area")).toHaveCount(0);
+        const n = Number((await saring.getByRole("combobox", { name: "Area" }).textContent())!.match(/\((\d+)\)/)![1]);
+        expect(n).toBeGreaterThan(0);
+        await expect.poll(() => jumlahRingkasan(page)).toBe(n);
+        await expect(page.locator(".stiker-label")).toHaveCount(n);
     });
 
     test("kode aset sebagai keping: Enter, koma, dan hapus", async ({ page }) => {
