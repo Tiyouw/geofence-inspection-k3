@@ -1,9 +1,13 @@
 import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { assets, checklistGroups, checklistItems, inspectionPhotos, inspections, photoStepItems, photoSteps } from "@/db/schema";
+import { areas, assets, checklistGroups, checklistItems, inspectionPhotos, inspections, photoStepItems, photoSteps, users } from "@/db/schema";
+import type { DataCap } from "@/lib/foto/cap";
+import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { pengaturanGerbang } from "@/lib/geo/data";
 
-export type FotoBukti = { id: string; takenAtDevice: Date | null; uploadedAt: Date; gpsAccuracy: number | null; langkah: string | null };
+/** `cap`: isi cap foto (lapisan tampilan; JPEG tidak diubah). */
+export type FotoBukti = { id: string; takenAtDevice: Date | null; uploadedAt: Date; gpsAccuracy: number | null; langkah: string | null; cap: DataCap };
 export type ButirDenganFoto = { id: number; grup: string; label: string; foto: FotoBukti[] };
 
 /**
@@ -17,9 +21,18 @@ export async function fotoPerButir(inspectionId: string): Promise<{
   tanpaLangkah: FotoBukti[];
 } | null> {
   const [ins] = await db
-    .select({ assetTypeId: assets.assetTypeId, areaTerbatas: inspections.restrictedArea })
+    .select({
+      assetTypeId: assets.assetTypeId,
+      areaTerbatas: inspections.restrictedArea,
+      kode: assets.kode,
+      gedung: assets.gedung,
+      area: areas.nama,
+      inspektur: users.name,
+    })
     .from(inspections)
     .innerJoin(assets, eq(assets.id, inspections.assetId))
+    .innerJoin(users, eq(users.id, inspections.userId))
+    .leftJoin(areas, eq(areas.id, assets.areaId))
     .where(eq(inspections.id, inspectionId));
   if (!ins) return null;
 
@@ -29,6 +42,8 @@ export async function fotoPerButir(inspectionId: string): Promise<{
       takenAtDevice: inspectionPhotos.takenAtDevice,
       uploadedAt: inspectionPhotos.uploadedAt,
       gpsAccuracy: inspectionPhotos.gpsAccuracy,
+      lat: inspectionPhotos.lat,
+      lng: inspectionPhotos.lng,
       stepId: inspectionPhotos.stepId,
       langkah: photoSteps.judul,
     })
@@ -37,6 +52,7 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     .where(eq(inspectionPhotos.inspectionId, inspectionId))
     .orderBy(asc(inspectionPhotos.takenAtDevice), asc(inspectionPhotos.uploadedAt));
 
+  const [koordinat, gerbang] = await Promise.all([capKoordinatAktif(), pengaturanGerbang()]);
   const stepIds = [...new Set(fotos.map((f) => f.stepId).filter((x): x is number => x !== null))];
   const [items, tautan] = await Promise.all([
     db
@@ -56,6 +72,15 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     uploadedAt: f.uploadedAt,
     gpsAccuracy: f.gpsAccuracy,
     langkah: f.langkah,
+    cap: {
+      waktu: f.takenAtDevice ?? f.uploadedAt,
+      area: ins.area ?? ins.gedung,
+      kode: ins.kode,
+      inspektur: ins.inspektur,
+      akurasiM: f.gpsAccuracy,
+      ambangLemahM: gerbang.akurasiLemahM,
+      koordinat: koordinat && f.lat != null && f.lng != null ? { lat: f.lat, lng: f.lng } : null,
+    },
   });
   const fotoButir = new Map<number, FotoBukti[]>();
   for (const f of fotos) {

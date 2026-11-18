@@ -246,6 +246,7 @@ export function DetailTemuan({
                         foto={t.foto.map((f) => ({
                             id: f.id,
                             keterangan: formatWaktu(f.takenAtDevice ?? f.uploadedAt),
+                            cap: f.cap,
                         }))}
                     />
                 )}
