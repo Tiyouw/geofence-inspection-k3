@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { History } from "lucide-react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { JejakAudit as DaftarJejak } from "@/features/admin/components/jejak-audit";
 import { SaringAudit } from "@/features/admin/components/saring-audit";
@@ -8,7 +9,7 @@ import { PER_HALAMAN_AUDIT, daftarAudit, penggunaDiJejak, rujukanUntuk } from "@
 import { requireRole } from "@/lib/auth/guards";
 import { formatAngka } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Jejak audit" };
+export const metadata: Metadata = { title: "Riwayat perubahan" };
 
 const PILIHAN_KATEGORI = (Object.keys(KATEGORI_AUDIT) as KategoriAudit[]).map((k) => ({
     nilai: k,
@@ -34,23 +35,24 @@ export default async function JejakAudit({ searchParams }: PageProps<"/admin/aud
     return (
         <>
             <PageHeader
-                title="Jejak audit"
-                description="Siapa melakukan apa dan kapan. Kata sandi, token QR, dan koordinat tidak pernah ditampilkan."
+                title="Riwayat perubahan"
+                description="Siapa melakukan apa dan kapan, dalam kalimat biasa. Kata sandi, token QR, dan koordinat tidak pernah ditampilkan."
             />
-            <SaringAudit key={JSON.stringify(nilai)} nilai={nilai} kategori={PILIHAN_KATEGORI} pengguna={pengguna} />
+            <SaringAudit
+                key={JSON.stringify(nilai)}
+                jumlah={`${formatAngka(total)} kegiatan${disaring ? " cocok" : ""}`}
+                nilai={nilai}
+                kategori={PILIHAN_KATEGORI}
+                pengguna={pengguna}
+            />
             {rows.length === 0 ? (
-                <Kosong>
+                <Kosong ilustrasi={<History className="size-10 text-muted-foreground" aria-hidden />}>
                     {disaring
                         ? "Tidak ada kegiatan yang cocok dengan saringan ini."
                         : "Belum ada kegiatan yang tercatat."}
                 </Kosong>
             ) : (
-                <>
-                    <p className="mb-3 text-xs text-muted-foreground" aria-live="polite">
-                        {formatAngka(total)} kegiatan{disaring ? " cocok dengan saringan" : ""}
-                    </p>
-                    <DaftarJejak rows={rows} rujukan={rujukan} sekarang={new Date()} />
-                </>
+                <DaftarJejak rows={rows} rujukan={rujukan} sekarang={new Date()} />
             )}
             <div className="mt-4">
                 <Paginasi

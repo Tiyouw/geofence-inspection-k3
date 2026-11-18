@@ -11,17 +11,19 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition, type FormEvent } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { Pilihan } from "./ui";
 import type { KategoriAudit } from "../lib/audit";
 
 type Props = {
+    /** Teks jumlah hasil, mis. "355 kegiatan". */
+    jumlah?: string;
     nilai: { kategori?: string; pengguna?: string; dari?: string; sampai?: string };
     kategori: { nilai: KategoriAudit; label: string }[];
     pengguna: { id: number; nama: string }[];
 };
 
-export function SaringAudit({ nilai, kategori, pengguna }: Props) {
+export function SaringAudit({ jumlah, nilai, kategori, pengguna }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const [menunggu, mulai] = useTransition();
@@ -56,7 +58,7 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
     }, []);
 
     const aktif = Object.values(nilai).some(Boolean);
-    const label = "flex min-w-0 flex-col gap-1 text-xs font-medium";
+    const label = "flex min-w-0 flex-col gap-1.5 text-xs font-semibold [&_[role=combobox]]:h-11";
 
     return (
         <form
@@ -69,8 +71,36 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
                 e.preventDefault();
                 terapkan(e.currentTarget);
             }}
-            className="mb-5 grid grid-cols-1 gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+            className="mb-5 rounded-kartu border bg-card p-4 sm:p-5"
         >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-sm font-bold">
+                    <SlidersHorizontal className="size-4 text-muted-foreground" aria-hidden /> Filter
+                </h2>
+                <div className="flex min-h-8 items-center gap-3 text-xs">
+                    {jumlah !== undefined && (
+                        <span className="text-muted-foreground tabular-nums" aria-live="polite">
+                            {jumlah}
+                        </span>
+                    )}
+                    {menunggu && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground" role="status">
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Memuat…
+                        </span>
+                    )}
+                    {aktif && !menunggu && (
+                        <Link
+                            href={pathname}
+                            replace
+                            scroll={false}
+                            className="inline-flex min-h-8 items-center gap-1 rounded-kontrol px-2 font-semibold text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                        >
+                            <X className="size-3.5" aria-hidden /> Hapus saringan
+                        </Link>
+                    )}
+                </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className={label}>
                 Jenis kegiatan
                 <Pilihan name="kategori" defaultValue={nilai.kategori ?? ""} onChange={pilihBerubah("kategori")}>
@@ -100,7 +130,7 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
                     name="dari"
                     defaultValue={nilai.dari ?? ""}
                     max={nilai.sampai}
-                    className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="h-11 w-full min-w-0 rounded-kontrol border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
             </label>
             <label className={label}>
@@ -110,28 +140,10 @@ export function SaringAudit({ nilai, kategori, pengguna }: Props) {
                     name="sampai"
                     defaultValue={nilai.sampai ?? ""}
                     min={nilai.dari}
-                    className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="h-11 w-full min-w-0 rounded-kontrol border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
             </label>
-            {(menunggu || aktif) && (
-                <div className="flex h-8 items-center gap-3 text-xs">
-                    {menunggu && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground" role="status">
-                            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Memuat…
-                        </span>
-                    )}
-                    {aktif && !menunggu && (
-                        <Link
-                            href={pathname}
-                            replace
-                            scroll={false}
-                            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                        >
-                            <X className="size-3.5" aria-hidden /> Hapus saringan
-                        </Link>
-                    )}
-                </div>
-            )}
+            </div>
             <noscript>
                 <button type="submit" className="rounded-lg border px-3 py-1.5 text-sm">
                     Terapkan
