@@ -8,7 +8,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
 
     test("daftar aset merender dengan area dan filter yang saling menghormati", async ({ page }) => {
         await page.goto("/admin/aset");
-        await expect(page.getByRole("heading", { name: "Aset & APAR" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Aset", exact: true })).toBeVisible();
         await expect(page.getByRole("columnheader", { name: "Area" })).toBeVisible();
         await expect(page.getByRole("cell", { name: "Gedung PIP" }).first()).toBeVisible();
         await page.goto("/admin/aset?gedung=Area%20Terbuka&tanpa_koordinat=1");

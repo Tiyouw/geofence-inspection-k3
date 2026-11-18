@@ -101,6 +101,7 @@ export async function daftarInspeksi(f: FilterInspeksi, halaman = 1) {
                 inspectedAt: inspections.inspectedAt,
                 mulaiPada: inspections.mulaiPada,
                 asetKode: assets.kode,
+                asetTipe: sql<string | null>`(select t.slug from asset_types t where t.id = ${assets.assetTypeId})`,
                 asetLokasi: assets.lokasiTeks,
                 asetGedung: assets.gedung,
                 asetLantai: assets.lantai,

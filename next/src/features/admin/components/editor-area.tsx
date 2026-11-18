@@ -147,7 +147,7 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 }
             >
                 {area.length === 0 && mode.jenis === "lihat" && (
-                    <p className="mb-3 rounded-lg bg-muted p-3 text-sm text-muted-foreground">Belum ada poligon. Gambar kawasan galangan lebih dulu.</p>
+                    <p className="mb-3 rounded-kontrol bg-muted p-3 text-sm text-muted-foreground">Belum ada poligon. Gambar kawasan galangan lebih dulu.</p>
                 )}
                 <PetaArea
                     poligon={poligon}
@@ -279,7 +279,7 @@ function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: Are
     return (
         <Kartu judul="Area">
             {!kawasan?.polygon && (
-                <p className="mb-3 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+                <p className="mb-3 rounded-kontrol bg-warning-soft p-3 text-sm text-warning">
                     Batas kawasan galangan belum disetujui. Tanpa kawasan, gerbang tidak dapat menolak kiriman dari luar galangan.
                 </p>
             )}
@@ -291,7 +291,7 @@ function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: Are
                         <button
                             type="button"
                             onClick={() => pilih(a.id)}
-                            className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
+                            className="flex w-full items-center justify-between gap-2 rounded-kontrol px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
                         >
                             <span className="min-w-0">
                                 <span className="block truncate font-medium">{a.nama}</span>
@@ -383,7 +383,7 @@ function DrafMassal({
                 </p>
                 <ul className="mb-3 space-y-1">
                     {ringkas.kumpulan.map((k) => (
-                        <li key={k.waktu} className="rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
+                        <li key={k.waktu} className="rounded-kontrol px-2 py-1.5 text-sm transition-colors hover:bg-muted">
                             <span className="block font-medium">Dibuat {formatWaktu(k.waktu)}</span>
                             <span className="block truncate text-xs text-muted-foreground">
                                 {k.isi.length} draf · {k.isi.slice(0, 3).map((a) => a.nama).join(", ")}

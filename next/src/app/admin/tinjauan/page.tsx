@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { IlustrasiModul, modulDari } from "@/components/ilustrasi/modul";
 import { PageHeader } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
-import { Kosong, Lencana, Paginasi, Pilihan, Tabel, halamanDari, qs } from "@/features/admin/components/ui";
+import { Kosong, Lencana, Paginasi, Pilihan, halamanDari, qs } from "@/features/admin/components/ui";
 import { LABEL_GERBANG } from "@/features/admin/lib/label";
 import { jumlahAntreanTinjauan } from "@/features/admin/server/dasbor";
 import {
@@ -49,16 +50,16 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
         <>
             <PageHeader
                 title="Tinjauan inspeksi"
-                description="Bukti lapangan dari inspektur. Inspeksi perlu tinjauan (posisi di luar gedung, GPS lemah, area terbatas) diputuskan Diterima atau Ditolak oleh Admin K3 atau Pemantau."
+                description="Kiriman yang lokasinya di luar gedung, sinyal GPS-nya lemah, atau dari area terbatas masuk ke sini. Terima bila wajar; tolak bila perlu diperiksa ulang."
             />
 
-            <nav aria-label="Tab inspeksi" className="mb-4 flex flex-wrap gap-1 rounded-xl border bg-card p-1">
+            <nav aria-label="Tab inspeksi" className="mb-4 flex flex-wrap gap-1 rounded-kartu border bg-card p-1">
                 {TAB_INSPEKSI.map((t) => (
                     <Link
                         key={t}
                         href={`/admin/tinjauan${qs({ ...param, tab: t, hal: undefined })}`}
                         aria-current={t === f.tab ? "page" : undefined}
-                        className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-muted aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
+                        className="flex min-h-10 items-center gap-2 rounded-kontrol px-3.5 text-sm font-semibold hover:bg-muted aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
                     >
                         {LABEL_TAB_INSPEKSI[t]}
                         {t === "antre" && lencana.antre > 0 && <Lencana nada="warning">{lencana.antre}</Lencana>}
@@ -71,7 +72,7 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
 
             <form
                 method="get"
-                className="mb-4 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
+                className="mb-4 grid grid-cols-2 gap-3 rounded-kartu border bg-card p-4 lg:grid-cols-5"
                 aria-label="Saring inspeksi"
             >
                 <input type="hidden" name="tab" value={f.tab} />
@@ -122,114 +123,68 @@ export default async function DaftarTinjauan({ searchParams }: PageProps<"/admin
             </form>
 
             {rows.length === 0 ? (
-                <Kosong>{f.tab === "antre" ? "Antrean tinjauan kosong." : "Tidak ada inspeksi yang cocok."}</Kosong>
+                <Kosong ilustrasi={<IlustrasiModul modul="p3k" ukuran={96} />}>
+                    {f.tab === "antre" ? "Antrean tinjauan kosong. Kiriman baru akan muncul di sini." : "Tidak ada inspeksi yang cocok."}
+                </Kosong>
             ) : (
-                <Tabel>
-                    <thead>
-                        <tr>
-                            <th>Waktu</th>
-                            <th>Aset</th>
-                            <th>Lokasi</th>
-                            <th>Inspektur</th>
-                            <th>QR</th>
-                            <th>Gerbang</th>
-                            <th>Jarak</th>
-                            <th>Kesimpulan</th>
-                            <th>Durasi</th>
-                            <th>Status</th>
-                            <th>Ditinjau</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((i) => {
-                            const g = LABEL_GERBANG[i.gateStatus];
-                            const takWajar = i.durasiDetik != null && i.durasiDetik < DURASI_WAJAR_DETIK;
-                            return (
-                                <tr key={i.id}>
-                                    <td className="whitespace-nowrap">
-                                        <Link href={`/admin/tinjauan/${i.id}`} className="font-medium hover:underline">
-                                            {i.inspectedAt
-                                                ? formatTanggal(i.inspectedAt, {
-                                                      day: "2-digit",
-                                                      month: "2-digit",
-                                                      year: "numeric",
-                                                      hour: "2-digit",
-                                                      minute: "2-digit",
-                                                  })
-                                                : "Draf"}
-                                        </Link>
-                                    </td>
-                                    <td className="font-medium">{i.asetKode}</td>
-                                    <td className="max-w-48 truncate">
-                                        {labelLokasi({
-                                            lokasiTeks: i.asetLokasi,
-                                            gedung: i.asetGedung,
-                                            lantai: i.asetLantai,
-                                        })}
-                                    </td>
-                                    <td>{i.inspektur}</td>
-                                    <td>
-                                        {i.qrVerified ? (
-                                            <Check className="size-4 text-success" aria-label="QR terverifikasi" />
-                                        ) : (
-                                            "-"
-                                        )}
-                                    </td>
-                                    <td>
-                                        {i.restrictedArea || i.gateAlasan ? (
-                                            <AlasanTinjauan
-                                                gateStatus={i.gateStatus}
-                                                gateAlasan={i.gateAlasan}
-                                                restrictedArea={i.restrictedArea}
-                                            />
-                                        ) : (
-                                            <Lencana nada={g.nada}>{g.label}</Lencana>
-                                        )}
-                                    </td>
-                                    <td className="whitespace-nowrap tabular-nums">
-                                        {i.jarakM != null ? `${formatAngka(i.jarakM)} m` : "-"}
-                                        {i.gpsAccuracy != null && (
-                                            <span className="text-muted-foreground">
-                                                {" "}
-                                                ±{formatAngka(i.gpsAccuracy)}
+                <ul className="flex flex-col gap-2" aria-label="Daftar inspeksi">
+                    {rows.map((i) => {
+                        const g = LABEL_GERBANG[i.gateStatus];
+                        const takWajar = i.durasiDetik != null && i.durasiDetik < DURASI_WAJAR_DETIK;
+                        const waktu = i.inspectedAt
+                            ? formatTanggal(i.inspectedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                            : "Draf";
+                        return (
+                            <li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-kartu border bg-card p-4">
+                                <IlustrasiModul modul={modulDari(i.asetTipe ?? i.asetKode)} ukuran={48} />
+                                <div className="min-w-48 flex-1">
+                                    <Link href={`/admin/tinjauan/${i.id}`} className="font-bold hover:underline">
+                                        {i.asetKode} ·{" "}
+                                        {labelLokasi({ lokasiTeks: i.asetLokasi, gedung: i.asetGedung, lantai: i.asetLantai })}
+                                    </Link>
+                                    <p className="text-sm text-muted-foreground">
+                                        {i.inspektur} · {waktu}
+                                        {i.qrVerified && (
+                                            <span className="ml-1.5 inline-flex items-center gap-0.5 text-success">
+                                                <Check className="size-3.5" aria-hidden /> QR cocok
                                             </span>
                                         )}
-                                    </td>
-                                    <td className="whitespace-nowrap">
-                                        {i.kesimpulan ? LABEL_KESIMPULAN[i.kesimpulan] : "-"}
-                                    </td>
-                                    <td
-                                        className={cn(
-                                            "whitespace-nowrap tabular-nums",
-                                            takWajar && "font-semibold text-danger",
-                                        )}
-                                    >
-                                        {durasi(i.durasiDetik)}
-                                    </td>
-                                    <td>
-                                        {i.status === "final" ? (
-                                            <Lencana nada="info">Final</Lencana>
-                                        ) : (
-                                            <Lencana>Draf</Lencana>
-                                        )}
-                                        {i.offline && <Lencana className="ml-1">Luring</Lencana>}
-                                    </td>
-                                    <td className="whitespace-nowrap">
-                                        {i.ditinjauPada ? (
-                                            <span title={i.catatanReview ?? undefined}>
-                                                <HasilLencana hasil={i.hasilTinjauan} />{" "}
-                                                {formatTanggal(i.ditinjauPada, { dateStyle: "short" })} ·{" "}
-                                                {i.peninjau ?? "-"}
-                                            </span>
-                                        ) : (
-                                            "-"
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </Tabel>
+                                    </p>
+                                </div>
+                                <div className="flex min-w-48 flex-col items-start gap-1 sm:items-end">
+                                    {i.restrictedArea || i.gateAlasan ? (
+                                        <AlasanTinjauan gateStatus={i.gateStatus} gateAlasan={i.gateAlasan} restrictedArea={i.restrictedArea} />
+                                    ) : (
+                                        <Lencana nada={g.nada}>{g.label}</Lencana>
+                                    )}
+                                    <span className="text-xs text-muted-foreground tabular-nums">
+                                        {i.jarakM != null ? `${formatAngka(i.jarakM)} m dari area` : "Jarak tidak ada"}
+                                        {i.gpsAccuracy != null && ` · GPS ±${formatAngka(i.gpsAccuracy)} m`}
+                                        {" · "}
+                                        <span className={cn(takWajar && "font-semibold text-danger")}>
+                                            diisi {durasi(i.durasiDetik)}
+                                            {takWajar && " (terlalu cepat)"}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {i.kesimpulan && <Lencana>{LABEL_KESIMPULAN[i.kesimpulan]}</Lencana>}
+                                    {i.status === "final" ? <Lencana nada="info">Final</Lencana> : <Lencana>Draf</Lencana>}
+                                    {i.offline && <Lencana>Luring</Lencana>}
+                                    {i.ditinjauPada && (
+                                        <span title={i.catatanReview ?? undefined} className="text-xs text-muted-foreground">
+                                            <HasilLencana hasil={i.hasilTinjauan} /> {formatTanggal(i.ditinjauPada, { dateStyle: "short" })} ·{" "}
+                                            {i.peninjau ?? "-"}
+                                        </span>
+                                    )}
+                                </div>
+                                <Button asChild size="sm" variant={i.ditinjauPada ? "outline" : "default"}>
+                                    <Link href={`/admin/tinjauan/${i.id}`}>{i.ditinjauPada ? "Lihat" : "Tinjau"}</Link>
+                                </Button>
+                            </li>
+                        );
+                    })}
+                </ul>
             )}
             <Paginasi
                 halaman={halaman}
