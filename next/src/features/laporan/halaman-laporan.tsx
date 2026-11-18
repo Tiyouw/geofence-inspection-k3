@@ -161,11 +161,11 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
                   {data.baris.map((b) => (
                     <tr key={b.aset.id} className={b.inspeksi ? undefined : "bg-muted/50 italic"}>
                       <td className="font-semibold">{b.aset.kode}</td>
-                      <td>
+                      <td data-label="Lokasi">
                         {b.lokasi.utama}
                         {b.lokasi.lantai && <span className="ml-1 text-xs text-muted-foreground">({b.lokasi.lantai})</span>}
                       </td>
-                      <td className="tabular-nums">
+                      <td data-label="Tanggal periksa" className="tabular-nums">
                         {b.inspeksi ? (
                           <Link href={`/pemantau/inspeksi/${b.inspeksi.id}`} className="underline-offset-4 hover:underline">
                             {tglDmy(b.inspeksi.inspectedAt)}
@@ -174,10 +174,10 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
                           "Belum diperiksa"
                         )}
                       </td>
-                      <td>{b.inspeksi?.petugas ?? "-"}</td>
-                      <td>{b.inspeksi ? <LencanaKesimpulan k={b.inspeksi.kesimpulan} /> : "-"}</td>
-                      <td className="tabular-nums">{temuanPer.get(b.aset.id) ?? 0}</td>
-                      <td>
+                      <td data-label="Petugas">{b.inspeksi?.petugas ?? "-"}</td>
+                      <td data-label="Kesimpulan">{b.inspeksi ? <LencanaKesimpulan k={b.inspeksi.kesimpulan} /> : "-"}</td>
+                      <td data-label="Temuan terbuka" className="tabular-nums">{temuanPer.get(b.aset.id) ?? 0}</td>
+                      <td data-label="Bukti posisi">
                         {b.inspeksi ? (
                           <span className="inline-flex items-center gap-1">
                             <LencanaGerbang status={b.inspeksi.gateStatus} />
@@ -187,7 +187,7 @@ export async function HalamanLaporan({ q }: { q: Record<string, string | string[
                           "-"
                         )}
                       </td>
-                      <td>
+                      <td data-label="Kartu kontrol">
                         <a href={`/laporan/kartu/${b.aset.id}?tahun=${f.tahun}`} target="_blank" rel="noopener" className="font-medium underline-offset-4 hover:underline">
                           PDF {f.tahun}
                         </a>
