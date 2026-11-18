@@ -2,6 +2,7 @@ import { chromium, devices, expect, test, type Browser, type Page } from "@playw
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import jsQR from "jsqr";
 import { masuk } from "../helpers";
 import { aset, tutup } from "../db-uji";
 
@@ -9,24 +10,35 @@ import { aset, tutup } from "../db-uji";
  * Bug demo 17 Nov: kamera menyala tetapi QR tidak pernah terbaca, kamera depan terbuka lebih dulu,
  * dan kode cadangan yang diketik dari stiker ditolak. Uji ini memakai kamera palsu Chromium yang
  * menayangkan stiker ASLI dari lembar stiker aplikasi (/stiker), lalu memastikan formulir terbuka.
+ *
+ * Penyebab uji "layar lain" kadang gagal di CI (18 Nov): kotak QR ditangkap pada skala 2 (88 px untuk
+ * puluhan modul) lalu diperbesar maksimal 1,6x dengan penghalusan, sehingga tiap modul hanya ~4 px buram
+ * di atas latar gelap. jsQR membaca bingkai seperti itu hanya kadang-kadang (bergantung pembulatan
+ * penskalaan video), dan uji sering habis waktu. Sekarang: tangkapan skala 4, layar digambar tajam tanpa
+ * penghalusan pada ukuran yang wajar, dan setiap bingkai DIPERIKSA dengan jsQR (pustaka yang sama dengan
+ * aplikasi) sebelum dipakai, jadi bingkai yang tidak terbaca langsung gagal di persiapan, bukan acak.
  */
 test.afterAll(tutup);
 
 const W = 640;
 const H = 480;
 
-/** Gambar elemen stiker (PNG dari aplikasi) → bingkai Y4M 4:2:0 di atas latar abu `bg`. */
-async function keY4m(page: Page, png: Buffer, bg: number, lebarMaks: number, berkas: string) {
+/**
+ * Gambar elemen stiker (PNG dari aplikasi) → bingkai Y4M 4:2:0 di atas latar abu `bg`, selebar `lebar`
+ * piksel. `tajam`: tanpa penghalusan (piksel layar), selain itu dihaluskan (foto label cetak).
+ */
+async function keY4m(page: Page, png: Buffer, bg: number, lebar: number, berkas: string, tajam = false) {
   const y = await page.evaluate(
-    async ({ b64, W, H, bg, lebarMaks }) => {
+    async ({ b64, W, H, bg, lebar, tajam }) => {
       const img = new Image();
       img.src = `data:image/png;base64,${b64}`;
       await img.decode();
-      const s = Math.min(1.6, lebarMaks / img.width);
+      const s = lebar / img.width;
       const c = document.createElement("canvas");
       c.width = W;
       c.height = H;
       const ctx = c.getContext("2d")!;
+      ctx.imageSmoothingEnabled = !tajam;
       ctx.fillStyle = `rgb(${bg},${bg},${bg})`;
       ctx.fillRect(0, 0, W, H);
       ctx.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
@@ -37,8 +49,16 @@ async function keY4m(page: Page, png: Buffer, bg: number, lebarMaks: number, ber
       for (let i = 0; i < out.length; i += 0x8000) bin += String.fromCharCode(...out.subarray(i, i + 0x8000));
       return btoa(bin);
     },
-    { b64: png.toString("base64"), W, H, bg, lebarMaks },
+    { b64: png.toString("base64"), W, H, bg, lebar, tajam },
   );
+  // Bingkai harus terbaca oleh dekoder aplikasi (jsQR, dua arah warna) sebelum dipakai kamera palsu.
+  const luma = Buffer.from(y, "base64");
+  const rgba = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < W * H; i++) {
+    rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = luma[i]!;
+    rgba[i * 4 + 3] = 255;
+  }
+  expect(jsQR(rgba, W, H, { inversionAttempts: "attemptBoth" })?.data, `bingkai ${berkas} terbaca jsQR`).toMatch(/PAL-K3-[0-9a-f]{32}$/);
   const frame = Buffer.concat([
     Buffer.from("FRAME\n"),
     Buffer.from(y, "base64"),
@@ -88,7 +108,8 @@ async function pindaiDenganKamera(browserAsli: Browser, berkas: string, opsi: { 
     await masuk(page, "inspektur");
     await page.goto("/petugas/pindai");
     await page.getByRole("button", { name: "Nyalakan kamera" }).click();
-    await expect(page).toHaveURL(/\/petugas\/isi\?id=/, { timeout: 30_000 });
+    // Bingkai sudah terbukti terbaca; pembacaan biasanya < 2 dtk. Batas ini masih di dalam batas uji.
+    await expect(page).toHaveURL(/\/petugas\/isi\?id=/, { timeout: 20_000 });
     const gum = (await page.evaluate(() => JSON.parse(sessionStorage.getItem("gum") || "[]"))) as {
       video?: { facingMode?: { exact?: string } };
     }[];
@@ -99,12 +120,14 @@ async function pindaiDenganKamera(browserAsli: Browser, berkas: string, opsi: { 
 }
 
 test.describe("pemindai QR", () => {
-  test.describe.configure({ mode: "serial" });
+  // Tiap uji meluncurkan peramban sendiri dan masuk; 60 dtk memberi ruang untuk itu plus 20 dtk pembacaan.
+  test.describe.configure({ mode: "serial", timeout: 60_000 });
   let dir: string;
 
   test.beforeAll(async ({ browser }) => {
     dir = mkdtempSync(join(tmpdir(), "pal-k3-qr-"));
-    const ctx = await browser.newContext({ deviceScaleFactor: 2, baseURL: test.info().project.use.baseURL });
+    // Skala 4: kotak QR 43 px CSS menjadi ~176 px, cukup tajam untuk setiap modul.
+    const ctx = await browser.newContext({ deviceScaleFactor: 4, baseURL: test.info().project.use.baseURL });
     const page = await ctx.newPage();
     await masuk(page, "admin");
     await page.goto("/stiker?kode=01D&tata=2x5");
@@ -115,8 +138,8 @@ test.describe("pemindai QR", () => {
     const kosong = await ctx.newPage();
     // Stiker tercetak di label putih, difoto dari dekat.
     await keY4m(kosong, stiker, 235, 560, join(dir, "stiker.y4m"));
-    // QR yang ditampilkan di layar lain: hanya kotak QR, di atas latar layar gelap.
-    await keY4m(kosong, qr, 30, 300, join(dir, "layar.y4m"));
+    // QR yang ditampilkan di layar lain: hanya kotak QR, piksel layar tajam di atas latar gelap.
+    await keY4m(kosong, qr, 30, 300, join(dir, "layar.y4m"), true);
     await ctx.close();
   });
 
