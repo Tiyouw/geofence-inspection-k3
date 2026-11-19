@@ -84,7 +84,7 @@
   --peran-permukaan: #ffffff;
   --peran-permukaan-2: #f9fbfb;
   --peran-tinta: #162b33;
-  --peran-redup: #5f727a;
+  --peran-redup: #566870; /* 5,2:1 di atas --peran-sorot (audit 19 Nov 2026; sebelumnya #5f727a, 4,46:1) */
   --peran-garis: #dbe4e7;
   --peran-garis-kuat: #cbd7db;
   --peran-sorot: #eef2f3;

@@ -52,6 +52,8 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
+          // Belum dipublikasikan: jangan diindeks (audit 19 Nov 2026, R4). SITUS_PUBLIK=true membukanya.
+          ...(process.env.SITUS_PUBLIK === "true" ? [] : [{ key: "X-Robots-Tag", value: "noindex, nofollow" }]),
           // Audit 19 Nov 2026 (S1): CSP dimulai Report-Only; laporan ke /api/csp.
           { key: "Content-Security-Policy-Report-Only", value: kebijakanCsp() },
           { key: "Reporting-Endpoints", value: `csp="${CSP_LAPOR}"` },

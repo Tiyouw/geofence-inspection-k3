@@ -9,6 +9,7 @@ import { Brand } from "./brand";
 import type { NavItem } from "./nav";
 import { NavLinks } from "./nav-link";
 import { PeranDokumen } from "./peran-dokumen";
+import { TautanLewati } from "./tautan-lewati";
 import { CacheMenu } from "./cache-menu";
 import { saluranUntuk } from "@/lib/realtime/saluran";
 import { konfigurasiKlien } from "@/lib/realtime/server";
@@ -109,6 +110,7 @@ export function DesktopShell({
   const hariIni = formatTanggal(new Date(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return (
     <div data-peran={peran} className="flex min-h-dvh">
+      <TautanLewati />
       <PeranDokumen peran={peran} />
       <CacheMenu hrefs={nav.map((n) => n.href)} userId={user.id} realtime={realtimeUntuk(user)} />
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block print:hidden">
@@ -181,6 +183,7 @@ export function MobileShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
+      <TautanLewati />
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between bg-primary px-4 text-white">
         <Link href={(nav[0]?.href ?? "/")} className="text-white">
           <Brand accentPin compact />

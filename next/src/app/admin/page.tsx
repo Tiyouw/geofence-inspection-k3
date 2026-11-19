@@ -116,6 +116,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                             <li key={m.slug}>
                                 <Link
                                     href={`/admin/aset?tipe=${encodeURIComponent(m.slug)}`}
+                                    prefetch={false}
                                     className="flex h-full flex-col gap-3 rounded-kartu border bg-card p-4 transition-shadow hover:shadow-md"
                                 >
                                     <span className="flex items-center gap-3">
