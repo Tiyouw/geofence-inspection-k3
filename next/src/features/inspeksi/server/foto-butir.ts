@@ -3,7 +3,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { areas, assets, checklistGroups, checklistItems, inspectionPhotoItems, inspectionPhotos, inspections, photoStepItems, photoSteps, users } from "@/db/schema";
 import type { DataCap } from "@/lib/foto/cap";
-import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { koordinatUntukSesi } from "@/lib/foto/pengaturan";
 import { pengaturanGerbang } from "@/lib/geo/data";
 
 /** `cap`: isi cap foto (lapisan tampilan; JPEG tidak diubah). */
@@ -52,7 +52,7 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     .where(eq(inspectionPhotos.inspectionId, inspectionId))
     .orderBy(asc(inspectionPhotos.takenAtDevice), asc(inspectionPhotos.uploadedAt));
 
-  const [koordinat, gerbang] = await Promise.all([capKoordinatAktif(), pengaturanGerbang()]);
+  const [koordinat, gerbang] = await Promise.all([koordinatUntukSesi(), pengaturanGerbang()]);
   const stepIds = [...new Set(fotos.map((f) => f.stepId).filter((x): x is number => x !== null))];
   const fotoIds = fotos.map((f) => f.id);
   const [items, tautan, tetap] = await Promise.all([

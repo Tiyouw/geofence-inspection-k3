@@ -547,6 +547,10 @@ const PENERJEMAH: Record<string, Penerjemah> = {
             angka(k.d.jarakKeKawasanM) ?? (typeof k.d.jarakKeKawasanM === "number" ? k.d.jarakKeKawasanM : null);
         const jarakArea = typeof k.d.jarakKeAreaM === "number" ? k.d.jarakKeAreaM : null;
         const akurasi = typeof k.d.akurasi === "number" ? k.d.akurasi : null;
+        // AC-7: posisi penolakan disimpan dan ditampilkan sebagai bukti. Halaman ini hanya untuk
+        // Admin K3 (requireRole("admin")); kunci lat/lng tetap dibuang dari "Data teknis".
+        const lat = typeof k.d.lat === "number" ? k.d.lat : null;
+        const lng = typeof k.d.lng === "number" ? k.d.lng : null;
         return {
             ikon: "tolak-lokasi",
             label: "Inspeksi ditolak (lokasi)",
@@ -561,6 +565,9 @@ const PENERJEMAH: Record<string, Penerjemah> = {
                 ...(jarak !== null ? [{ bidang: "Jarak ke kawasan", ke: `${formatAngka(jarak)} m` }] : []),
                 ...(jarakArea !== null ? [{ bidang: "Jarak ke area aset", ke: `${formatAngka(jarakArea)} m` }] : []),
                 ...(akurasi !== null ? [{ bidang: "Ketelitian GPS", ke: `± ${formatAngka(akurasi)} m` }] : []),
+                ...(lat !== null && lng !== null
+                    ? [{ bidang: "Koordinat", ke: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }]
+                    : []),
             ],
         };
     },

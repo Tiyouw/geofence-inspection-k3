@@ -167,7 +167,9 @@ describe("uraikan: kalimat sehari-hari", () => {
         expect(kalimatTeks(u)).toBe(
             "Administrator Demo mencoba menginspeksi APAR 01D dari 512 m di luar kawasan, ditolak",
         );
-        expect(JSON.stringify(u)).not.toMatch(/7\.212|112\.745/);
+        // Koordinat penolakan (AC-7) hanya di baris detail "Koordinat"; tidak di kalimat atau data teknis.
+        expect(u.detail).toContainEqual({ bidang: "Koordinat", ke: "-7.212300, 112.745600" });
+        expect(kalimatTeks(u)).not.toMatch(/7\.212|112\.745/);
         expect(u.teknis).toEqual({ assetId: 106, akurasi: 12, jarakKeKawasanM: 512.4, jarakKeAreaM: 530 });
     });
 

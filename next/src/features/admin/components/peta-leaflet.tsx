@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Peta Leaflet + ubin OpenStreetMap. Dimuat hanya di klien (lihat peta.tsx).
+ * Peta Leaflet + ubin dasar (lib/geo/ubin.ts, bawaan tanpa label). Dimuat hanya di klien (lihat peta.tsx).
  * Titik digambar sebagai circleMarker (tanpa gambar ikon), warna diambil dari token CSS
  * sehingga mengikuti arah desain yang dipilih.
  */
@@ -9,6 +9,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
 import { batasPeta } from "../lib/dasbor";
+import { UBIN_PETA } from "@/lib/geo/ubin";
 
 export type TitikTampil = {
     id: number;
@@ -42,9 +43,11 @@ function warnaToken(nama: string): string {
 }
 
 function lapisanOsm() {
-    return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    return L.tileLayer(UBIN_PETA.url, {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxNativeZoom: UBIN_PETA.zoomMaksAsli,
+        ...(UBIN_PETA.subdomain ? { subdomains: UBIN_PETA.subdomain } : {}),
+        attribution: UBIN_PETA.atribusi,
     });
 }
 

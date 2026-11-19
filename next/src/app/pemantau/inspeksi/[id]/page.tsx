@@ -2,7 +2,7 @@ import { bingkaiKawasan } from "@/lib/geo/data";
 import { batasTinjauan } from "@/features/tinjauan/peta";
 import type { Metadata } from "next";
 import { CapFoto } from "@/components/foto/cap-foto";
-import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { koordinatUntukSesi } from "@/lib/foto/pengaturan";
 import { pengaturanGerbang } from "@/lib/geo/data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,7 +43,7 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
   const [d, perButir, koordinatCap, gerbang, kawasan] = await Promise.all([
     detailInspeksi(id),
     fotoPerButir(id),
-    capKoordinatAktif(),
+    koordinatUntukSesi(),
     pengaturanGerbang(),
     bingkaiKawasan(),
   ]);

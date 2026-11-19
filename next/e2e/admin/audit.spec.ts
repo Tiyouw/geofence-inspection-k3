@@ -4,11 +4,15 @@ import { masuk, pilih } from "../helpers";
 
 /**
  * Jejak audit yang ramah orang awam: kalimat, detail tersembunyi, tanpa gulir mendatar,
- * saringan seketika, dan koordinat tidak pernah tampil.
+ * saringan seketika. Koordinat hanya tampil untuk penolakan lokasi (AC-7, ADR-15) di baris detail
+ * "Koordinat"; koordinat di aksi lain dan di "Data teknis" tidak pernah tampil.
  */
 const tag = `${Date.now().toString(36)}`;
 const LAT = "-7.1234567";
 const LNG = "112.6543219";
+/** Koordinat di aksi lain: tidak boleh tampil di mana pun. */
+const LAT_LAIN = "-7.3456789";
+const LNG_LAIN = "112.8765432";
 let area: { id: number; nama: string };
 let aset: { id: number; label: string };
 let adminId: number;
@@ -40,6 +44,7 @@ test.beforeAll(async () => {
         akurasi: 9,
         jarakKeKawasanM: 777,
     });
+    await tulis("uji.lain", "area", String(area.id), { uji: tag, lat: Number(LAT_LAIN), lng: Number(LNG_LAIN) });
     await tulis("pengguna.terbitkan_sandi", "user", "987655", { nip: `lama-${tag}` }, 40);
 });
 
@@ -58,7 +63,7 @@ test.describe("jejak audit", () => {
         await masuk(page, "admin");
     });
 
-    test("kalimat sehari-hari, detail tersembunyi, koordinat tidak pernah tampil", async ({ page }) => {
+    test("kalimat sehari-hari, detail tersembunyi, koordinat hanya pada penolakan lokasi", async ({ page }) => {
         await page.goto("/admin/audit");
         const jejak = page.getByTestId("jejak-audit");
         await expect(page.getByRole("heading", { level: 2, name: /^Hari ini · / })).toBeVisible();
@@ -90,12 +95,15 @@ test.describe("jejak audit", () => {
         await expect(ubah.getByText("203.0.113.9")).toBeVisible();
 
         const tolak = jejak.getByTestId("kejadian").filter({ hasText: "777 m di luar kawasan" }).first();
+        await expect(tolak.getByText("-7.123457, 112.654322")).toBeHidden();
         await tolak.getByText("Lihat detail").click();
+        await expect(tolak.getByRole("row", { name: /Koordinat\s+-7\.123457, 112\.654322/ })).toBeVisible();
         await tolak.getByText("Data teknis").click();
         await expect(tolak.getByText(/jarakKeKawasanM/)).toBeVisible();
+        await expect(tolak.getByText(/"lat"/)).toHaveCount(0);
         const html = await page.content();
-        expect(html).not.toContain(LAT.slice(0, 7));
-        expect(html).not.toContain(LNG.slice(0, 7));
+        expect(html).not.toContain(LAT_LAIN.slice(0, 7));
+        expect(html).not.toContain(LNG_LAIN.slice(0, 7));
     });
 
     for (const [lebar, tinggi] of [

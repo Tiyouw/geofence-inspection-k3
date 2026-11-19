@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Peta editor area: Leaflet + ubin OpenStreetMap. Menggambar poligon area (resmi dan draf),
+ * Peta editor area: Leaflet + ubin dasar (lib/geo/ubin.ts, bawaan tanpa label). Menggambar poligon area (resmi dan draf),
  * titik aset, pratinjau impor, dan pegangan simpul untuk menyunting satu poligon.
  * Dimuat hanya di klien (lihat peta-area.tsx). Warna dari token CSS.
  *
@@ -13,6 +13,7 @@
  */
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { UBIN_PETA } from "@/lib/geo/ubin";
 import { useEffect, useRef } from "react";
 import { areaTerkecilDi, type GeometriArea, type LngLat, luasM2, titikLabel } from "@/lib/geo/geometri";
 
@@ -133,10 +134,11 @@ export default function PetaAreaLeaflet({
     useEffect(() => {
         if (!wadah.current || peta.current) return;
         const m = L.map(wadah.current, { scrollWheelZoom: true, doubleClickZoom: false }).setView(PUSAT_BAWAAN, 16);
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        L.tileLayer(UBIN_PETA.url, {
             maxZoom: 20,
-            maxNativeZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxNativeZoom: Math.min(UBIN_PETA.zoomMaksAsli, 19),
+            ...(UBIN_PETA.subdomain ? { subdomains: UBIN_PETA.subdomain } : {}),
+            attribution: UBIN_PETA.atribusi,
         }).addTo(m);
         // Pane sorot di atas kanvas poligon (overlayPane 400), di bawah penanda (markerPane 600).
         m.createPane("sorot").style.zIndex = "450";
