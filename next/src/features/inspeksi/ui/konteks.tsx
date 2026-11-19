@@ -176,9 +176,18 @@ export function PetugasProvider({ userId, children }: { userId: number; children
 }
 
 /** SPEC §7.10: keluar mengosongkan basis data akun, salinan halaman, dan kunci HMAC. */
+/** Batas tunggu penghapusan basis data saat keluar; penghapusan tetap selesai di latar. */
+export const BATAS_HAPUS_DB_MS = 3000;
+
+/**
+ * Keluar: hapus data akun dari perangkat. Tidak boleh menahan keluar: bila ada koneksi lain yang
+ * belum menutup (tab lain, service worker), permintaan hapus tetap antre dan selesai sendiri
+ * begitu koneksi itu menutup (lihat `blocking` di db.ts), sedangkan keluar jalan terus.
+ */
 export async function bersihkanPerangkat(userId: number) {
-  await tutupDb(userId);
-  await deleteDB(namaDb(userId)).catch(() => {});
+  navigator.serviceWorker?.controller?.postMessage({ jenis: "bersihkan", userId });
   await setPenggunaAktif(null).catch(() => {});
-  navigator.serviceWorker?.controller?.postMessage({ jenis: "bersihkan" });
+  await tutupDb(userId).catch(() => {});
+  const hapus = deleteDB(namaDb(userId)).catch(() => {});
+  await Promise.race([hapus, new Promise((ok) => setTimeout(ok, BATAS_HAPUS_DB_MS))]);
 }

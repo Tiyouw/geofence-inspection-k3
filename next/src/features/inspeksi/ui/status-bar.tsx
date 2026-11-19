@@ -48,18 +48,24 @@ export function TombolKeluar({ className }: { className?: string }) {
         className,
       )}
       onClick={async () => {
-        if (
-          belum > 0 &&
-          !(await konfirmasi({
-            judul: "Keluar dari akun?",
-            jumlah: `${belum} inspeksi belum terkirim`,
-            isi: "Keluar menghapus inspeksi itu dari ponsel ini. Tunggu sampai ada sinyal dan semuanya terkirim bila ingin menyimpannya.",
-            tombol: "Keluar dan hapus",
-            batal: "Tetap masuk",
-            bahaya: true,
-          }))
-        )
-          return;
+        const ya = await konfirmasi(
+          belum > 0
+            ? {
+                judul: "Keluar dari akun?",
+                jumlah: `${belum} inspeksi belum terkirim`,
+                isi: "Keluar menghapus inspeksi itu, foto, dan data stiker dari ponsel ini. Tunggu sampai ada sinyal dan semuanya terkirim bila ingin menyimpannya.",
+                tombol: "Keluar dan hapus",
+                batal: "Tetap masuk",
+                bahaya: true,
+              }
+            : {
+                judul: "Keluar dari akun?",
+                isi: "Semua inspeksi sudah terkirim. Data stiker dan salinan di ponsel ini dihapus; masuk lagi saat ada sinyal untuk mengunduhnya kembali.",
+                tombol: "Keluar",
+                batal: "Tetap masuk",
+              },
+        );
+        if (!ya) return;
         start(async () => {
           await bersihkanPerangkat(userId);
           await keluar();
