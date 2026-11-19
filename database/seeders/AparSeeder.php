@@ -111,7 +111,7 @@ class AparSeeder extends Seeder
     /**
      * Bagian 5.5: jenis lokasi menentukan radius gerbang GPS.
      * Diturunkan dari nama gedung karena CSV data awal belum punya kolom sendiri.
-     * Setelah data koordinat asli PT PAL diperoleh, kolom lokasi_tipe cukup
+     * Setelah data koordinat asli perusahaan diperoleh, kolom lokasi_tipe cukup
      * ditambahkan ke CSV dan pemetaan ini tidak dipakai lagi.
      */
     private function lokasiTipe(string $gedung): string

@@ -1,5 +1,5 @@
 /**
- * Skema domain PAL-K3 v2, mengikuti docs/v2/SPEC.md §2.3 (usulan skema Postgres).
+ * Skema domain v2, mengikuti docs/v2/SPEC.md §2.3 (usulan skema Postgres).
  *
  * - Enum Postgres asli untuk nilai tertutup (SPEC §9 celah #10).
  * - UUID untuk entitas yang bisa lahir di perangkat (inspeksi, jawaban, foto) supaya

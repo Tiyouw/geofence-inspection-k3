@@ -1,4 +1,4 @@
-# PAL-K3 v2: Spesifikasi Fungsional Aplikasi Saat Ini
+# Geofence Inspection K3 v2: Spesifikasi Fungsional Aplikasi Saat Ini
 
 Dokumen ini memotret perilaku aplikasi Laravel + Filament yang **sekarang** berjalan
 (geofencinspection.tech), supaya penulisan ulang ke Next.js + TypeScript (cabang

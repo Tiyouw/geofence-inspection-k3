@@ -1,4 +1,4 @@
-# PAL-K3 v2: Daftar Uji Penerimaan
+# Geofence Inspection K3 v2: Daftar Uji Penerimaan
 
 Sumber kebenaran: kriteria penerimaan **AC-1..AC-29** di catatan *User Stories and Acceptance
 Criteria* (enowX 4115716cf8ad), ditambah butir **P** dari audit 19 Nov 2026 (catatan 89409004aa32)
@@ -90,7 +90,7 @@ pernah menampilkannya.
 |---|---|---|
 | P1 | Koordinat mentah tidak tampil di halaman tinjauan/inspeksi, daftar aset, cap foto, atau PDF kecuali pengaturan admin `foto.cap_koordinat` menyala (bawaan mati) | `e2e/admin/tinjauan.spec.ts`; `src/lib/foto/__tests__/cap.test.ts` |
 | P2 | Jejak audit tidak menyimpan koordinat atau bentuk poligon; perubahan titik tercatat sebagai "titik di peta" | `src/features/admin/lib/tanpa-koordinat.test.ts`; `src/features/admin/lib/audit.test.ts`; `e2e/petugas/gerbang.spec.ts` |
-| P3 | Tidak ada "PT PAL"/nama perusahaan di UI, PDF, manifest | `e2e/publik/landing.spec.ts` |
+| P3 | Tidak ada nama perusahaan asli di UI, PDF, manifest | `e2e/publik/landing.spec.ts` |
 | P4 | Semua peta (Lokasi, Ringkasan, tinjauan, aset) terbuka pas di kawasan disetujui; zoom minimum mencegah kembali ke tampilan kota | `e2e/admin/peta-kawasan.spec.ts` |
 | P5 | Lokasi: kawasan terpilih tidak menelan klik gedung di dalamnya; lepas pilihan dengan klik ulang, peta kosong, Esc, atau Tutup; pilih dari daftar tetap bisa | `e2e/admin/peta-kawasan.spec.ts`; `src/lib/geo/__tests__/bingkai.test.ts` |
 | P6 | Halaman Lokasi tidak meluap di layar ponsel (412 px) | `e2e/admin/peta-kawasan.spec.ts` |

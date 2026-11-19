@@ -216,7 +216,7 @@ export function FormTanya(props: Props) {
             </header>
 
             <main className="mx-auto max-w-3xl px-4 pt-6">
-                <h1 className="text-2xl font-semibold tracking-tight text-balance">Pertanyaan PAL-K3 untuk Rifaldy</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-balance">Pertanyaan Inspeksi K3 untuk Rifaldy</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                     {pertanyaan.length} pertanyaan, {wajib.length} di antaranya WAJIB dijawab dulu. Jawaban tersimpan
                     otomatis, jadi Anda bisa berhenti kapan saja dan melanjutkan dari laptop atau ponsel.

@@ -5,7 +5,7 @@
     layouts/petugas, panel memakai Filament.
 
     Bagian yang bisa diisi:
-      @section('judul')      judul tab, diakhiri "— PT PAL Indonesia"
+      @section('judul')      judul tab, diakhiri "— Perusahaan Galangan Kapal"
       @section('deskripsi')  meta description
       @push('kepala')        tambahan <head>, mis. preload gambar hero
       @section('navigasi')   kepala situs, di luar <main>
@@ -19,11 +19,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#031e25">
     <link rel="icon" type="image/svg+xml" href="{{ asset('geofencing.svg') }}">
-    <meta name="description" content="@yield('deskripsi', 'Sistem inspeksi K3 Divisi K3LH PT PAL Indonesia.')">
+    <meta name="description" content="@yield('deskripsi', 'Sistem inspeksi K3 Divisi K3LH Perusahaan Galangan Kapal.')">
     {{-- Halaman publik tidak boleh terindeks: isinya keterangan internal
          perusahaan, meski tanpa angka aset. --}}
     <meta name="robots" content="noindex, nofollow">
-    <title>@yield('judul', 'Inspeksi K3') &mdash; PT PAL Indonesia</title>
+    <title>@yield('judul', 'Inspeksi K3') &mdash; Perusahaan Galangan Kapal</title>
 
     {{-- Kelas js dipasang sebelum CSS dimuat supaya elemen reveal tidak
          berkedip. Kelas ini menyembunyikan isi [data-muncul] sampai app.js

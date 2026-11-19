@@ -13,7 +13,7 @@ export function jawabanKeMarkdown(
     const tgl = (d: Date) => d.toLocaleString("id-ID", { ...zona, dateStyle: "long", timeStyle: "short" }) + " WIB";
     const terisi = PERTANYAAN.filter((p) => adaIsi(jawaban[p.nomor])).length;
     const out: string[] = [
-        "# Jawaban Rifaldy atas pertanyaan PAL-K3 (grill-me)",
+        "# Jawaban Rifaldy atas pertanyaan Inspeksi K3 (grill-me)",
         "",
         `Diekspor ${tgl(opts.dibuatPada)}. ${terisi} dari ${PERTANYAAN.length} pertanyaan terisi. ` +
             (opts.dikirimPada ? `Dikirim ${tgl(opts.dikirimPada)}.` : "Belum dikirim."),

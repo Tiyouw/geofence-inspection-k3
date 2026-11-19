@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 /**
- * Service worker PAL-K3, dibundel ke public/sw.js oleh scripts/build-sw.mjs (jangan sunting public/sw.js).
+ * Service worker aplikasi inspeksi, dibundel ke public/sw.js oleh scripts/build-sw.mjs (jangan sunting public/sw.js).
  *
  * - Halaman lapangan (/petugas, /pindai, /isi, /riwayat, /antrean, /profil): jaringan dulu
  *   dengan batas 4 detik, jatuh ke salinan terakhir saat luring/sinyal lemah. Query diabaikan

@@ -8,11 +8,10 @@ fileMatchPattern: "resources/**"
 Dokumen "Arc" di bawah adalah acuan desain seluruh UI pal-k3 (dikirim pengguna,
 2 Okt 2026). Penyesuaian berikut berlaku di atasnya:
 
-1. **Sumber konten & media.** Teks penting serta aset foto/video diambil dari
-   https://www.pal.co.id/. Desain visual pal.co.id **tidak** ditiru, dan logo
-   PT PAL tidak dipakai — wordmark berupa tipografi (lihat "Logo Mark").
-   Media PT PAL disimpan sendiri (self-host) beserta catatan sumbernya, dan
-   tidak tercakup lisensi MIT repo.
+1. **Sumber konten & media.** Aplikasi anonim ("Perusahaan Galangan Kapal"):
+   tanpa nama, logo, foto, atau video perusahaan mana pun. Wordmark berupa
+   tipografi (lihat "Logo Mark"). Media berupa ilustrasi garis milik aplikasi
+   (`public/media/situs`, lihat `SUMBER.md`).
 2. **Bahasa:** semua teks antarmuka berbahasa Indonesia.
 3. **Tanpa emoji. Tanpa ikon dekoratif.** Glyph utilitas kecil (hamburger, panah)
    boleh.
@@ -22,7 +21,7 @@ Dokumen "Arc" di bawah adalah acuan desain seluruh UI pal-k3 (dikirim pengguna,
    zoom pelan pada foto. Durasi singkat–sedang (±150–700 ms), kurva halus tanpa
    bounce/spring, tanpa parallax berat, tanpa efek mencolok. **Wajib** menghormati
    `prefers-reduced-motion` (matikan reveal, video diganti poster).
-5. **Fotografi:** "aerial marine photography" diganti foto/video PT PAL (kapal,
+5. **Fotografi:** "aerial marine photography" diganti ilustrasi garis (kapal,
    galangan, laut) — tetap selaras dengan tema laut.
 6. **Font:** Inter sebagai pengganti Soehne, bobot 300/400/500/600,
    `font-feature-settings: "ss01", "tnum"`.

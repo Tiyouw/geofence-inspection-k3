@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  * Bagian 13 rancangan: sembilan petugas untuk data awal.
  *
  * Bagian 11.4 (kebijakan data pribadi): nama di sini adalah nama peran, BUKAN nama
- * pegawai PT PAL yang sebenarnya. Penggantian ke nama asli cukup dilakukan pada
+ * pegawai perusahaan yang sebenarnya. Penggantian ke nama asli cukup dilakukan pada
  * berkas data awal ini, tidak menyentuh kode.
  *
  * KATA SANDI TIDAK DITULIS DI DALAM KODE.
