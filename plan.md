@@ -1,7 +1,7 @@
 # Rencana pengembangan berikutnya — Inspeksi K3 APAR
 
 Tanggal: 26 Oktober 2026  
-Repositori: `Tiyouw/pal-k3`  
+Repositori: `Tiyouw/geofence-inspection-k3` (dahulu `Tiyouw/pal-k3`)  
 Dasar peninjauan: branch `pipeline/ui-admin`, commit `5e9c397`  
 Status: rencana untuk handoff; belum diimplementasikan.
 
