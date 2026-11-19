@@ -189,7 +189,11 @@ export const LOCALE = "id-ID";
 
 /** SPEC §3.6/§7.4: batas foto per inspeksi dan ukuran unggahan. */
 export const MAKS_FOTO = 6;
-export const MAKS_BYTE_FOTO = 12 * 1024 * 1024;
+/**
+ * Batas unggahan satu foto: di bawah batas badan permintaan Vercel (4,5 MB). Foto kamera
+ * terpandu dikompres ≤ 1600 px JPEG 0,82 (± 0,3–0,8 MB), jadi 4 MB longgar (audit 19 Nov 2026).
+ */
+export const MAKS_BYTE_FOTO = 4 * 1024 * 1024;
 
 /** SPEC §3.8: tenggat temuan per tingkat, dalam hari. */
 export const TENGGAT_HARI: Record<Severity, number> = { berat: 3, sedang: 14, ringan: 30 };
