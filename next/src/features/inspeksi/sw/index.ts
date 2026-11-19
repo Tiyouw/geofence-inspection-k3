@@ -10,6 +10,10 @@
  *   jadi service worker tidak menambah jeda pada setiap navigasi penuh.
  * - Aset statis Next dan ikon: cache-first (nama berkas ber-hash). "hangatkan" juga menyimpan JS/CSS
  *   yang dirujuk halaman lapangan, karena navigasi klien tidak memuat halaman itu secara penuh.
+ * - Dokumen admin/pemantau/laporan (hanya mode aplikasi, dinyalakan CacheMenu lewat pesan
+ *   "pemilik-dokumen"): stale-while-revalidate per pengguna. Salinan disajikan seketika dengan
+ *   penanda <meta name="pal-k3-dari-cache">, lalu klien menyegarkan isi. Pengguna lain, /masuk,
+ *   atau jawaban yang dialihkan (sesi habis) mengosongkannya.
  * - Background Sync "outbox": menguras antrean akun yang sedang masuk (kode sama dengan jendela).
  */
 import { bukaDb, getPenggunaAktif } from "../client/db";
@@ -23,6 +27,11 @@ const VERSION = __SW_VERSION__;
 const PRECACHE = `pal-k3-precache-${VERSION}`;
 const STATIC = "pal-k3-static";
 const HALAMAN = "pal-k3-halaman";
+const DOKUMEN = "pal-k3-dokumen";
+/** Entri khusus di cache DOKUMEN: id pengguna pemilik salinan. Tanpa pemilik, cache tidak dipakai. */
+const KUNCI_PEMILIK = "/__pal-k3-pemilik";
+const MAKS_DOKUMEN = 40;
+const AWALAN_DOKUMEN = ["/admin", "/pemantau", "/laporan"];
 const PRECACHE_URLS = ["/offline", "/icons/icon-192.png", "/icons/icon.svg"];
 const HALAMAN_LAPANGAN = ["/petugas", "/petugas/pindai", "/petugas/isi", "/petugas/riwayat", "/petugas/antrean", "/petugas/profil"];
 
@@ -80,6 +89,47 @@ async function halamanLapangan(event: FetchEvent, path: string): Promise<Respons
   }
 }
 
+async function pemilikDokumen(cache: Cache): Promise<string | null> {
+  const r = await cache.match(KUNCI_PEMILIK);
+  return r ? r.text() : null;
+}
+
+function tandaiDariCache(html: string): string {
+  return html.replace(/<head([^>]*)>/i, '<head$1><meta name="pal-k3-dari-cache" content="1">');
+}
+
+/** Simpan dokumen HTML yang sah (bukan pengalihan ke /masuk) untuk pemilik saat ini. */
+async function simpanDokumen(cache: Cache, req: Request, res: Response) {
+  const url = new URL(req.url);
+  if (!res.ok || res.redirected || new URL(res.url).pathname !== url.pathname) return;
+  if (!(res.headers.get("content-type") ?? "").includes("text/html")) return;
+  await cache.put(req.url, res);
+  const kunci = (await cache.keys()).filter((k) => !k.url.endsWith(KUNCI_PEMILIK));
+  for (const k of kunci.slice(0, Math.max(0, kunci.length - MAKS_DOKUMEN))) await cache.delete(k);
+}
+
+/** Jawaban jaringan yang menandakan sesi tidak berlaku lagi: kosongkan salinan. */
+function sesiHabis(res: Response): boolean {
+  return res.type === "opaqueredirect" || (res.redirected && new URL(res.url).pathname.startsWith("/masuk"));
+}
+
+async function dokumenAdmin(event: FetchEvent): Promise<Response> {
+  const cache = await caches.open(DOKUMEN);
+  const pemilik = await pemilikDokumen(cache);
+  const jaringan = ambilNavigasi(event).then(async (res) => {
+    if (sesiHabis(res)) await caches.delete(DOKUMEN);
+    else if (pemilik) await simpanDokumen(cache, event.request, res.clone());
+    return res;
+  });
+  if (!pemilik) return jaringan;
+  const salinan = await cache.match(event.request.url);
+  if (!salinan) return jaringan;
+  event.waitUntil(jaringan.catch(() => {}));
+  const headers = new Headers(salinan.headers);
+  headers.delete("content-length");
+  return new Response(tandaiDariCache(await salinan.text()), { status: 200, headers });
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -90,6 +140,10 @@ self.addEventListener("fetch", (event) => {
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (HALAMAN_LAPANGAN.includes(path)) {
       event.respondWith(halamanLapangan(event, path));
+      return;
+    }
+    if (AWALAN_DOKUMEN.some((a) => path === a || path.startsWith(`${a}/`))) {
+      event.respondWith(dokumenAdmin(event).catch(() => fetch(req)));
       return;
     }
     const stiker = path.match(/^\/i\/([^/]+)$/);
@@ -165,9 +219,20 @@ self.addEventListener("message", (event) => {
     // Simpan cangkang halaman lapangan saat daring supaya bisa dibuka luring.
     event.waitUntil(hangatkan());
   }
+  if (data?.jenis === "pemilik-dokumen" && typeof (data as { id?: unknown }).id === "number") {
+    const id = String((data as { id: number }).id);
+    event.waitUntil(
+      caches.open(DOKUMEN).then(async (cache) => {
+        if ((await pemilikDokumen(cache)) === id) return;
+        await caches.delete(DOKUMEN);
+        await (await caches.open(DOKUMEN)).put(KUNCI_PEMILIK, new Response(id));
+      }),
+    );
+  }
+  if (data?.jenis === "bersihkan-dokumen") event.waitUntil(caches.delete(DOKUMEN));
   if (data?.jenis === "bersihkan") {
     // Keluar: hapus salinan halaman berautentikasi (SPEC §7.10).
-    event.waitUntil(caches.delete(HALAMAN));
+    event.waitUntil(Promise.all([caches.delete(HALAMAN), caches.delete(DOKUMEN)]));
   }
   if (data?.jenis === "kuras") event.waitUntil(kurasLatar().catch(() => {}));
 });

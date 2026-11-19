@@ -9,7 +9,7 @@ import { Brand } from "./brand";
 import type { NavItem } from "./nav";
 import { NavLinks } from "./nav-link";
 import { PeranDokumen } from "./peran-dokumen";
-import { PrefetchMenu } from "./prefetch-menu";
+import { CacheMenu } from "./cache-menu";
 import { SignOutButton } from "./sign-out-button";
 
 function inisial(nama: string) {
@@ -103,7 +103,7 @@ export function DesktopShell({
   return (
     <div data-peran={peran} className="flex min-h-dvh">
       <PeranDokumen peran={peran} />
-      <PrefetchMenu hrefs={nav.map((n) => n.href)} />
+      <CacheMenu hrefs={nav.map((n) => n.href)} userId={user.id} />
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block print:hidden">
         <SidebarBody user={user} nav={nav} homeHref={home} />
       </aside>
