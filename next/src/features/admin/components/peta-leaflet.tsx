@@ -82,7 +82,8 @@ export default function PetaLeaflet({
 
     useEffect(() => {
         if (!wadah.current || peta.current) return;
-        const m = L.map(wadah.current, { scrollWheelZoom: false }).setView(PUSAT_BAWAAN, 16);
+        // Kanvas: ratusan titik/lingkaran sebagai satu <canvas>, bukan satu <path> SVG per titik (ponsel lambat).
+        const m = L.map(wadah.current, { scrollWheelZoom: false, preferCanvas: true }).setView(PUSAT_BAWAAN, 16);
         lapisanOsm().addTo(m);
         lapisBentuk.current = L.layerGroup().addTo(m);
         lapisTitik.current = L.layerGroup().addTo(m);
