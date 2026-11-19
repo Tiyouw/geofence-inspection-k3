@@ -282,9 +282,23 @@ function Legenda() {
     );
 }
 
+/**
+ * Baris daftar area yang dirender sebelum dicari atau "Tampilkan semua". Ratusan baris sekaligus
+ * membuat halaman Lokasi tertahan ~1 detik di ponsel (gaya dan tata letak ribuan elemen).
+ */
+const BATAS_DAFTAR = 50;
+
 function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: AreaEditor | null; pilih: (id: number) => void }) {
     const [q, setQ] = useState("");
-    const tampil = area.filter((a) => !q || `${a.nama} ${a.kode}`.toLowerCase().includes(q.toLowerCase()));
+    const [semua, setSemua] = useState(false);
+    const cariRef = useRef<HTMLInputElement>(null);
+    // Halaman di-stream: teks yang diketik sebelum hidrasi selesai tidak memicu onChange.
+    useEffect(() => {
+        const awal = cariRef.current?.value;
+        if (awal) setQ(awal);
+    }, []);
+    const cocok = area.filter((a) => !q || `${a.nama} ${a.kode}`.toLowerCase().includes(q.toLowerCase()));
+    const tampil = semua || q ? cocok : cocok.slice(0, BATAS_DAFTAR);
     const draf = area.filter((a) => a.polygonDraf).length;
     return (
         <Kartu judul="Area">
@@ -294,7 +308,7 @@ function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: Are
                 </p>
             )}
             {draf > 0 && <p className="mb-3 text-sm text-muted-foreground">{draf} area masih berupa draf dan belum dipakai gerbang.</p>}
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari area" aria-label="Cari area" className="mb-3" />
+            <Input ref={cariRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari area" aria-label="Cari area" className="mb-3" />
             <ul className="max-h-[480px] space-y-1 overflow-y-auto" data-testid="daftar-area">
                 {tampil.map((a) => (
                     <li key={a.id}>
@@ -317,6 +331,11 @@ function DaftarArea({ area, kawasan, pilih }: { area: AreaEditor[]; kawasan: Are
                     </li>
                 ))}
             </ul>
+            {tampil.length < cocok.length && (
+                <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => setSemua(true)}>
+                    Tampilkan semua ({cocok.length} area)
+                </Button>
+            )}
         </Kartu>
     );
 }
