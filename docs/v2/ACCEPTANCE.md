@@ -1,11 +1,103 @@
 # PAL-K3 v2: Daftar Uji Penerimaan
 
-Turunan dari [SPEC.md](SPEC.md). Setiap butir harus lulus sebelum v2 menggantikan aplikasi
-Laravel. Kolom "Asal" menunjuk uji Laravel yang menyandikan aturan yang sama (bila ada) atau
-bagian SPEC. Butir bertanda **(baru)** belum ada di aplikasi lama; butir bertanda **(keputusan)**
-menunggu persetujuan pemilik sebelum diuji.
+Sumber kebenaran: kriteria penerimaan **AC-1..AC-29** di catatan *User Stories and Acceptance
+Criteria* (enowX 4115716cf8ad), ditambah butir **P** dari audit 19 Nov 2026 (catatan 89409004aa32)
+dan permintaan pemilik di hari yang sama. Aturan rilis: semua AC berprioritas Must lulus.
 
-Centang ☐ menjadi ☑ saat lulus. Jenis: U = unit, I = integrasi/API, E = end-to-end di peramban (mis. Playwright, mengikuti `tests/qa-browser/`).
+Kolom **Uji otomatis** menunjuk spec yang menyandikan aturannya. Spec ini berjalan di CI:
+- E2E Playwright di `next/e2e/`;
+- unit/integrasi Vitest di `next/src/**`. Integrasi DB berjalan dengan Postgres di job `check` sejak 19 Nov 2026.
+
+**Cek manual** menunjuk bagian catatan *PAL-K3 v2 — Cek manual* (98b77437594d) untuk hal yang butuh
+ponsel, kamera, atau GPS sungguhan.
+
+Bagian **A–O** di bawah adalah daftar paritas Laravel lama, disimpan sebagai arsip karena kode masih
+merujuk ID-nya (mis. B5, J1, K5). Butir arsip yang bertentangan dengan keputusan v2 ditandai
+**Diganti** dan tidak berlaku.
+
+## AC v2 (berlaku)
+
+### Inspeksi aset bertitik tetap
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-1 | Aset unit lain: pesan nama unit pemilik, formulir tidak terbuka, API 403 | `e2e/unit.spec.ts` | §3 Inspektur "Lingkup unit" |
+| AC-2 | Kamera belakang di Android Chrome; kode stiker yang diketik membuka formulir yang sama | `e2e/petugas/pemindai.spec.ts` | §3 Inspektur "Pindai", "Kode manual" |
+| AC-3 | Tanpa pilih berkas/galeri; foto hanya lewat kamera terpandu | `e2e/petugas/kamera.spec.ts` | §3 "Kamera terpandu" |
+| AC-4 | Langkah foto kosong → pesan per langkah, tetap draf | `e2e/petugas/kamera.spec.ts` (kirim tanpa foto) | |
+| AC-5 | Dalam poligon gedung → "Lokasi sesuai", final | `e2e/petugas/gerbang.spec.ts`; `src/lib/geo/__tests__/gerbang.test.ts` | §4 titik A |
+| AC-6 | Dalam kawasan, luar gedung → final "Perlu tinjauan", masuk antrean | `e2e/petugas/gerbang.spec.ts` | §4 titik C |
+| AC-7 | Luar kawasan (akurasi ≤ 100 m): Kirim nonaktif dengan alasan; peladen tetap menolak 422, tetap draf, audit `inspeksi.ditolak_lokasi` | `e2e/petugas/gerbang.spec.ts` | §4 titik D |
+| AC-8 | Lokasi mati/izin ditolak: Kirim nonaktif, pesan + Coba lagi | `e2e/petugas/gerbang.spec.ts` | §4 titik F |
+| AC-8a | Akurasi 150 m: penjelasan sinyal lemah; Kirim sekarang → "Perlu tinjauan" GPS lemah, akurasi tersimpan | `e2e/petugas/gerbang.spec.ts` | §4 titik E |
+| AC-8b | Kamera terpandu per langkah; beberapa jepretan; unggah setelah langkah terakhir; tautan ke butir | `e2e/petugas/kamera.spec.ts` | |
+| AC-8c | Foto "Isi kotak P3K terbuka" tampil di butir isi 4–24 | `e2e/petugas/p3k.spec.ts` | |
+| AC-9 | Area terbatas: tanpa foto, berlabel "Area terbatas" di daftar/detail/laporan | `e2e/petugas/kamera.spec.ts` (area terbatas); `e2e/pemantau/tinjauan.spec.ts` | §3 "Area terbatas" |
+| AC-10 | Setelah final, ubah jawaban/foto/lokasi lewat API → "Inspeksi sudah dikirim." | `e2e/petugas/api.spec.ts` | |
+| AC-11 | "Tekanan manometer: Kurang" → temuan berat + tindakan; usulan Tidak layak pakai | `e2e/petugas/alur.spec.ts` | |
+| AC-12 | Kirim luring → antrean → terkirim saat sinyal kembali, gerbang memakai GPS saat mengisi, tanpa ganda | `e2e/petugas/alur.spec.ts` (luring); `e2e/petugas/api.spec.ts` (idempotensi); `src/features/inspeksi/client/__tests__/outbox.test.ts` | §3 "Luring" |
+
+Catatan AC-7: sejak audit 19 Nov 2026 (S6), jejak audit penolakan menyimpan akurasi dan jarak ke
+kawasan, **tanpa koordinat** (denah rahasia). Catatan User Stories masih berbunyi "dengan koordinat":
+{{Assumption}} keputusan ini menunggu konfirmasi pemilik.
+
+### Inspeksi kotak P3K
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-13 | Baku per tipe kotak (B: kasa steril 40) | `src/lib/domain/__tests__/modul.test.ts`; `e2e/petugas/p3k.spec.ts` | §3 "P3K" |
+| AC-14 | Kurang dari baku → temuan sedang "x dari y" | `e2e/petugas/p3k.spec.ts` | |
+| AC-15 | "Ada yang kedaluwarsa" → temuan sedang | `e2e/petugas/p3k.spec.ts` | |
+| AC-16 | Isi berkedaluwarsa wajib tanggal; ≤ 30 hari → catatan tanpa temuan | `e2e/petugas/p3k.spec.ts` | |
+| AC-17 | Rekap isi P3K: isi kurang dan kedaluwarsa per kotak | `e2e/pemantau/modul.spec.ts` | §3 Admin "Laporan" |
+
+### Inspeksi mobil pemadam
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-18 | Dari titik mana pun, "Tidak berlaku (objek bergerak)", tanpa antrean tinjauan | `e2e/petugas/damkar.spec.ts` | §4 "Mobil pemadam di titik D" |
+| AC-19 | Odometer angka, tidak pernah temuan | `e2e/petugas/damkar.spec.ts` | |
+| AC-20 | Jadwal mobil pemadam per 7 hari (minggu Senin–Minggu WIB) | `e2e/petugas/damkar.spec.ts`; `src/features/dasbor/progres.db.test.ts` | |
+
+### Tinjauan
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-21 | Antrean "Perlu tinjauan" dan "Area terbatas" dengan foto per butir, peta, poligon, jarak | `e2e/admin/tinjauan.spec.ts`; `e2e/pemantau/tinjauan.spec.ts` | §3 Admin "Tinjauan" |
+| AC-22 | Diterima/Ditolak dengan catatan ≥ 10 karakter; nama, waktu, audit; isi inspeksi tetap | `e2e/admin/tinjauan.spec.ts`; `otorisasi.db.test.ts` | |
+| AC-23 | Inspektur 403; tinjauan kedua 409; keluar dari antrean kedua peran | `otorisasi.db.test.ts`; `e2e/admin/realtime.spec.ts` | |
+
+### Progres dan laporan
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-24 | Dasbor % per gedung per modul = laporan Progres per gedung | `src/features/dasbor/progres.db.test.ts`; `e2e/pemantau/progres.spec.ts` | |
+| AC-25 | PDF PMS, Rekap temuan, Kartu kontrol, Progres, Rekap isi P3K: Admin dan Pemantau ya, Inspektur 403 | `e2e/pemantau/pemantau.spec.ts`; `e2e/pemantau/modul.spec.ts`; `e2e/pemantau/progres.spec.ts` | |
+| AC-26 | Tidak ada nama, logo, foto, atau video perusahaan di PDF/halaman | `e2e/publik/landing.spec.ts` (halaman); PDF belum diuji otomatis | §3 Admin "Laporan" (periksa kop PDF) |
+
+### Pengelolaan area
+
+| AC | Kriteria (ringkas) | Uji otomatis | Cek manual |
+|---|---|---|---|
+| AC-27 | Gambar/sunting/simpan poligon; garis bersilangan ditolak "Poligon tidak sah: garis saling memotong." | `e2e/admin/lokasi.spec.ts`; `src/lib/geo/__tests__/impor.test.ts` | §2 |
+| AC-28 | Tanpa kawasan disetujui gerbang tidak menolak; aset tanpa area → "Perlu tinjauan" | `src/lib/geo/__tests__/gerbang.test.ts`; `e2e/akhir/kawasan.spec.ts` | |
+| AC-29 | Tanda area terbatas berlaku untuk semua aset di area itu; perubahan tercatat di audit | `e2e/petugas/kamera.spec.ts`; `e2e/admin/lokasi.spec.ts`; `e2e/admin/audit.spec.ts` | §2 "Area terbatas" |
+
+## P. Privasi, peta, dan keamanan data (audit 19 Nov 2026)
+
+| # | Kriteria | Uji otomatis |
+|---|---|---|
+| P1 | Koordinat mentah tidak tampil di halaman tinjauan/inspeksi, daftar aset, cap foto, atau PDF kecuali pengaturan admin `foto.cap_koordinat` menyala (bawaan mati) | `e2e/admin/tinjauan.spec.ts`; `src/lib/foto/__tests__/cap.test.ts` |
+| P2 | Jejak audit tidak menyimpan koordinat atau bentuk poligon; perubahan titik tercatat sebagai "titik di peta" | `src/features/admin/lib/tanpa-koordinat.test.ts`; `src/features/admin/lib/audit.test.ts`; `e2e/petugas/gerbang.spec.ts` |
+| P3 | Tidak ada "PT PAL"/nama perusahaan di UI, PDF, manifest | `e2e/publik/landing.spec.ts` |
+| P4 | Semua peta (Lokasi, Ringkasan, tinjauan, aset) terbuka pas di kawasan disetujui; zoom minimum mencegah kembali ke tampilan kota | `e2e/admin/peta-kawasan.spec.ts` |
+| P5 | Lokasi: kawasan terpilih tidak menelan klik gedung di dalamnya; lepas pilihan dengan klik ulang, peta kosong, Esc, atau Tutup; pilih dari daftar tetap bisa | `e2e/admin/peta-kawasan.spec.ts`; `src/lib/geo/__tests__/bingkai.test.ts` |
+| P6 | Halaman Lokasi tidak meluap di layar ponsel (412 px) | `e2e/admin/peta-kawasan.spec.ts` |
+| P7 | Seed ulang tidak mengubah aset, sandi, atau akun yang sudah ada | `src/db/seed/seed.db.test.ts` |
+
+---
+
+# Arsip: daftar paritas Laravel (tidak lagi menjadi aturan rilis)
 
 ## A. Masuk dan peran
 
@@ -69,12 +161,12 @@ Centang ☐ menjadi ☑ saat lulus. Jenis: U = unit, I = integrasi/API, E = end-
 | # | Uji | Jenis | Asal |
 |---|---|---|---|
 | E1 | ☐ Haversine: 0 di titik sama; pergeseran kecil masuk akal; null bila salah satu tanpa koordinat | U | `AssetGateTest` |
-| E2 | ☐ Radius efektif: override, lalu per jenis lokasi (75/60/30/tanpa), tak dikenal 75 | U | `AssetGateTest::radius_bawaan...` |
-| E3 | ☐ Tabel gerbang: di titik/10 m/50 m → sesuai; 200 m → jauh; akurasi 120 → gps_lemah; tanpa koordinat → tanpa_gps; kendaraan → tidak_berlaku | U | `AssetGateTest::evaluasi_gerbang` |
-| E4 | ☐ Akurasi > 100 menang atas jarak; akurasi ditambahkan ke toleransi; `≤ 2×toleransi` → perlu_review | U | `AssetGateTest` |
-| E5 | ☐ Semua status gerbang tetap bisa dikirim | I | §3.5 |
-| E6 | ☐ Izin lokasi ditolak tidak mengunci formulir; pesan sesuai | E | `isi.blade.php:340-346` |
-| E7 | ☐ Antrean tinjauan = final ∧ gate ∈ {perlu_review, jauh, gps_lemah, tanpa_gps} ∧ belum ditinjau; sama di menu Inspeksi dan dasbor | I | `DaftarInspeksiTest::test_tinjauan_panel_dan_dasbor_konsisten...` |
+| E2 | **Diganti (ADR-7/12, AC-5..8a): gerbang poligon, bukan radius.**  ☐ Radius efektif: override, lalu per jenis lokasi (75/60/30/tanpa), tak dikenal 75 | U | `AssetGateTest::radius_bawaan...` |
+| E3 | **Diganti (ADR-7/12, AC-5..8a).**  ☐ Tabel gerbang: di titik/10 m/50 m → sesuai; 200 m → jauh; akurasi 120 → gps_lemah; tanpa koordinat → tanpa_gps; kendaraan → tidak_berlaku | U | `AssetGateTest::evaluasi_gerbang` |
+| E4 | **Diganti (ADR-12: kelonggaran = min(akurasi, 30 m)).**  ☐ Akurasi > 100 menang atas jarak; akurasi ditambahkan ke toleransi; `≤ 2×toleransi` → perlu_review | U | `AssetGateTest` |
+| E5 | **Diganti (AC-7, AC-8): di luar kawasan dan tanpa posisi tidak bisa dikirim.**  ☐ Semua status gerbang tetap bisa dikirim | I | §3.5 |
+| E6 | **Diganti (AC-8): izin ditolak mengunci Kirim.**  ☐ Izin lokasi ditolak tidak mengunci formulir; pesan sesuai | E | `isi.blade.php:340-346` |
+| E7 | **Diganti (ADR-9, AC-21): antrean = perlu_tinjauan atau area terbatas.**  ☐ Antrean tinjauan = final ∧ gate ∈ {perlu_review, jauh, gps_lemah, tanpa_gps} ∧ belum ditinjau; sama di menu Inspeksi dan dasbor | I | `DaftarInspeksiTest::test_tinjauan_panel_dan_dasbor_konsisten...` |
 | E8 | ☐ Durasi < 45 detik ditandai dan dapat difilter, tidak ditolak | I | `InspectionResource.php:166-175` |
 
 ## F. Foto
@@ -86,7 +178,7 @@ Centang ☐ menjadi ☑ saat lulus. Jenis: U = unit, I = integrasi/API, E = end-
 | F3 | ☐ Hasil: lebar ≤ 1600 px, JPEG mutu ≈ 82, orientasi EXIF dikoreksi, foto kecil tidak diperbesar | U | `PhotoStore.php:63-129` |
 | F4 | ☐ Foto inspeksi final tidak bisa dihapus | I | `AlurLapanganTest::inspeksi_final_menolak...` |
 | F5 | ☐ (baru) Admin dan pemantau melihat foto di detail inspeksi; URL foto tidak bisa dibuka tanpa sesi | E | SPEC §3.6 celah |
-| F6 | ☐ (baru) Maksimum 6 foto per inspeksi | I | SPEC §7.4 |
+| F6 | **Diganti (ADR-8): maks 5 foto per langkah kamera terpandu.**  ☐ (baru) Maksimum 6 foto per inspeksi | I | SPEC §7.4 |
 
 ## G. Finalisasi, temuan, jadwal
 
@@ -112,11 +204,11 @@ Centang ☐ menjadi ☑ saat lulus. Jenis: U = unit, I = integrasi/API, E = end-
 | # | Uji | Jenis | Asal |
 |---|---|---|---|
 | H1 | ☐ Setiap daftar dan formulir buat sumber data merender | E | `AdminPanelSmokeTest` |
-| H2 | ☐ Formulir aset: validasi lat/lng/radius, jenis lokasi menampilkan radius bawaan, terakhir dicek baca saja | E | `AssetResource.php:46-145` |
-| H3 | ☐ Tabel aset: radius efektif bawaan/khusus/tanpa gerbang; filter tipe, gedung, jenis lokasi, aktif, tanpa koordinat (tetap menghormati filter lain), jatuh tempo | I | `AssetFiltersTest` |
+| H2 | **Diganti (ADR-12): radius tidak dipakai gerbang.**  ☐ Formulir aset: validasi lat/lng/radius, jenis lokasi menampilkan radius bawaan, terakhir dicek baca saja | E | `AssetResource.php:46-145` |
+| H3 | **Diganti sebagian: kolom radius tidak dipakai.**  ☐ Tabel aset: radius efektif bawaan/khusus/tanpa gerbang; filter tipe, gedung, jenis lokasi, aktif, tanpa koordinat (tetap menghormati filter lain), jatuh tempo | I | `AssetFiltersTest` |
 | H4 | ☐ Label lantai/lokasi sesuai 7 kasus | U | `LabelLokasiAsetTest` |
 | H5 | ☐ Detail inspeksi: bukti lapangan tidak dapat diubah; hanya catatan tinjauan | I | `InspectionResource.php:81-114` |
-| H6 | ☐ Tandai ditinjau: hanya admin, alasan ≥ 10 karakter, menyimpan peninjau dan waktu, GPS tidak berubah | I | `RedesainPanelTest::test_tinjauan_memerlukan_alasan...` |
+| H6 | **Diganti (ADR-9, AC-22): Admin K3 dan Pemantau meninjau, Diterima/Ditolak.**  ☐ Tandai ditinjau: hanya admin, alasan ≥ 10 karakter, menyimpan peninjau dan waktu, GPS tidak berubah | I | `RedesainPanelTest::test_tinjauan_memerlukan_alasan...` |
 | H7 | ☐ Tab Inspeksi: Antre ditinjau (bawaan bila ada), Lokasi menyimpang, Tidak layak pakai, Semua; lencana menu = jumlah antrean | I | `DaftarInspeksiTest` |
 | H8 | ☐ Petugas: buat → bisa masuk; ubah tanpa sandi mempertahankan sandi; nonaktif → tidak bisa masuk | I | `UserManagementTest` |
 | H9 | ☐ (baru) Formulir temuan memakai pilihan terkontrol (aset berdasarkan kode, tingkat, status) dan mencatat jejak audit | I | SPEC §3.8 celah |
