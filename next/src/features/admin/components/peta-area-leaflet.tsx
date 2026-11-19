@@ -123,6 +123,8 @@ export default function PetaAreaLeaflet({
     /** Pilihan terakhir berasal dari klik di peta: jangan pindahkan peta. */
     const dariPeta = useRef(false);
     const kanvas = useRef<L.Canvas | null>(null);
+    /** Nilai `fokus` terakhir yang sudah dibingkai; -1 = peta baru (dibuat ulang), bingkai awal lagi. */
+    const fokusTerakhir = useRef<number | undefined>(-1);
     const cb = useRef({ onPilih, onLepas, onSunting, onKlikPeta });
     useEffect(() => {
         cb.current = { onPilih, onLepas, onSunting, onKlikPeta };
@@ -159,8 +161,28 @@ export default function PetaAreaLeaflet({
             m.remove();
             peta.current = null;
             kanvas.current = null;
+            fokusTerakhir.current = -1;
         };
     }, []);
+
+    /**
+     * Klik di atas poligon atau titik aset: pilih area terkecil yang memuat titik klik (kawasan tidak
+     * pernah menelan gedung di dalamnya, titik aset tidak menelan gedungnya). Klik area terpilih → lepas.
+     */
+    const klikArea = useRef((ll: L.LatLng, cadangan: number | string | null) => {
+        const pt = { lat: ll.lat, lng: ll.lng };
+        const isi = [...lapisPer.current.values()].map((x) => ({ id: x.p.id, geometry: x.p.geometry, luas: x.luas }));
+        const id = areaTerkecilDi(pt, isi, (x) => x.luas)?.id ?? cadangan;
+        // Saat menggambar, klik di atas area tetap menambah titik.
+        cb.current.onKlikPeta?.([Number(pt.lng.toFixed(7)), Number(pt.lat.toFixed(7))]);
+        if (id == null || id === pilihRef.current) {
+            cb.current.onLepas?.();
+            return;
+        }
+        // Dari peta: hanya sorot, tanpa lompatan.
+        dariPeta.current = true;
+        cb.current.onPilih?.(id);
+    });
 
     // Poligon: dibangun ulang hanya bila daftar poligon berubah; memilih hanya mengganti gaya.
     useEffect(() => {
@@ -176,21 +198,7 @@ export default function PetaAreaLeaflet({
                 bubblingMouseEvents: false,
             }).addTo(g);
             lyr.bindTooltip(esc(p.nama), { sticky: true });
-            lyr.on("click", (e: L.LeafletMouseEvent) => {
-                const pt = { lat: e.latlng.lat, lng: e.latlng.lng };
-                const isi = [...lapisPer.current.values()];
-                const hit = areaTerkecilDi(pt, isi.map((x) => ({ ...x, id: x.p.id, geometry: x.p.geometry })), (x) => x.luas);
-                const id = hit ? hit.id : p.id;
-                // Saat menggambar, klik di atas area tetap menambah titik.
-                cb.current.onKlikPeta?.([Number(pt.lng.toFixed(7)), Number(pt.lat.toFixed(7))]);
-                if (id === pilihRef.current) {
-                    cb.current.onLepas?.();
-                    return;
-                }
-                // Dari peta: hanya sorot, tanpa lompatan.
-                dariPeta.current = true;
-                cb.current.onPilih?.(id);
-            });
+            lyr.on("click", (e: L.LeafletMouseEvent) => klikArea.current(e.latlng, p.id));
             lyr.on("mouseover", () => {
                 if (pilihRef.current !== p.id) lyr.setStyle(gayaPoligon(p, "hover"));
             });
@@ -264,6 +272,7 @@ export default function PetaAreaLeaflet({
                 bubblingMouseEvents: false,
             })
                 .bindTooltip(esc(a.kode))
+                .on("click", (e: L.LeafletMouseEvent) => klikArea.current(e.latlng, null))
                 .addTo(g);
         }
     }, [aset]);
@@ -317,7 +326,6 @@ export default function PetaAreaLeaflet({
 
     // Bingkai: saat dimuat, pas di kawasan yang disetujui (zoom minimum dua tingkat di bawahnya,
     // supaya tidak jatuh ke tampilan kota). Pratinjau impor dan permintaan fokus lain: semua poligon.
-    const fokusTerakhir = useRef<number | undefined>(-1);
     useEffect(() => {
         const m = peta.current;
         if (!m || fokusTerakhir.current === fokus || !poligon.length) return;

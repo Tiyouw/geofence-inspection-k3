@@ -84,6 +84,8 @@ const tungguDiam = async (peta: Locator, aksi: () => Promise<void>) => {
 async function klikDi(page: Page, peta: Locator, x: number, y: number) {
     // Jeda > interval klik ganda supaya dua klik di titik sama tidak digabung.
     await page.waitForTimeout(600);
+    // Peta 620 px di bawah kepala halaman: gulir ke atas layar supaya titik klik ada di viewport.
+    await peta.evaluate((el) => el.scrollIntoView({ block: "start" }));
     const kotak = (await peta.boundingBox())!;
     await page.mouse.click(kotak.x + x, kotak.y + y);
 }
