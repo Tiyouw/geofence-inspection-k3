@@ -10,6 +10,8 @@ import type { NavItem } from "./nav";
 import { NavLinks } from "./nav-link";
 import { PeranDokumen } from "./peran-dokumen";
 import { CacheMenu } from "./cache-menu";
+import { saluranUntuk } from "@/lib/realtime/saluran";
+import { konfigurasiKlien } from "@/lib/realtime/server";
 import { SignOutButton } from "./sign-out-button";
 
 function inisial(nama: string) {
@@ -78,6 +80,11 @@ function SidebarBody({ user, nav, homeHref }: { user: SessionUser; nav: NavItem[
 
 export type PeranKerangka = "admin" | "pemantau";
 
+function realtimeUntuk(user: SessionUser) {
+  const k = konfigurasiKlien();
+  return k ? { ...k, saluran: saluranUntuk(user) } : null;
+}
+
 /**
  * Kerangka admin dan pemantau (arah A "Terang & Ramah"): bilah samping putih berlabel dan berkelompok,
  * bilah atas berisi `atas` (mis. pencarian) dan tanggal. Di ponsel: bilah atas ringkas dan tab bawah
@@ -103,7 +110,7 @@ export function DesktopShell({
   return (
     <div data-peran={peran} className="flex min-h-dvh">
       <PeranDokumen peran={peran} />
-      <CacheMenu hrefs={nav.map((n) => n.href)} userId={user.id} />
+      <CacheMenu hrefs={nav.map((n) => n.href)} userId={user.id} realtime={realtimeUntuk(user)} />
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block print:hidden">
         <SidebarBody user={user} nav={nav} homeHref={home} />
       </aside>

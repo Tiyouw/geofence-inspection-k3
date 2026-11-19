@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
 import { jalankanCronJadwal } from "@/features/laporan/jadwal";
+import { terbitkan } from "@/lib/realtime/server";
 
 export const maxDuration = 60;
 
@@ -21,5 +22,6 @@ function sahDariVercelCron(req: Request): boolean {
 export async function GET(req: Request) {
   if (!sahDariVercelCron(req)) return Response.json({ galat: "Tidak diizinkan." }, { status: 401 });
   const hasil = await jalankanCronJadwal(db);
+  if (Object.values(hasil.jadwalBaru).some((n) => n > 0) || hasil.ditautkan) terbitkan({ t: "jadwal" }, { staf: true, inspektur: true });
   return Response.json(hasil, { headers: { "Cache-Control": "no-store" } });
 }
