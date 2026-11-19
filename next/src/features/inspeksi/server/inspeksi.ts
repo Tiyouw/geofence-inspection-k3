@@ -479,6 +479,16 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
       })
       .where(eq(inspections.id, inspectionId));
 
+    // Bukti tetap: tautan foto → butir checklist disalin saat final dari pemetaan langkah yang
+    // berlaku sekarang, supaya perubahan langkah foto kelak tidak mengubah inspeksi ini (audit 19 Nov 2026, S9).
+    await tx.execute(sql`
+      insert into inspection_photo_items (photo_id, checklist_item_id)
+      select p.id, psi.checklist_item_id
+      from inspection_photos p
+      join photo_step_items psi on psi.step_id = p.step_id
+      where p.inspection_id = ${inspectionId}
+      on conflict do nothing`);
+
     await tx.delete(inspectionAnswers).where(eq(inspectionAnswers.inspectionId, inspectionId));
     if (input.answers.length) {
       await tx.insert(inspectionAnswers).values(

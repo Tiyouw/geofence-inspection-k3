@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { areas, assets, checklistGroups, checklistItems, inspectionPhotos, inspections, photoStepItems, photoSteps, users } from "@/db/schema";
+import { areas, assets, checklistGroups, checklistItems, inspectionPhotoItems, inspectionPhotos, inspections, photoStepItems, photoSteps, users } from "@/db/schema";
 import type { DataCap } from "@/lib/foto/cap";
 import { capKoordinatAktif } from "@/lib/foto/pengaturan";
 import { pengaturanGerbang } from "@/lib/geo/data";
@@ -54,7 +54,8 @@ export async function fotoPerButir(inspectionId: string): Promise<{
 
   const [koordinat, gerbang] = await Promise.all([capKoordinatAktif(), pengaturanGerbang()]);
   const stepIds = [...new Set(fotos.map((f) => f.stepId).filter((x): x is number => x !== null))];
-  const [items, tautan] = await Promise.all([
+  const fotoIds = fotos.map((f) => f.id);
+  const [items, tautan, tetap] = await Promise.all([
     db
       .select({ id: checklistItems.id, label: checklistItems.label, grup: checklistGroups.nama, aktif: checklistItems.aktif })
       .from(checklistItems)
@@ -64,6 +65,10 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     stepIds.length
       ? db.select().from(photoStepItems).where(inArray(photoStepItems.stepId, stepIds))
       : Promise.resolve([] as { stepId: number; checklistItemId: number }[]),
+    // Tautan yang disalin saat final (sejak 19 Nov 2026); inspeksi lama tidak punya, jadi turunan langkah dipakai.
+    fotoIds.length
+      ? db.select().from(inspectionPhotoItems).where(inArray(inspectionPhotoItems.photoId, fotoIds))
+      : Promise.resolve([] as { photoId: string; checklistItemId: number }[]),
   ]);
 
   const tampil = (f: (typeof fotos)[number]): FotoBukti => ({
@@ -83,11 +88,11 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     },
   });
   const fotoButir = new Map<number, FotoBukti[]>();
+  const tetapPerFoto = new Map<string, number[]>();
+  for (const t of tetap) tetapPerFoto.set(t.photoId, [...(tetapPerFoto.get(t.photoId) ?? []), t.checklistItemId]);
   for (const f of fotos) {
-    if (f.stepId === null) continue;
-    for (const t of tautan.filter((x) => x.stepId === f.stepId)) {
-      fotoButir.set(t.checklistItemId, [...(fotoButir.get(t.checklistItemId) ?? []), tampil(f)]);
-    }
+    const butirFoto = tetapPerFoto.get(f.id) ?? (f.stepId === null ? [] : tautan.filter((x) => x.stepId === f.stepId).map((x) => x.checklistItemId));
+    for (const id of butirFoto) fotoButir.set(id, [...(fotoButir.get(id) ?? []), tampil(f)]);
   }
   return {
     areaTerbatas: ins.areaTerbatas,
@@ -95,6 +100,6 @@ export async function fotoPerButir(inspectionId: string): Promise<{
     butir: items
       .filter((i) => i.aktif || fotoButir.has(i.id))
       .map((i) => ({ id: i.id, grup: i.grup, label: i.label, foto: fotoButir.get(i.id) ?? [] })),
-    tanpaLangkah: fotos.filter((f) => f.stepId === null).map(tampil),
+    tanpaLangkah: fotos.filter((f) => f.stepId === null && !tetapPerFoto.has(f.id)).map(tampil),
   };
 }
