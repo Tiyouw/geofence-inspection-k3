@@ -18,6 +18,7 @@ export const authConfig = {
         token.uid = Number(user.id);
         token.role = user.role;
         token.nip = user.nip;
+        token.sv = user.sesiVersi ?? 0;
       }
       return token;
     },
@@ -25,6 +26,7 @@ export const authConfig = {
       session.user.id = String(token.uid);
       session.user.role = token.role as Role;
       session.user.nip = token.nip as string;
+      session.user.sesiVersi = Number(token.sv ?? 0);
       return session;
     },
     /** Pemeriksaan optimistis di proxy. Pemeriksaan sebenarnya di server (guards.ts). */

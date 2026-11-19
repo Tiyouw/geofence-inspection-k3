@@ -105,6 +105,11 @@ export const users = pgTable(
     /** Petugas tidak pernah dihapus, hanya dinonaktifkan (SPEC §1.1). */
     aktif: boolean().notNull().default(true),
     isDemo: boolean().notNull().default(false),
+    /**
+     * Naik setiap sandi diganti, peran diubah, atau akun dinonaktifkan. Token sesi menyimpan
+     * nilai saat masuk; getCurrentUser menolak token yang versinya lebih lama (audit 19 Nov 2026, S18).
+     */
+    sesiVersi: integer().notNull().default(0),
     lastLoginAt: tstz(),
     ...ts(),
   },
