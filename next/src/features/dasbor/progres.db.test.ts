@@ -5,6 +5,7 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"], quiet: true });
 import { describe, expect, it, vi } from "vitest";
+import { hariIniJakarta } from "@/lib/format";
 
 vi.mock("server-only", () => ({}));
 
@@ -29,7 +30,8 @@ describe.skipIf(!adaDb)("progres per gedung = dasbor (integrasi)", async () => {
     });
 
     it("per bulan: mobil pemadam dihitung per minggu, modul bulanan sekali", async () => {
-        const bulan = new Date().toISOString().slice(0, 8) + "01";
+        // Bulan WIB (bukan UTC): 00.00–07.00 WIB tanggal 1 masih bulan lalu dalam UTC.
+        const bulan = hariIniJakarta(new Date()).slice(0, 8) + "01";
         const p = await progres({ bulan });
         for (const m of p.modul) {
             const asetModul = new Set(p.aset.filter((a) => a.modulSlug === m.slug).map((a) => a.asetId));
