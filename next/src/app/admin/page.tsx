@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AsetLuarKawasan } from "@/features/admin/components/aset-luar-kawasan";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -305,7 +306,16 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                     ) : null
                 }
             >
-                <Peta titik={titik} label="Peta aset bertitik dan status pemeriksaan periode ini" />
+                <Peta
+                    titik={titik}
+                    poligon={
+                        r.peta.kawasan
+                            ? [{ geojson: r.peta.kawasan.polygon, judul: r.peta.kawasan.nama, warna: "muted-foreground", putus: true }]
+                            : undefined
+                    }
+                    label="Peta aset bertitik dan status pemeriksaan periode ini"
+                />
+                <AsetLuarKawasan aset={r.peta.luarKawasan} bisaDitaruh={r.peta.bisaDitaruh} />
                 <ul
                     className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"
                     aria-label="Keterangan warna"

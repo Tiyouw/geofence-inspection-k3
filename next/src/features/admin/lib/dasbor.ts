@@ -1,4 +1,5 @@
 /** Aturan murni dasbor admin (SPEC §4.3, §4.7). */
+import { type GeometriArea, titikDalamPoligon } from "@/lib/geo/geometri";
 import type { Kesimpulan } from "@/lib/domain/constants";
 import { labelLokasi, namaArea } from "@/lib/domain/label-aset";
 
@@ -44,6 +45,7 @@ export type AsetPeta = {
     lokasiTeks: string | null;
     lat: number | null;
     lng: number | null;
+    areaId?: number | null;
     /** Kesimpulan inspeksi final terakhir bulan ini; undefined = belum diperiksa. */
     kesimpulan?: Kesimpulan | null;
     sudahDiperiksa: boolean;
@@ -62,11 +64,30 @@ export type TitikPeta = {
     tinjau: boolean;
 };
 
-/** Aset tanpa koordinat dihitung di tanpaTitik, tidak digambar. */
-export function titikPeta(aset: AsetPeta[]): { titik: TitikPeta[]; tanpaTitik: number } {
+/** Aset yang koordinatnya jatuh di luar kawasan galangan: tidak digambar, ditandai untuk diperbaiki. */
+export type LuarKawasan = { id: number; kode: string; area: string; areaId: number | null };
+
+/**
+ * Aset tanpa koordinat dihitung di tanpaTitik, tidak digambar. Bila poligon kawasan diberikan,
+ * aset yang titiknya di luar kawasan juga tidak digambar (bug 19 Nov: titik seed lama tampil di
+ * permukiman seolah sah) dan masuk `luarKawasan`.
+ */
+export function titikPeta(
+    aset: AsetPeta[],
+    kawasan: GeometriArea | null = null,
+): { titik: TitikPeta[]; tanpaTitik: number; luarKawasan: LuarKawasan[] } {
     const titik: TitikPeta[] = [];
+    const luarKawasan: LuarKawasan[] = [];
+    let tanpaTitik = 0;
     for (const a of aset) {
-        if (a.lat == null || a.lng == null) continue;
+        if (a.lat == null || a.lng == null) {
+            tanpaTitik++;
+            continue;
+        }
+        if (kawasan && !titikDalamPoligon({ lat: a.lat, lng: a.lng }, kawasan)) {
+            luarKawasan.push({ id: a.id, kode: a.kode, area: namaArea(a), areaId: a.areaId ?? null });
+            continue;
+        }
         titik.push({
             id: a.id,
             kode: a.kode,
@@ -78,7 +99,7 @@ export function titikPeta(aset: AsetPeta[]): { titik: TitikPeta[]; tanpaTitik: n
             tinjau: a.tinjau,
         });
     }
-    return { titik, tanpaTitik: aset.length - titik.length };
+    return { titik, tanpaTitik, luarKawasan };
 }
 
 /**

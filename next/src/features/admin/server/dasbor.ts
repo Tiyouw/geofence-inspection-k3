@@ -1,4 +1,6 @@
 import "server-only";
+import { dataArea } from "@/lib/geo/data";
+import { titikDalamPoligon, titikWakil } from "@/lib/geo/geometri";
 import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { areas, assets, assetTypes, inspections, issues, users } from "@/db/schema";
@@ -21,12 +23,14 @@ const waktuTemuan = sql<Date>`coalesce(${inspections.inspectedAt}, ${issues.crea
  */
 export async function ringkasanDasbor(now = new Date()) {
     const p = periodeJakarta(now);
-    const [progres, temuan, tinjauan, trenRows] = await Promise.all([
+    const [progres, temuan, tinjauan, trenRows, denah] = await Promise.all([
         progresSemuaModul(now),
         temuanSejak(p.awal),
         hitungTinjauan(p.awal),
         trenEnamBulan(mundurBulan(p, 5).awal, p.akhir),
+        dataArea(),
     ]);
+    const kawasan = denah.kawasan?.polygon ?? null;
     const antre = await db
         .selectDistinct({ assetId: inspections.assetId })
         .from(inspections)
@@ -40,10 +44,8 @@ export async function ringkasanDasbor(now = new Date()) {
         return { kunci, periode: b, jumlah: trenMap.get(kunci) ?? 0 };
     });
 
-    const peta = titikPeta(
-        progres.aset
-            .filter((a) => a.lat != null && a.lng != null)
-            .map((a) => ({
+    const hasilPeta = titikPeta(
+        progres.aset.map((a) => ({
                 id: a.asetId,
                 kode: a.kode,
                 gedung: a.area,
@@ -54,8 +56,22 @@ export async function ringkasanDasbor(now = new Date()) {
                 sudahDiperiksa: progres.cek.has(a.id),
                 kesimpulan: progres.cek.get(a.id)?.kesimpulan ?? null,
                 tinjau: tinjau.has(a.asetId),
+                areaId: a.areaId,
             })),
+        kawasan,
     );
+    const peta = {
+        ...hasilPeta,
+        kawasan: denah.kawasan?.polygon ? { nama: denah.kawasan.nama, polygon: denah.kawasan.polygon } : null,
+        // Aset di luar kawasan yang area-nya punya poligon disetujui di dalam kawasan: bisa ditaruh di tengah poligon itu.
+        bisaDitaruh: hasilPeta.luarKawasan
+            .filter((x) => {
+                const g = x.areaId != null ? denah.area.get(x.areaId)?.polygon : null;
+                const t = g ? titikWakil(g) : null;
+                return !!t && (!kawasan || titikDalamPoligon(t, kawasan));
+            })
+            .map((x) => x.id),
+    };
 
     return {
         periode: p,
