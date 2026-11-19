@@ -105,6 +105,21 @@ export function jarakKeAreaM(p: Titik, g: GeometriArea): number {
   return titikDalamPoligon(p, g) ? 0 : jarakKeTepiM(p, g);
 }
 
+/** Kotak batas [[selatan, barat], [utara, timur]] (format Leaflet) dari cincin luar sebuah geometri. */
+export type BatasPeta = [[number, number], [number, number]];
+
+export function batasGeometri(g: GeometriArea): BatasPeta | null {
+  let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+  for (const [luar] of daftarPoligon(g))
+    for (const [lng, lat] of luar ?? []) {
+      s = Math.min(s, lat);
+      n = Math.max(n, lat);
+      w = Math.min(w, lng);
+      e = Math.max(e, lng);
+    }
+  return Number.isFinite(s) ? [[s, w], [n, e]] : null;
+}
+
 /** Luas (m²) cincin luar dikurangi lubang, untuk memilih area terkecil yang memuat titik. */
 export function luasM2(g: GeometriArea): number {
   let total = 0;
@@ -123,6 +138,30 @@ export function luasM2(g: GeometriArea): number {
     total += luasCincin(luar) - lubang.reduce((a, h) => a + luasCincin(h), 0);
   }
   return total;
+}
+
+/**
+ * Area untuk satu klik: yang terkecil di antara semua poligon yang memuat titik itu. Dengan begitu
+ * kawasan (yang menutupi seluruh galangan) tidak pernah menelan klik pada gedung di dalamnya,
+ * apa pun urutan gambarnya. Bila tak ada yang memuat titik (klik tepat di garis tipis, dengan
+ * toleransi kanvas), lapis yang diklik dipakai.
+ */
+export function areaTerkecilDi<T extends { id: number | string; geometry: GeometriArea }>(
+    titik: { lat: number; lng: number },
+    poligon: Iterable<T>,
+    luas: (p: T) => number,
+): T | null {
+    let terbaik: T | null = null;
+    let luasTerbaik = Infinity;
+    for (const p of poligon) {
+        if (!titikDalamPoligon(titik, p.geometry)) continue;
+        const l = luas(p);
+        if (l < luasTerbaik) {
+            terbaik = p;
+            luasTerbaik = l;
+        }
+    }
+    return terbaik;
 }
 
 /** Titik tengah sederhana (rata-rata simpul cincin luar pertama), untuk label dan zoom. */

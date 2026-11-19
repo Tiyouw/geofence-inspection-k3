@@ -48,6 +48,26 @@ function lapisanOsm() {
     });
 }
 
+/**
+ * Buka peta pas di bingkai. Dengan kawasan: padding kecil, zoom minimum satu tingkat di bawah
+ * bingkai, dan geseran dibatasi (bingkai + 50%) supaya tidak bisa mundur ke tampilan kota.
+ */
+function bingkaiKe(m: L.Map, b: [[number, number], [number, number]], kunci: boolean) {
+    const batas = L.latLngBounds(b);
+    if (!kunci) {
+        m.fitBounds(batas, { padding: [32, 32], maxZoom: 18 });
+        return;
+    }
+    m.setMinZoom(0);
+    m.setMaxBounds();
+    m.fitBounds(batas, { padding: [12, 12], maxZoom: 18, animate: false });
+    const z = m.getBoundsZoom(batas, false, L.point(24, 24));
+    m.setMinZoom(Math.max(0, Math.min(z, 18) - 1));
+    m.setMaxBounds(batas.pad(0.5));
+    const w = m.getContainer();
+    w.dataset.zoomMin = String(m.getMinZoom());
+}
+
 function esc(s: string) {
     return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
@@ -60,6 +80,7 @@ export default function PetaLeaflet({
     poligon,
     lingkaran,
     batas,
+    kawasan,
     label = "Peta lokasi aset",
 }: {
     titik: TitikTampil[];
@@ -71,6 +92,12 @@ export default function PetaLeaflet({
     lingkaran?: LingkaranTampil[];
     /** Bingkai tampilan yang ditentukan pemanggil (mis. peta tinjauan); menggantikan bingkai otomatis. */
     batas?: [[number, number], [number, number]] | null;
+    /**
+     * Kotak batas kawasan galangan yang disetujui. Bila ada, peta dibuka pas di kawasan
+     * (digabung dengan `batas` bila diberikan), zoom minimum dikunci satu tingkat di bawahnya,
+     * dan geseran dibatasi di sekitar kawasan supaya tidak jatuh ke tampilan kota.
+     */
+    kawasan?: [[number, number], [number, number]] | null;
     label?: string;
 }) {
     const wadah = useRef<HTMLDivElement>(null);
@@ -81,7 +108,18 @@ export default function PetaLeaflet({
     const onPilihRef = useRef(onPilih);
     // Nilai stabil (string) supaya array batas baru tiap render tidak memicu fitBounds berulang.
     const kunciBatas = batas ? JSON.stringify(batas) : "";
-    const bingkai = useMemo(() => (kunciBatas ? (JSON.parse(kunciBatas) as [[number, number], [number, number]]) : null), [kunciBatas]);
+    const kunciKawasan = kawasan ? JSON.stringify(kawasan) : "";
+    const bingkai = useMemo(() => {
+        const b = kunciBatas ? (JSON.parse(kunciBatas) as [[number, number], [number, number]]) : null;
+        const k = kunciKawasan ? (JSON.parse(kunciKawasan) as [[number, number], [number, number]]) : null;
+        if (!k) return b;
+        if (!b) return k;
+        return [
+            [Math.min(b[0][0], k[0][0]), Math.min(b[0][1], k[0][1])],
+            [Math.max(b[1][0], k[1][0]), Math.max(b[1][1], k[1][1])],
+        ] as [[number, number], [number, number]];
+    }, [kunciBatas, kunciKawasan]);
+    const adaKawasan = !!kunciKawasan;
     useEffect(() => {
         onPilihRef.current = onPilih;
     }, [onPilih]);
@@ -97,6 +135,8 @@ export default function PetaLeaflet({
         m.on("click", (e: L.LeafletMouseEvent) => {
             onPilihRef.current?.({ lat: Number(e.latlng.lat.toFixed(7)), lng: Number(e.latlng.lng.toFixed(7)) });
         });
+        // Pegangan uji E2E: proyeksi titik → piksel dan zoom dibaca dari elemen wadah.
+        (wadah.current as HTMLDivElement & { petaLeaflet?: L.Map }).petaLeaflet = m;
         peta.current = m;
         return () => {
             m.remove();
@@ -126,9 +166,9 @@ export default function PetaLeaflet({
             batas.extend(lapis.getBounds());
         }
         for (const t of titik) batas.extend([t.lat, t.lng]);
-        if (bingkai) m.fitBounds(bingkai, { padding: [32, 32], maxZoom: 18 });
+        if (bingkai) bingkaiKe(m, bingkai, adaKawasan);
         else if (batas.isValid() && (poligon?.length || lingkaran?.length)) m.fitBounds(batas, { padding: [24, 24], maxZoom: 18 });
-    }, [poligon, lingkaran, titik, bingkai]);
+    }, [poligon, lingkaran, titik, bingkai, adaKawasan]);
 
     useEffect(() => {
         const m = peta.current;
@@ -178,6 +218,8 @@ export default function PetaLeaflet({
             ref={wadah}
             role="application"
             aria-label={label}
+            data-testid="peta-leaflet"
+            data-bingkai-kawasan={adaKawasan ? "ya" : "tidak"}
             style={{ height: tinggi }}
             className="relative z-0 w-full overflow-hidden rounded-lg border bg-muted"
         />

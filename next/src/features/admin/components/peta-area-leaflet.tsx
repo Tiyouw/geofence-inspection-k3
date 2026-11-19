@@ -14,7 +14,7 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef } from "react";
-import { type GeometriArea, type LngLat, titikLabel } from "@/lib/geo/geometri";
+import { areaTerkecilDi, type GeometriArea, type LngLat, luasM2, titikLabel } from "@/lib/geo/geometri";
 
 export type PoligonTampil = {
     id: number | string;
@@ -91,6 +91,7 @@ export default function PetaAreaLeaflet({
     aset,
     pilihId,
     onPilih,
+    onLepas,
     sunting,
     onSunting,
     gambar,
@@ -102,6 +103,8 @@ export default function PetaAreaLeaflet({
     aset: TitikAset[];
     pilihId: number | string | null;
     onPilih?: (id: number | string) => void;
+    /** Lepas pilihan: klik area terpilih sekali lagi atau klik peta kosong. */
+    onLepas?: () => void;
     /** Cincin luar yang sedang disunting (tanpa titik penutup). */
     sunting?: LngLat[] | null;
     onSunting?: (c: LngLat[]) => void;
@@ -115,15 +118,15 @@ export default function PetaAreaLeaflet({
     const wadah = useRef<HTMLDivElement>(null);
     const peta = useRef<L.Map | null>(null);
     const lapis = useRef<{ poligon: L.LayerGroup; sorot: L.LayerGroup; aset: L.LayerGroup; sunting: L.LayerGroup } | null>(null);
-    const lapisPer = useRef(new Map<number | string, { lyr: L.Polygon; p: PoligonTampil }>());
+    const lapisPer = useRef(new Map<number | string, { lyr: L.Polygon; p: PoligonTampil; luas: number }>());
     const pilihRef = useRef(pilihId);
     /** Pilihan terakhir berasal dari klik di peta: jangan pindahkan peta. */
     const dariPeta = useRef(false);
     const kanvas = useRef<L.Canvas | null>(null);
-    const cb = useRef({ onPilih, onSunting, onKlikPeta });
+    const cb = useRef({ onPilih, onLepas, onSunting, onKlikPeta });
     useEffect(() => {
-        cb.current = { onPilih, onSunting, onKlikPeta };
-    }, [onPilih, onSunting, onKlikPeta]);
+        cb.current = { onPilih, onLepas, onSunting, onKlikPeta };
+    }, [onPilih, onLepas, onSunting, onKlikPeta]);
 
     useEffect(() => {
         if (!wadah.current || peta.current) return;
@@ -144,9 +147,13 @@ export default function PetaAreaLeaflet({
             aset: L.layerGroup().addTo(m),
             sunting: L.layerGroup().addTo(m),
         };
+        // Klik di peta kosong (tidak mengenai poligon mana pun): titik gambar, atau lepas pilihan.
         m.on("click", (e: L.LeafletMouseEvent) => {
             cb.current.onKlikPeta?.([Number(e.latlng.lng.toFixed(7)), Number(e.latlng.lat.toFixed(7))]);
+            cb.current.onLepas?.();
         });
+        // Pegangan uji E2E: proyeksi titik → piksel dan zoom dibaca dari elemen wadah.
+        (wadah.current as HTMLDivElement & { petaLeaflet?: L.Map }).petaLeaflet = m;
         peta.current = m;
         return () => {
             m.remove();
@@ -169,10 +176,20 @@ export default function PetaAreaLeaflet({
                 bubblingMouseEvents: false,
             }).addTo(g);
             lyr.bindTooltip(esc(p.nama), { sticky: true });
-            lyr.on("click", () => {
-                // Klik pada area yang sudah terpilih tidak mengubah pilihan, jadi tidak ditandai.
-                dariPeta.current = pilihRef.current !== p.id;
-                cb.current.onPilih?.(p.id);
+            lyr.on("click", (e: L.LeafletMouseEvent) => {
+                const pt = { lat: e.latlng.lat, lng: e.latlng.lng };
+                const isi = [...lapisPer.current.values()];
+                const hit = areaTerkecilDi(pt, isi.map((x) => ({ ...x, id: x.p.id, geometry: x.p.geometry })), (x) => x.luas);
+                const id = hit ? hit.id : p.id;
+                // Saat menggambar, klik di atas area tetap menambah titik.
+                cb.current.onKlikPeta?.([Number(pt.lng.toFixed(7)), Number(pt.lat.toFixed(7))]);
+                if (id === pilihRef.current) {
+                    cb.current.onLepas?.();
+                    return;
+                }
+                // Dari peta: hanya sorot, tanpa lompatan.
+                dariPeta.current = true;
+                cb.current.onPilih?.(id);
             });
             lyr.on("mouseover", () => {
                 if (pilihRef.current !== p.id) lyr.setStyle(gayaPoligon(p, "hover"));
@@ -181,7 +198,7 @@ export default function PetaAreaLeaflet({
                 const ada = pilihRef.current != null && lapisPer.current.has(pilihRef.current);
                 lyr.setStyle(gayaPoligon(p, pilihRef.current === p.id ? "terpilih" : ada ? "redup" : "biasa"));
             });
-            lapisPer.current.set(p.id, { lyr, p });
+            lapisPer.current.set(p.id, { lyr, p, luas: luasM2(p.geometry) });
         }
         const w = wadah.current;
         if (w) {
@@ -210,7 +227,8 @@ export default function PetaAreaLeaflet({
         // Saat menyunting simpul, poligon asli tetap transparan dan lapis sunting yang menggambar.
         if (!terpilih || sunting) return;
         const { lyr, p } = terpilih;
-        lyr.bringToFront();
+        // Kawasan tetap di lapis paling bawah supaya gedung di dalamnya tetap bisa disorot dan diklik.
+        if (p.gaya !== "kawasan") lyr.bringToFront();
         const aksen = token("sorot-peta");
         const ll = keLatLng(p.geometry);
         L.polygon(ll, { pane: "sorot", interactive: false, color: "#fff", weight: 8, opacity: 0.95, fill: false }).addTo(s);
@@ -297,12 +315,26 @@ export default function PetaAreaLeaflet({
         });
     }, [sunting, gambar]);
 
-    // Fokus ke semua poligon (saat dimuat, setelah impor, atau ketika diminta)
+    // Bingkai: saat dimuat, pas di kawasan yang disetujui (zoom minimum dua tingkat di bawahnya,
+    // supaya tidak jatuh ke tampilan kota). Pratinjau impor dan permintaan fokus lain: semua poligon.
     const fokusTerakhir = useRef<number | undefined>(-1);
     useEffect(() => {
         const m = peta.current;
         if (!m || fokusTerakhir.current === fokus || !poligon.length) return;
+        const awal = fokusTerakhir.current === -1;
         fokusTerakhir.current = fokus;
+        const kawasan = poligon.find((p) => p.gaya === "kawasan" && !p.draf);
+        const impor = poligon.some((p) => p.gaya === "impor" || p.gaya === "impor-galat");
+        if (kawasan && !impor) {
+            const b = L.polygon(keLatLng(kawasan.geometry)).getBounds();
+            m.setMinZoom(0);
+            m.fitBounds(b, { padding: [12, 12], maxZoom: 18, animate: !awal && !gerakDikurangi() });
+            const z = Math.min(m.getBoundsZoom(b, false, L.point(24, 24)), 18);
+            m.setMinZoom(Math.max(0, z - 2));
+            if (wadah.current) wadah.current.dataset.zoomMin = String(m.getMinZoom());
+            return;
+        }
+        m.setMinZoom(0);
         const b = L.latLngBounds([]);
         for (const p of poligon) b.extend(L.polygon(keLatLng(p.geometry)).getBounds());
         if (b.isValid()) m.fitBounds(b, { padding: [24, 24], maxZoom: 18 });

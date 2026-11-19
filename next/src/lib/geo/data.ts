@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { areas, settings } from "@/db/schema";
 import { SETTING_GERBANG } from "@/lib/domain/constants";
 import { bacaPengaturanGerbang, type PengaturanGerbang } from "./akurasi";
+import { batasGeometri, type BatasPeta } from "./geometri";
 import { nilaiGerbang, type AreaGerbang, type HasilGerbang } from "./gerbang";
 
 type Pembaca = Pick<typeof db, "select">;
@@ -76,4 +77,18 @@ export async function nilaiGerbangAset(
     pengaturan,
     areaLain: [...data.area.values()],
   });
+}
+
+/**
+ * Bingkai awal semua peta Leaflet: kotak batas kawasan galangan yang aktif dan disetujui
+ * (ber-id terkecil, sama dengan gerbang). Null bila belum ada kawasan disetujui.
+ */
+export async function bingkaiKawasan(tx: Pembaca = db): Promise<BatasPeta | null> {
+  const [k] = await tx
+    .select({ polygon: areas.polygon })
+    .from(areas)
+    .where(and(eq(areas.jenis, "kawasan"), eq(areas.aktif, true), isNotNull(areas.polygon)))
+    .orderBy(areas.id)
+    .limit(1);
+  return k?.polygon ? batasGeometri(k.polygon) : null;
 }

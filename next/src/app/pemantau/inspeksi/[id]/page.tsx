@@ -1,3 +1,5 @@
+import { bingkaiKawasan } from "@/lib/geo/data";
+import { batasTinjauan } from "@/features/tinjauan/peta";
 import type { Metadata } from "next";
 import { CapFoto } from "@/components/foto/cap-foto";
 import { capKoordinatAktif } from "@/lib/foto/pengaturan";
@@ -38,7 +40,13 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
   await requireRole("admin", "pemantau");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const [d, perButir, koordinatCap, gerbang] = await Promise.all([detailInspeksi(id), fotoPerButir(id), capKoordinatAktif(), pengaturanGerbang()]);
+  const [d, perButir, koordinatCap, gerbang, kawasan] = await Promise.all([
+    detailInspeksi(id),
+    fotoPerButir(id),
+    capKoordinatAktif(),
+    pengaturanGerbang(),
+    bingkaiKawasan(),
+  ]);
   if (!d || d.ins.status !== "final") notFound();
   const i = d.ins;
   const titik: TitikTampil[] = [];
@@ -139,6 +147,13 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
           <Peta
             titik={titik}
             poligon={d.area?.polygon ? [{ geojson: d.area.polygon, judul: d.area.nama ?? "Area aset", warna: "info" }] : []}
+            batas={batasTinjauan({
+              area: d.area?.polygon ?? null,
+              kawasan: null,
+              aset: d.aset.lat != null && d.aset.lng != null ? { lat: d.aset.lat, lng: d.aset.lng } : null,
+              inspektur: i.gpsLat != null && i.gpsLng != null ? { lat: i.gpsLat, lng: i.gpsLng, akurasi: i.gpsAccuracy } : null,
+            })}
+            kawasan={kawasan}
             tinggi={300}
             label="Peta posisi inspeksi"
           />

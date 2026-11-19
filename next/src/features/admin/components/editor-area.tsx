@@ -116,11 +116,24 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
         setMode({ jenis: "sunting", cincin: g.coordinates[0].slice(0, -1) });
     };
 
+    // Esc melepas pilihan (selain saat menyunting, menggambar, atau ada dialog terbuka).
+    useEffect(() => {
+        if (pilihId == null || mode.jenis !== "lihat") return;
+        const tekan = (e: KeyboardEvent) => {
+            if (e.key !== "Escape" || e.defaultPrevented) return;
+            if (document.querySelector('[role="alertdialog"], [role="dialog"]')) return;
+            setPilihId(null);
+        };
+        document.addEventListener("keydown", tekan);
+        return () => document.removeEventListener("keydown", tekan);
+    }, [pilihId, mode.jenis]);
+
     const geomDari = (c: LngLat[]): GeometriArea => ({ type: "Polygon", coordinates: [tutupCincin(c)] });
 
     return (
-        <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
             <Kartu
+                className="min-w-0"
                 judul={
                     mode.jenis === "impor"
                         ? `Pratinjau impor: ${mode.nama}`
@@ -132,7 +145,7 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 }
                 aksi={
                     mode.jenis === "lihat" && (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={() => setMode({ jenis: "gambar", titik: [] })}>
                                 <Plus aria-hidden /> Gambar area
                             </Button>
@@ -159,12 +172,26 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 {area.length === 0 && mode.jenis === "lihat" && (
                     <p className="mb-3 rounded-kontrol bg-muted p-3 text-sm text-muted-foreground">Belum ada poligon. Gambar kawasan galangan lebih dulu.</p>
                 )}
+                {mode.jenis === "lihat" && pilih && (
+                    <div
+                        className="mb-2 flex items-center justify-between gap-2 rounded-kontrol border bg-muted/60 px-3 py-1.5 text-sm"
+                        data-testid="bilah-terpilih"
+                    >
+                        <span className="min-w-0 truncate">
+                            Terpilih: <strong className="font-medium">{pilih.nama}</strong>
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => setPilihId(null)}>
+                            <X aria-hidden /> Tutup
+                        </Button>
+                    </div>
+                )}
                 <PetaArea
                     poligon={poligon}
                     aset={titikAset}
                     pilihId={pilihId}
                     fokus={fokus}
                     onPilih={(id) => mode.jenis === "lihat" && typeof id === "number" && setPilihId(id)}
+                    onLepas={() => mode.jenis === "lihat" && setPilihId(null)}
                     sunting={mode.jenis === "sunting" ? mode.cincin : null}
                     onSunting={(c) => setMode({ jenis: "sunting", cincin: c })}
                     gambar={mode.jenis === "gambar" ? mode.titik : null}
@@ -173,7 +200,7 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
                 <Legenda />
             </Kartu>
 
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
                 {mode.jenis === "impor" && (
                     <PanelImpor
                         fitur={mode.fitur}
