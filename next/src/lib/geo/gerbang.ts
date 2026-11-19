@@ -150,7 +150,7 @@ export function pesanDitolak(jarakKeKawasanM: number | null): string {
 }
 
 export function pesanPerluTinjauan(namaGedung: string | null): string {
-  return `Posisi Anda di luar ${namaGedung ?? "gedung aset"}. Inspeksi tetap terkirim dan akan ditinjau Pemantau.`;
+  return `Posisi Anda di luar ${namaGedung ?? "gedung aset"}. Inspeksi tetap terkirim dan akan ditinjau Admin K3 atau Pemantau.`;
 }
 
 export const LABEL_STATUS_GERBANG: Record<StatusGerbang, string> = {

@@ -78,7 +78,7 @@ test("di galangan tetapi di luar gedung: diterima sebagai perlu tinjauan", async
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation({ ...t.luarGedung, accuracy: 10 });
   const id = await buka(page, context, t.token);
-  await expect(page.getByTestId("pesan-gps")).toContainText("Inspeksi tetap terkirim dan akan ditinjau Pemantau.");
+  await expect(page.getByTestId("pesan-gps")).toContainText("Inspeksi tetap terkirim dan akan ditinjau Admin K3 atau Pemantau.");
   await isiLengkap(page);
   await kirim(page).click();
   await expect(page.getByTestId("hasil-terkirim")).toBeVisible({ timeout: 20_000 });
@@ -90,16 +90,41 @@ test("di galangan tetapi di luar gedung: diterima sebagai perlu tinjauan", async
   expect(i!.jarak_ke_area_m).toBeGreaterThanOrEqual(78);
 });
 
-test("jauh di luar galangan: ditolak, tetap draf, dicatat di jejak audit", async ({ page, context }) => {
+test("jauh di luar galangan: Kirim dinonaktifkan dengan alasan; peladen tetap menolak dan mencatat audit tanpa koordinat", async ({
+  page,
+  context,
+}) => {
   const t = await titikUji("33D");
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation({ ...t.jauh, accuracy: 10 });
   const id = await buka(page, context, t.token);
   await expect(page.getByTestId("pesan-gps")).toContainText("Posisi Anda berada di luar kawasan galangan");
   await isiLengkap(page);
-  await kirim(page).click();
-  await expect(page.getByTestId("status-kirim")).toContainText("Perlu tindakan", { timeout: 20_000 });
-  await expect(page.getByTestId("status-kirim")).toContainText("Kirim ulang dari lokasi aset.");
+  // Klien: Kirim mati, alasannya terlihat di bawah tombol.
+  await expect(kirim(page)).toBeDisabled();
+  await expect(page.getByTestId("alasan-kirim")).toContainText("di luar kawasan galangan");
+
+  // Peladen tetap penjaga resmi: finalisasi langsung lewat API ditolak 422 di_luar_kawasan.
+  await expect
+    .poll(async () => (await q("select 1 from inspection_photos where inspection_id = $1", [id])).length, { timeout: 30_000 })
+    .toBeGreaterThan(0);
+  const foto = await q<{ id: string }>("select id from inspection_photos where inspection_id = $1", [id]);
+  const items = await q<{ id: number; answer_type: string; options: string[] | null }>(
+    "select i.id, i.answer_type, i.options from checklist_items i join checklist_groups g on g.id = i.checklist_group_id join assets a on a.asset_type_id = g.asset_type_id where a.id = $1 and i.aktif",
+    [t.id],
+  );
+  const r = await page.request.post(`/api/inspections/${id}/finalize`, {
+    data: {
+      assetId: t.id,
+      token: t.token,
+      submittedAtDevice: new Date().toISOString(),
+      answers: items.map((i) => ({ checklistItemId: i.id, nilai: i.answer_type === "select" ? i.options![0] : "ok" })),
+      photoIds: foto.map((f) => f.id),
+      kesimpulan: "layak",
+      gps: { lat: t.jauh.latitude, lng: t.jauh.longitude, accuracy: 10 },
+    },
+  });
+  expect(r.status()).toBe(422);
   const [i] = await q("select status from inspections where id = $1", [id]);
   expect(i).toMatchObject({ status: "draf" });
   const audit = await q<{ data: { jarakKeKawasanM: number; lat: number } }>(

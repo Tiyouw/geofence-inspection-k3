@@ -157,7 +157,7 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
 
   const kirim = async (abaikanLemah = false) => {
     if (!lokasi.bolehKirim) {
-      setGalat(["Lokasi belum diperoleh. Nyalakan Lokasi (GPS), lalu tekan Coba lagi."]);
+      setGalat([lokasi.alasanTidakKirim ?? "Lokasi belum diperoleh. Nyalakan Lokasi (GPS), lalu tekan Coba lagi."]);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -394,10 +394,16 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
               className={cn(KONTROL, "h-12 px-8 text-base font-bold")}
               onClick={() => void kirim()}
               disabled={mengirim || !lokasi.bolehKirim}
+              aria-describedby={!lokasi.bolehKirim && lokasi.alasanTidakKirim ? "alasan-kirim" : undefined}
             >
               {mengirim ? "Menyimpan…" : "Kirim"}
             </Button>
           </div>
+          {!lokasi.bolehKirim && lokasi.alasanTidakKirim && (
+            <p id="alasan-kirim" className="border-t px-4 py-2 text-xs font-medium text-danger" data-testid="alasan-kirim" role="status">
+              {lokasi.alasanTidakKirim}
+            </p>
+          )}
         </div>
       )}
 
