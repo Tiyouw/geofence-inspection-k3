@@ -91,6 +91,8 @@ async function kirim(k: Konfigurasi, p: Peristiwa, s: Sasaran): Promise<void> {
         headers: {
             "content-type": "application/json",
             authorization: `Basic ${Buffer.from(`${k.keyName}:${k.secret}`).toString("base64")}`,
+      // Aplikasi Ably mewajibkan klien beridentitas; dengan kunci API peladen boleh menyebut dirinya.
+      "x-ably-clientid": Buffer.from("peladen").toString("base64"),
         },
         body,
         signal: AbortSignal.timeout(4000),

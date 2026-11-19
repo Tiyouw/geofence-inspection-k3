@@ -54,7 +54,8 @@ describe("realtime Ably", () => {
         expect((i.headers as Record<string, string>).authorization).toBe(
             `Basic ${Buffer.from("app.kunci:rahasia").toString("base64")}`,
         );
-        expect(JSON.parse(String(i.body))).toEqual([
+        expect((i.headers as Record<string, string>)["x-ably-clientid"]).toBe(Buffer.from("peladen").toString("base64"));
+    expect(JSON.parse(String(i.body))).toEqual([
             { channels: ["palk3:staf"], messages: { name: "berubah", data: '{"t":"inspeksi","id":"abc"}' } },
             { channels: ["palk3:unit:4"], messages: { name: "berubah", data: '{"t":"inspeksi"}' } },
         ]);
