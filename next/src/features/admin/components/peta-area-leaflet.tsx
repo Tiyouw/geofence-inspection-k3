@@ -4,6 +4,12 @@
  * Peta editor area: Leaflet + ubin OpenStreetMap. Menggambar poligon area (resmi dan draf),
  * titik aset, pratinjau impor, dan pegangan simpul untuk menyunting satu poligon.
  * Dimuat hanya di klien (lihat peta-area.tsx). Warna dari token CSS.
+ *
+ * Poligon area dan titik aset digambar di satu kanvas: ratusan <path> SVG membuat halaman Lokasi
+ * tertahan ~1 detik di ponsel lambat. Kanvas yang sama menjaga urutan (titik di atas poligon) dan
+ * klik/hover tiap bentuk. Sorotan terpilih (2 garis + pin) tetap SVG/DOM di pane "sorot".
+ * Keadaan peta untuk uji dan alat bantu ada di atribut data wadah: data-poligon, data-poligon-impor,
+ * data-terpilih, data-redup.
  */
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -113,7 +119,7 @@ export default function PetaAreaLeaflet({
     const pilihRef = useRef(pilihId);
     /** Pilihan terakhir berasal dari klik di peta: jangan pindahkan peta. */
     const dariPeta = useRef(false);
-    const kanvasTitik = useRef<L.Canvas | null>(null);
+    const kanvas = useRef<L.Canvas | null>(null);
     const cb = useRef({ onPilih, onSunting, onKlikPeta });
     useEffect(() => {
         cb.current = { onPilih, onSunting, onKlikPeta };
@@ -127,10 +133,10 @@ export default function PetaAreaLeaflet({
             maxNativeZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(m);
-        // Pane sorot di atas poligon (overlayPane 400), di bawah penanda (markerPane 600); pane titik
-        // (kanvas titik aset) di bawah poligon.
+        // Pane sorot di atas kanvas poligon (overlayPane 400), di bawah penanda (markerPane 600).
         m.createPane("sorot").style.zIndex = "450";
-        m.createPane("titik").style.zIndex = "350";
+        // tolerance: garis tipis tetap mudah diketuk.
+        kanvas.current = L.canvas({ padding: 0.5, tolerance: 3 });
         m.getPane("sorot")!.style.pointerEvents = "none";
         lapis.current = {
             poligon: L.layerGroup().addTo(m),
@@ -145,7 +151,7 @@ export default function PetaAreaLeaflet({
         return () => {
             m.remove();
             peta.current = null;
-            kanvasTitik.current = null;
+            kanvas.current = null;
         };
     }, []);
 
@@ -159,7 +165,7 @@ export default function PetaAreaLeaflet({
         for (const p of urut) {
             const lyr = L.polygon(keLatLng(p.geometry), {
                 ...gayaPoligon(p, "biasa"),
-                className: `poligon-${p.gaya}`,
+                renderer: kanvas.current!,
                 bubblingMouseEvents: false,
             }).addTo(g);
             lyr.bindTooltip(esc(p.nama), { sticky: true });
@@ -177,6 +183,13 @@ export default function PetaAreaLeaflet({
             });
             lapisPer.current.set(p.id, { lyr, p });
         }
+        const w = wadah.current;
+        if (w) {
+            w.dataset.poligon = String(poligon.length);
+            w.dataset.poligonImpor = String(poligon.filter((p) => p.gaya === "impor").length);
+        }
+        // Titik aset digambar ulang supaya tetap di atas poligon di kanvas yang sama.
+        lapis.current?.aset.eachLayer((l) => (l as L.CircleMarker).bringToFront());
     }, [poligon]);
 
     // Sorotan area terpilih: aksen tebal di atas garis putih, isi lebih pekat, sisanya diredupkan, pin di kutub label.
@@ -188,6 +201,11 @@ export default function PetaAreaLeaflet({
         const terpilih = pilihId != null ? lapisPer.current.get(pilihId) : undefined;
         for (const [id, { lyr, p }] of lapisPer.current) {
             lyr.setStyle(gayaPoligon(p, !terpilih ? "biasa" : id === pilihId ? "terpilih" : "redup"));
+        }
+        const w = wadah.current;
+        if (w) {
+            w.dataset.terpilih = terpilih ? String(pilihId) : "";
+            w.dataset.redup = terpilih ? "ya" : "tidak";
         }
         // Saat menyunting simpul, poligon asli tetap transparan dan lapis sunting yang menggambar.
         if (!terpilih || sunting) return;
@@ -216,14 +234,9 @@ export default function PetaAreaLeaflet({
         const g = lapis.current?.aset;
         if (!g) return;
         g.clearLayers();
-        // Ratusan titik aset digambar di satu kanvas, bukan satu <path> SVG per titik: di ponsel
-        // lambat, SVG membuat halaman Lokasi tertahan ~1 detik. Poligon tetap SVG (kelas CSS, uji).
-        // Kanvas di pane "titik" di bawah poligon: kanvas menangkap semua klik di atasnya, jadi
-        // bila di atas poligon, poligon tak bisa dipilih lagi.
-        const kanvas = (kanvasTitik.current ??= L.canvas({ padding: 0.5, pane: "titik" }));
         for (const a of aset) {
             L.circleMarker([a.lat, a.lng], {
-                renderer: kanvas,
+                renderer: kanvas.current!,
                 radius: 4,
                 color: "#fff",
                 weight: 1,

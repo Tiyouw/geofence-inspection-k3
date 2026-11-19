@@ -49,7 +49,8 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await expect(impor).toContainText("2 poligon siap diimpor");
   await expect(impor).toContainText("1 dilewati");
   await expect(impor).toContainText("Poligon tidak sah: garis saling memotong.");
-  await expect(page.locator('[data-testid="peta-area"] path.poligon-impor')).toHaveCount(2);
+  // Poligon digambar di kanvas: keadaan peta dibaca dari atribut data wadah.
+  await expect(page.getByTestId("peta-area")).toHaveAttribute("data-poligon-impor", "2");
   await impor.getByRole("button", { name: "Impor 2 poligon" }).click();
   await expect(impor).toBeHidden();
 
@@ -72,7 +73,8 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   await expect(peta.locator("path.poligon-terpilih")).toHaveAttribute("stroke", "#f5b700");
   await expect(peta.locator(".pin-terpilih")).toContainText(`Bengkel Uji ${unik}`);
   await expect(peta.locator(".pin-terpilih:not(.pin-kawasan)")).toHaveCount(1);
-  await expect(peta.locator("path.poligon-area").first()).toHaveAttribute("stroke-opacity", "0.35");
+  await expect(peta).toHaveAttribute("data-terpilih", String(bengkel.id));
+  await expect(peta).toHaveAttribute("data-redup", "ya");
   await expect(page.getByTestId("legenda-terpilih")).toHaveText("Terpilih");
   await panel.getByLabel("Nama", { exact: true }).fill(`Bengkel Las ${unik}`);
   await pilih(panel.getByRole("combobox", { name: "Jenis" }), "Bengkel");
@@ -126,7 +128,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   // Batal pilih: sorotan hilang, kecerahan kembali.
   await expect(page.locator('[data-testid="peta-area"] path.poligon-terpilih')).toHaveCount(0);
   await expect(page.locator('[data-testid="peta-area"] .pin-terpilih')).toHaveCount(0);
-  await expect(page.locator('[data-testid="peta-area"] path.poligon-area').first()).toHaveAttribute("stroke-opacity", "1");
+  await expect(page.getByTestId("peta-area")).toHaveAttribute("data-redup", "tidak");
   await page.getByLabel("Cari area").fill(`Dok Uji ${unik}`);
   await page.getByTestId("daftar-area").getByRole("button", { name: new RegExp(`Dok Uji ${unik}`) }).click();
   await page.getByRole("button", { name: "Hapus area" }).click();
