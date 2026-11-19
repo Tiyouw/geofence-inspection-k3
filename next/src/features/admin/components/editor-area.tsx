@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Check, FileUp, MapPinned, PenLine, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +96,16 @@ export function EditorArea({ area, aset, unit }: { area: AreaEditor[]; aset: Ase
         setMode({ jenis: "impor", fitur: h.fitur, nama: f.name });
         setFokus((n) => n + 1);
     };
+
+    // Halaman ini di-stream di balik kerangka muat: berkas yang dipilih sebelum hidrasi selesai
+    // (ponsel lambat) tidak memicu onChange. Setelah terpasang, proses berkas yang sudah terpilih.
+    useEffect(() => {
+        const el = berkasRef.current;
+        const f = el?.files?.[0];
+        if (!el || !f) return;
+        el.value = "";
+        void bacaBerkas(f);
+    }, []);
 
     const mulaiSunting = (a: AreaEditor) => {
         const g = a.polygonDraf ?? a.polygon;
