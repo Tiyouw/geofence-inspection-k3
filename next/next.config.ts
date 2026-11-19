@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
     /*
+     * Cache klien Next untuk halaman dinamis (dikunjungi atau di-prefetch penuh oleh CacheMenu):
+     * pindah menu dalam 2 menit langsung tampil tanpa menunggu peladen. Aksi server yang memanggil
+     * revalidatePath mengosongkan cache ini; CacheMenu mem-prefetch ulang tiap 100 detik.
+     */
+    staleTimes: { dynamic: 120, static: 120 },
+    /*
      * Cache Turbopack untuk `next build` (dipulihkan Vercel antar-deploy) tidak membatalkan
      * keluaran @tailwindcss/turbopack saat token di globals.css berubah: dev.geofencinspection.tech
      * menyajikan --warning lama setelah PR #7. Build dingin sedikit lebih lambat, CSS selalu benar.
