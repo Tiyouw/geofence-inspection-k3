@@ -137,6 +137,35 @@ export async function ambilAset(id: number) {
     return a ?? null;
 }
 
+/**
+ * Pilihan penyaring daftar aset: tanpa poligon, dan area hanya yang berisi aset aktif (ditambah
+ * area yang sedang dipilih). Denah impor bisa berisi ratusan gedung tanpa aset; menaruh semuanya
+ * di penyaring membuat halaman ratusan KB di ponsel (audit 19 Nov 2026, S13).
+ */
+export async function pilihanFilterAset(areaTerpilih?: number) {
+    const [tipe, area] = await Promise.all([
+        db
+            .select({ id: assetTypes.id, slug: assetTypes.slug, nama: assetTypes.nama, isMobile: assetTypes.isMobile })
+            .from(assetTypes)
+            .orderBy(asc(assetTypes.urut)),
+        db
+            .select({ id: areas.id, nama: areas.nama })
+            .from(areas)
+            .where(
+                and(
+                    eq(areas.aktif, true),
+                    ne(areas.jenis, "kawasan"),
+                    or(
+                        sql`exists (select 1 from ${assets} where ${assets.areaId} = ${areas.id} and ${assets.aktif})`,
+                        areaTerpilih !== undefined ? eq(areas.id, areaTerpilih) : undefined,
+                    ),
+                ),
+            )
+            .orderBy(asc(areas.nama)),
+    ]);
+    return { tipe, area };
+}
+
 export async function pilihanAset() {
     const [tipe, divisi, gedung, area] = await Promise.all([
         db

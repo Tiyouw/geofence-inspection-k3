@@ -94,6 +94,7 @@ export function cssStiker(kode: KodeTata): string {
   .stiker-perintah svg { width: 2.8mm; height: 2.8mm; flex: 0 0 auto; stroke-width: 2.5; }
   .stiker-token { font-family: ui-monospace, 'Courier New', monospace; font-size: 1.9mm; color: #333;
     word-break: normal; overflow-wrap: anywhere; line-height: 1.2; margin-top: .5mm; }
+  @media screen { .stiker-lembar { content-visibility: auto; contain-intrinsic-size: auto 210mm auto 297mm; } }
   @media screen and (max-width: 879px) and (min-width: 640px) { .stiker-pratinjau-isi { zoom: .72; } }
   @media screen and (max-width: 639px) { .stiker-pratinjau-isi { zoom: .38; } }
   @media print {
@@ -103,7 +104,7 @@ export function cssStiker(kode: KodeTata): string {
     .stiker-pratinjau { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important;
       box-shadow: none !important; overflow: visible !important; border-radius: 0 !important; }
     .stiker-pratinjau-isi { zoom: 1 !important; }
-    .stiker-lembar { margin: 0; box-shadow: none; padding: 8mm 5mm; break-after: page; }
+    .stiker-lembar { margin: 0; box-shadow: none; padding: 8mm 5mm; break-after: page; content-visibility: visible; }
     .stiker-lembar:last-child { break-after: auto; }
     .stiker-label { outline: none; }
     @page { size: A4 portrait; margin: 0; }
