@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { CSP_LAPOR, kebijakanCsp } from "./src/lib/csp";
 
 /**
  * cacheComponents sengaja tidak diaktifkan: hampir semua halaman bergantung pada
@@ -51,6 +52,9 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
+          // Audit 19 Nov 2026 (S1): CSP dimulai Report-Only; laporan ke /api/csp.
+          { key: "Content-Security-Policy-Report-Only", value: kebijakanCsp() },
+          { key: "Reporting-Endpoints", value: `csp="${CSP_LAPOR}"` },
         ],
       },
       {
