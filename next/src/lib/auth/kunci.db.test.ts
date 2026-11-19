@@ -4,7 +4,7 @@
  */
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"], quiet: true });
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -14,13 +14,12 @@ const adaDb = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!adaDb)("kunci masuk luas (integrasi)", async () => {
     const { db } = await import("@/db");
     const { auditLogs } = await import("@/db/schema");
-    const { sql } = await import("drizzle-orm");
-    const { sisaKunciLuas, MAX_GAGAL_NIP, MAX_GAGAL_IP } = await import("./kunci");
+      const { sisaKunciLuas, MAX_GAGAL_NIP, MAX_GAGAL_IP } = await import("./kunci");
     const tanda = `uji-kunci-${Date.now()}`;
 
-    afterAll(async () => {
-        await db.delete(auditLogs).where(sql`${auditLogs.data}->>'uji' = ${tanda}`);
-    });
+    // Baris uji tidak dihapus: audit_logs hanya bisa ditambah (pemicu migrasi 0004). NIP/IP uji unik
+  // dan di luar jaringan nyata, jadi tidak mengunci akun lain.
+
 
     const gagal = (nip: string, ip: string, n: number) =>
         db
