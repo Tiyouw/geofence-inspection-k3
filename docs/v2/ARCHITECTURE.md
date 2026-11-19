@@ -222,7 +222,7 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 | K-07 | Foto di Blob privat, disajikan rute yang memeriksa sesi | SPEC §3.6, §9 #1-2 |
 | K-08 | Pembatas percobaan masuk memakai `audit_logs` | Tanpa layanan tambahan (Redis) di Hobby |
 | K-09 | Id integer identity (bukan bigserial) untuk tabel non-perangkat | Setara, gaya Postgres modern; tabel perangkat tetap UUID sesuai SPEC |
-| K-10 | Setiap segmen menu punya `loading.tsx`; `PrefetchMenu` mem-prefetch semua butir menu saat senggang; menu lapangan memakai navigasi klien (`TautanLapangan`), luring jatuh ke navigasi penuh | Diukur 19 Nov (ponsel, CPU 4x, Fast 4G): peladen menjawab RSC dalam ~60–120 ms, tetapi tanpa `loading.tsx` rute dinamis tidak di-prefetch dan layar diam sampai seluruh isi tiba; menu inspektur memuat ulang halaman penuh (0,8–3,4 s per ketukan, plus unduh paket kerja dan 6 halaman setiap kali) |
+| K-10 | Halaman daftar menu punya `loading.tsx` (dalam grup `(daftar)` bila ada halaman detail, supaya `notFound()` detail tetap berstatus 404; ringkasan admin dan `/stiker` tidak, karena status 404 tab asing dan uji cetak butuh halaman utuh); `PrefetchMenu` mem-prefetch semua butir menu saat senggang; menu lapangan memakai navigasi klien (`TautanLapangan`), luring jatuh ke navigasi penuh | Diukur 19 Nov (ponsel, CPU 4x, Fast 4G): peladen menjawab RSC dalam ~60–120 ms, tetapi tanpa `loading.tsx` rute dinamis tidak di-prefetch dan layar diam sampai seluruh isi tiba; menu inspektur memuat ulang halaman penuh (0,8–3,4 s per ketukan, plus unduh paket kerja dan 6 halaman setiap kali) |
 
 ## 10. PWA Inspektur (luring)
 
