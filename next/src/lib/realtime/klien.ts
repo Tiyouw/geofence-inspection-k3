@@ -1,10 +1,11 @@
 /**
- * Sambungan realtime di peramban lewat SDK Ably (modular: hanya WebSocket + fetch, dimuat
- * dinamis setelah halaman tampil). Token dari /api/realtime/token (JWT, kapabilitas subscribe
+ * Sambungan realtime di peramban lewat SDK perangkat Ably @ably/pubsub-device (wajib untuk akun
+ * berharga MAU; token membawa clientId per pengguna). Modular: hanya WebSocket + fetch, dimuat
+ * dinamis setelah halaman tampil. Token dari /api/realtime/token (JWT, kapabilitas subscribe
  * saluran milik pengguna). Sambung ulang dengan jeda diurus SDK: 3 s saat terputus, 15 s setelah
  * lama putus (suspended).
  */
-import type { BaseRealtime } from "ably/modular";
+import type { PubSubClient } from "@ably/pubsub-device/modular";
 import { NAMA_EVENT, bacaPeristiwa, type KonfigurasiKlienRealtime, type Peristiwa } from "./saluran";
 
 export type StatusRealtime = "menyambung" | "tersambung" | "terputus" | "mati";
@@ -19,7 +20,7 @@ export type OpsiRealtime = {
 };
 
 export class SambunganRealtime {
-    private klien: BaseRealtime | null = null;
+    private klien: PubSubClient | null = null;
     private memuat: Promise<void> | null = null;
     private pernahTersambung = false;
     private berhenti = false;
@@ -34,9 +35,9 @@ export class SambunganRealtime {
     }
 
     private async buat() {
-        const { BaseRealtime, WebSocketTransport, FetchRequest } = await import("ably/modular");
+        const { createClient, WebSocketTransport, FetchRequest } = await import("@ably/pubsub-device/modular");
         if (this.berhenti) return;
-        const klien = new BaseRealtime({
+        const klien = createClient({
             ...this.o.konfigurasi,
             authUrl: this.o.tokenUrl ?? "/api/realtime/token",
             authMethod: "GET",
