@@ -94,7 +94,7 @@
 }
 
 /*
- * Token desain PAL-K3. Warna merek dari aplikasi Laravel:
+ * Token desain aplikasi. Warna merek dari aplikasi Laravel:
  *   deep current #031e25 (panel gelap, primer), amber #f5b700 (aksen, tombol utama),
  *   latar #eef2f3, teks #162b33, garis #cbd7db.
  * Ubah warna di sini saja; komponen memakai nama semantik (primary, accent, brand, ...).

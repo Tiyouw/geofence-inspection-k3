@@ -1,6 +1,6 @@
 /**
  * Modul Mobil Pemadam Kebakaran (SAT. PK): checklist, langkah foto, dan atribut aset.
- * Sumber: PRD PAL-K3 v2 "Checklist per modul", tab Mobil pemadam (17 Nov 2026).
+ * Sumber: PRD v2 "Checklist per modul", tab Mobil pemadam (17 Nov 2026).
  *
  * SELURUH ISI BERKAS INI ADALAH ASUMSI (PRD: {{Assumption}}). Formulir asli SAT. PK belum
  * diterima (pertanyaan 3.1 / 3.17). Acuan spesifikasi kendaraan: SNI 7053:2022 Mobil Pompa

@@ -1,4 +1,4 @@
-# PAL-K3 v2: Arsitektur dan Aturan Kerja
+# Geofence Inspection K3 v2: Arsitektur dan Aturan Kerja
 
 Fondasi aplikasi v2 ada di `next/` (cabang `rewrite/next`). Aplikasi Laravel tetap di
 akar repo sampai cut-over. Apa yang dibangun mengikuti [SPEC.md](SPEC.md); kapan

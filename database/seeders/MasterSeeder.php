@@ -49,7 +49,7 @@ class MasterSeeder extends Seeder
     }
 
     /**
-     * Checklist APAR 10 item, turunan Lampiran 03 PT PAL.
+     * Checklist APAR 10 item, turunan Lampiran 03 perusahaan.
      * Aturan dimensi: objek yang dioperasikan -> answer_type fungsi (centang/silang).
      * Objek yang hanya dilihat -> answer_type kondisi (O / O-bergaris).
      * APAR tidak dioperasikan saat inspeksi, jadi mayoritas kondisi.

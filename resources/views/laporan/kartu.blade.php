@@ -55,7 +55,7 @@
     <table class="kop">
         <tr>
             <td style="width:62%">
-                <div class="nama">PT PAL INDONESIA (PERSERO)</div>
+                <div class="nama">PERUSAHAAN GALANGAN KAPAL</div>
                 <div class="sub">Divisi Keselamatan, Kesehatan Kerja dan Lindungan Lingkungan</div>
             </td>
             <td class="kanan">

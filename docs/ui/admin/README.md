@@ -28,7 +28,7 @@ Tangkapan implementasi ada di `shots/sebelum-*.png`, `shots/implementasi-*.png`,
 
 ## Latar singkat sistem
 
-- Aplikasi inspeksi K3 APAR (alat pemadam api ringan) PT PAL Indonesia, untuk skripsi. Stack: Laravel 13 + Filament v3. Arsitektur disiapkan untuk Hydrant/P3K/Damkar nanti.
+- Aplikasi inspeksi K3 APAR (alat pemadam api ringan) Perusahaan Galangan Kapal, untuk skripsi. Stack: Laravel 13 + Filament v3. Arsitektur disiapkan untuk Hydrant/P3K/Damkar nanti.
 - Alur petugas di `/petugas`:
   1. Pindai QR stiker unit (token acak).
   2. GPS diambil sebagai bukti area. Hasil GPS hanya ditandai, tidak memblokir inspeksi.

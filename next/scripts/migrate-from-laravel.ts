@@ -1,5 +1,5 @@
 /**
- * Migrasi data PAL-K3 dari SQLite Laravel ke Postgres v2 + foto ke Blob privat (SPEC §8).
+ * Migrasi data v1 dari SQLite Laravel ke Postgres v2 + foto ke Blob privat (SPEC §8).
  *
  *   pnpm migrasi --sqlite ./pal-k3-ekspor.sqlite --foto ./storage-public            # dry-run (bawaan)
  *   pnpm migrasi --sqlite ./pal-k3-ekspor.sqlite --foto ./storage-public --jalankan # tulis sungguhan

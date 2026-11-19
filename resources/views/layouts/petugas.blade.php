@@ -10,7 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0f3c68">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('judul', 'Inspeksi K3') &mdash; PT PAL Indonesia</title>
+    <title>@yield('judul', 'Inspeksi K3') &mdash; Perusahaan Galangan Kapal</title>
 
     <style>
         /*
@@ -21,7 +21,7 @@
          * kecil untuk dimuat sekali dan disimpan cache peramban.
          */
         :root {
-            --biru:      #0f3c68;  /* biru korporat PT PAL */
+            --biru:      #0f3c68;  /* biru korporat */
             --biru-tua:  #0a2a49;
             --biru-muda: #e8f1f9;
             --hijau:     #157347;
