@@ -124,7 +124,7 @@ test("impor GeoJSON → pratinjau → draf; ubah atribut, setujui, sunting simpu
   // Lepas lagi supaya data seed tetap utuh, lalu hapus area dok
   await page.getByTestId("aset-area").getByRole("button", { name: "Lepas" }).click();
   await expect(page.getByTestId("aset-area")).not.toContainText("29D");
-  await page.getByRole("button", { name: "Tutup" }).click();
+  await page.getByRole("button", { name: "Tutup panel area" }).click();
   // Batal pilih: sorotan hilang, kecerahan kembali.
   await expect(page.locator('[data-testid="peta-area"] path.poligon-terpilih')).toHaveCount(0);
   await expect(page.locator('[data-testid="peta-area"] .pin-terpilih')).toHaveCount(0);

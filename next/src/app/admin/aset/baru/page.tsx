@@ -4,19 +4,20 @@ import { buatAset } from "@/features/admin/actions/aset";
 import { FormAset } from "@/features/admin/components/form-aset";
 import { pilihanAset } from "@/features/admin/server/aset";
 import { requireRole } from "@/lib/auth/guards";
+import { bingkaiKawasan } from "@/lib/geo/data";
 
 export const metadata: Metadata = { title: "Tambah aset" };
 
 export default async function AsetBaru() {
     await requireRole("admin");
-    const p = await pilihanAset();
+    const [p, kawasan] = await Promise.all([pilihanAset(), bingkaiKawasan()]);
     return (
         <>
             <PageHeader
                 title="Tambah aset"
                 description="Token stiker QR dibuat otomatis dan acak; cetak stiker setelah aset tersimpan."
             />
-            <FormAset aksi={buatAset} tipe={p.tipe} divisi={p.divisi} area={p.area} labelKirim="Simpan aset" />
+            <FormAset aksi={buatAset} tipe={p.tipe} divisi={p.divisi} area={p.area} kawasan={kawasan} labelKirim="Simpan aset" />
         </>
     );
 }

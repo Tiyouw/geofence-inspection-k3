@@ -37,6 +37,7 @@ export function FormAset({
     area,
     labelKirim,
     terakhirDicekLabel,
+    kawasan = null,
 }: {
     aksi: (prev: unknown, fd: FormData) => Promise<HasilAksi<{ id: number } | undefined>>;
     nilai?: NilaiAset;
@@ -45,6 +46,8 @@ export function FormAset({
     area: { id: number; nama: string; polygon: GeometriArea | null; polygonDraf: GeometriArea | null }[];
     labelKirim: string;
     terakhirDicekLabel?: string;
+    /** Kotak batas kawasan disetujui: peta pemilih dibuka pas di galangan. */
+    kawasan?: [[number, number], [number, number]] | null;
 }) {
     const router = useRouter();
     const { state, onSubmit, menunggu } = useFormAksi(aksi, {
@@ -197,6 +200,7 @@ export function FormAset({
                             setLat(String(p.lat));
                             setLng(String(p.lng));
                         }}
+                        kawasan={kawasan}
                         tinggi={320}
                         label="Peta pemilih titik aset"
                     />

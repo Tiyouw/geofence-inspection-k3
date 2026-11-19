@@ -3,6 +3,7 @@
  * Peninjau melihat foto per butir, titik GPS di atas poligon gedung dan kawasan, akurasi, dan
  * alasan masuk antrean, lalu memutuskan Diterima atau Ditolak dengan catatan.
  */
+import { batasGeometri } from "@/lib/geo/geometri";
 import { batasTinjauan } from "./peta";
 import Link from "next/link";
 import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
@@ -210,7 +211,7 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
               ]
             : [];
     return (
-        <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="flex min-w-0 flex-col gap-4">
                 <Kartu judul="Posisi inspektur terhadap area aset">
                     {d.bergerak ? (
@@ -227,6 +228,7 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
                                 inspektur:
                                     d.gpsLat != null && d.gpsLng != null ? { lat: d.gpsLat, lng: d.gpsLng, akurasi: d.gpsAccuracy } : null,
                             })}
+                            kawasan={d.kawasan?.polygon ? batasGeometri(d.kawasan.polygon) : null}
                             tinggi={340}
                             label="Peta posisi inspektur, poligon area aset, dan kawasan"
                         />

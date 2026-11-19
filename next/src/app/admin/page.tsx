@@ -1,3 +1,4 @@
+import { batasGeometri } from "@/lib/geo/geometri";
 import type { Metadata } from "next";
 import { AsetLuarKawasan } from "@/features/admin/components/aset-luar-kawasan";
 import { Suspense } from "react";
@@ -313,6 +314,7 @@ async function IsiDasbor({ nama, tab, hal }: { nama: string; tab: TabAntrean; ha
                             ? [{ geojson: r.peta.kawasan.polygon, judul: r.peta.kawasan.nama, warna: "muted-foreground", putus: true }]
                             : undefined
                     }
+                    kawasan={r.peta.kawasan ? batasGeometri(r.peta.kawasan.polygon) : null}
                     label="Peta aset bertitik dan status pemeriksaan periode ini"
                 />
                 <AsetLuarKawasan aset={r.peta.luarKawasan} bisaDitaruh={r.peta.bisaDitaruh} />

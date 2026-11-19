@@ -10,6 +10,7 @@ import { GantiToken, LihatToken } from "@/features/admin/components/token-aset";
 import { Kartu } from "@/features/admin/components/ui";
 import { ambilAset, pilihanAset } from "@/features/admin/server/aset";
 import { requireRole } from "@/lib/auth/guards";
+import { bingkaiKawasan } from "@/lib/geo/data";
 import { labelLokasi } from "@/lib/domain/label-aset";
 import { formatTanggal, formatWaktu } from "@/lib/format";
 
@@ -19,14 +20,14 @@ export default async function UbahAset({ params }: PageProps<"/admin/aset/[id]">
     await requireRole("admin");
     const id = Number((await params).id);
     if (!Number.isInteger(id) || id <= 0) notFound();
-    const [a, p] = await Promise.all([ambilAset(id), pilihanAset()]);
+    const [a, p, kawasan] = await Promise.all([ambilAset(id), pilihanAset(), bingkaiKawasan()]);
     if (!a) notFound();
     const attr = a.attributes ?? {};
 
     return (
         <>
             <PageHeader title={`Aset ${a.kode}`} description={labelLokasi(a)} />
-            <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <FormAset
                     aksi={ubahAset.bind(null, a.id)}
                     nilai={{
@@ -42,6 +43,7 @@ export default async function UbahAset({ params }: PageProps<"/admin/aset/[id]">
                     tipe={p.tipe}
                     divisi={p.divisi}
                     area={p.area}
+                    kawasan={kawasan}
                     labelKirim="Simpan perubahan"
                     terakhirDicekLabel={
                         a.terakhirDicek ? formatTanggal(a.terakhirDicek + "T00:00:00+07:00") : "Belum pernah"
