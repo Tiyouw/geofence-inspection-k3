@@ -509,6 +509,19 @@ export async function hapusDemo(tx: Tx): Promise<{ hitungan: Hitungan; kunciFoto
   const aset = await tx.select({ id: s.assets.id }).from(s.assets).where(like(s.assets.kode, `${AWALAN_DEMO}%`));
   const idAset = aset.map((a) => a.id);
   const kunci: string[] = [];
+  // Inspeksi oleh akun sungguhan (bukan akun demo) pada aset demo adalah data nyata: jangan dihapus
+  // diam-diam bersama demo (audit 19 Nov 2026, S7). Pindahkan atau hapus manual dulu.
+  if (idAset.length) {
+    const [{ n }] = (await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(s.inspections)
+      .innerJoin(s.users, eq(s.users.id, s.inspections.userId))
+      .where(and(inArray(s.inspections.assetId, idAset), eq(s.users.isDemo, false)))) as [{ n: number }];
+    if (n > 0) throw new Error(`Ada ${n} inspeksi oleh akun non-demo pada aset demo. Reset demo dibatalkan; tidak ada yang dihapus.`);
+  }
+  // Pemicu audit_logs_tambah_saja (migrasi 0004) hanya mengizinkan penghapusan baris contoh demo
+  // bila sesi ini menyalakannya; berlaku sampai transaksi selesai.
+  await tx.execute(sql`select set_config('palk3.hapus_audit_demo', 'ya', true)`);
   if (idAset.length) {
     const ins = await tx.select({ id: s.inspections.id }).from(s.inspections).where(inArray(s.inspections.assetId, idAset));
     const idIns = ins.map((i) => i.id);
