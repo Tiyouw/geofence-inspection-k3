@@ -87,7 +87,8 @@ async function aset(tx: Tx, rows: { assetTypeId: number; divisionId: number; row
     await tx
       .insert(s.assets)
       .values({ ...values, qrToken: buatTokenQr() })
-      .onConflictDoUpdate({ target: [s.assets.assetTypeId, s.assets.kode], set: values });
+      // Aset yang sudah ada tidak pernah diubah.
+      .onConflictDoNothing({ target: [s.assets.assetTypeId, s.assets.kode] });
   }
 }
 
