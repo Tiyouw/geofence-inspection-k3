@@ -167,6 +167,7 @@ async function setelahBerhasil(db: DbAkun, op: OutboxOp, body: unknown) {
       kesimpulan: hasil.kesimpulan,
       jumlahTemuan: hasil.temuan.length,
       gateStatus: hasil.gateStatus,
+      gateAlasan: hasil.gateAlasan ?? null,
       temuan: hasil.temuan,
       offline: hasil.offline,
     });

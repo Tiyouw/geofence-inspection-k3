@@ -3,6 +3,7 @@
 import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { terdampak, type Peristiwa } from "@/lib/realtime/saluran";
 import { useRealtime, type KonfigurasiRealtime } from "@/lib/realtime/use-realtime";
 
@@ -64,6 +65,13 @@ export function CacheMenu({ hrefs, userId, realtime }: { hrefs: string[]; userId
     realtime,
     (p: Peristiwa) => {
       const jalur = [location.pathname, ...kunci.split("|")];
+      // Masukan baru dari /panduan: admin diberi tahu di halaman mana pun (hanya jenis, tanpa isi).
+      if (p.t === "masukan" && kunci.includes("/admin/masukan")) {
+        toast("Masukan baru dari panduan", {
+          id: "masukan-baru",
+          action: { label: "Buka", onClick: () => router.push("/admin/masukan") },
+        });
+      }
       if (p.t === "pengguna" || jalur.some((j) => terdampak(p.t, j))) segarkan();
     },
     segarkan,

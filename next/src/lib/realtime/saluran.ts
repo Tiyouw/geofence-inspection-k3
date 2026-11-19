@@ -7,7 +7,7 @@
  */
 import type { Role } from "@/lib/domain/constants";
 
-export const JENIS_PERISTIWA = ["inspeksi", "tinjauan", "jadwal", "aset", "area", "pengguna"] as const;
+export const JENIS_PERISTIWA = ["inspeksi", "tinjauan", "jadwal", "aset", "area", "pengguna", "masukan"] as const;
 export type JenisPeristiwa = (typeof JENIS_PERISTIWA)[number];
 
 /** Isi pesan di kabel. `id` hanya dikirim ke saluran staf (admin/pemantau). */
@@ -78,6 +78,7 @@ export function peristiwaDariAudit(aksi: string, entitasId: string): { p: Perist
     if (awal === "aset") return { p: { t: "aset", id: entitasId }, s: bersama };
     if (awal === "area" || awal === "pengaturan") return { p: { t: "area", id: entitasId }, s: bersama };
     if (awal === "jadwal" || awal === "tipe") return { p: { t: "jadwal", id: entitasId }, s: bersama };
+    if (awal === "masukan") return { p: { t: "masukan", id: entitasId }, s: { staf: true } };
     if (awal === "pengguna") {
         const id = Number(entitasId);
         return { p: { t: "pengguna", id: entitasId }, s: { staf: true, pengguna: Number.isInteger(id) ? [id] : [] } };
@@ -93,6 +94,8 @@ const AWALAN: Record<JenisPeristiwa, string[]> = {
     aset: ["/admin", "/pemantau", "/laporan"],
     area: ["/admin", "/pemantau"],
     pengguna: ["/admin"],
+    /** Masukan dari /panduan: lencana menu admin dan halaman /admin/masukan. */
+    masukan: ["/admin"],
 };
 
 /** Apakah peristiwa ini mengubah halaman pada jalur tersebut. */

@@ -599,6 +599,37 @@ export const tanyaKiriman = pgTable("tanya_kiriman", {
     ...ts(),
 });
 
+/* ---------- masukan dari panduan (/panduan) ---------- */
+
+/**
+ * Masukan klien saat mencoba aplikasi lewat /panduan (rute publik). Terpisah dari data domain:
+ * tidak ada FK ke inspeksi atau aset. Tangkapan layar opsional disimpan di penyimpanan foto
+ * (`storageKey`), bukan di DB. `pengirimHash` = SHA-256 IP + garam, hanya untuk pembatas laju.
+ */
+export const masukanPanduan = pgTable(
+    "masukan_panduan",
+    {
+        id: uuid().primaryKey().defaultRandom(),
+        nama: varchar({ length: 80 }).notNull(),
+        /** bug | aneh | tanya | saran (JENIS_MASUKAN). */
+        jenis: varchar({ length: 16 }).notNull(),
+        /** Slide/langkah yang sedang dibuka, mis. "Admin K3 · Jadwal". */
+        konteks: varchar({ length: 160 }).notNull().default(""),
+        langkah: varchar({ length: 64 }),
+        isi: text().notNull(),
+        storageKey: text(),
+        contentType: varchar({ length: 64 }),
+        bytes: integer(),
+        pengirimHash: varchar({ length: 64 }).notNull(),
+        userAgent: varchar({ length: 300 }),
+        selesai: boolean().notNull().default(false),
+        selesaiPada: tstz(),
+        selesaiOleh: integer().references(() => users.id, { onDelete: "set null" }),
+        createdAt: createdAt(),
+    },
+    (t) => [index().on(t.selesai, t.createdAt), index().on(t.pengirimHash, t.createdAt)],
+);
+
 /* ---------- relasi ---------- */
 
 export const divisionsRelations = relations(divisions, ({ many }) => ({

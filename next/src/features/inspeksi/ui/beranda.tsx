@@ -10,7 +10,7 @@ import { statusAntrean } from "../client/status";
 import type { AsetPaket } from "../client/types";
 import { Cip, GambarAset, JudulBagian, KARTU, Kartu, KONTROL, Pita, lokasiAset } from "./a";
 import { useInspektur } from "./konteks";
-import { LencanaGerbang, LencanaKesimpulan } from "./lencana";
+import { LencanaGerbang, LencanaKesimpulan, LencanaModeDemo } from "./lencana";
 import { AjakanPasang } from "./pasang-aplikasi";
 import { TautanLapangan } from "./tautan";
 
@@ -219,6 +219,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
                 <span className="flex flex-col items-end gap-1">
                   {s.kesimpulan && <LencanaKesimpulan k={s.kesimpulan} />}
                   <LencanaGerbang status={s.gateStatus} />
+                  {s.gateAlasan === "mode_demo" && <LencanaModeDemo />}
                 </span>
               </li>
             ))}

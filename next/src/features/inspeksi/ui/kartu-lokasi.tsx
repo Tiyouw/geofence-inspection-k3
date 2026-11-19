@@ -7,6 +7,8 @@
  *   menyalakan lokasi dan tombol Coba lagi. Objek bergerak tidak pernah diblokir.
  * - Pratinjau gerbang memakai fungsi yang sama dengan peladen (`nilaiGerbang`); keputusan
  *   resmi tetap di peladen.
+ * - Mode demo (`paket.modeDemo`, src/lib/geo/mode-demo.ts): akun demo di luar galangan tetap
+ *   melihat vonis sebenarnya, ditambah catatan Mode demo, dan Kirim tetap aktif.
  */
 import { CircleCheck, Crosshair, LocateOff, MapPin, MapPinX, TriangleAlert, Truck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { simpanGps } from "../client/aksi";
 import type { AsetPaket, DrafLokal, PaketKerja } from "../client/types";
 import { useInspektur } from "./konteks";
-import { LencanaGerbang } from "./lencana";
+import { LencanaGerbang, LencanaModeDemo } from "./lencana";
 
 export type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
 
@@ -38,6 +40,8 @@ export type KeadaanLokasi = {
   /** Akurasi bacaan terakhir lemah: tampilkan pilihan Tunggu / Kirim sekarang. */
   lemah: boolean;
   gerbang: HasilGerbang;
+  /** Di luar galangan, tetapi akun demo boleh mengirim (masuk antrean tinjauan sebagai `mode_demo`). */
+  modeDemo: boolean;
   ambilUlang: () => void;
 };
 
@@ -112,11 +116,13 @@ export function useKeadaanLokasi(paket: PaketKerja, aset: AsetPaket, draf: DrafL
   const gerbang = useMemo(() => pratinjauGerbang(paket, aset, draf.gps), [paket, aset, draf.gps]);
   // Objek bergerak tidak pernah diblokir. Di luar galangan: peladen pasti menolak (422), jadi Kirim
   // dinonaktifkan di sini juga, termasuk saat luring (pratinjau dari paket kerja), dengan alasannya.
+  // Kecuali mode demo: peladen menerimanya sebagai perlu_tinjauan / mode_demo.
+  const modeDemo = !aset.bergerak && !!draf.gps && gerbang.hasil === "ditolak" && paket.modeDemo === true;
   const alasanTidakKirim = aset.bergerak
     ? null
     : !draf.gps
       ? "Lokasi belum diperoleh. Nyalakan Lokasi (GPS), lalu tekan Coba lagi."
-      : gerbang.hasil === "ditolak"
+      : gerbang.hasil === "ditolak" && !modeDemo
         ? "Tidak bisa dikirim: posisi Anda di luar kawasan galangan. Pergi ke lokasi aset, lalu tekan Ambil ulang posisi."
         : null;
   const keadaan: KeadaanLokasi = {
@@ -124,13 +130,18 @@ export function useKeadaanLokasi(paket: PaketKerja, aset: AsetPaket, draf: DrafL
     alasanTidakKirim,
     lemah: gerbang.alasan === "gps_lemah",
     gerbang,
+    modeDemo,
     ambilUlang: mulai,
   };
   return { status, keadaan };
 }
 
-function pesanPratinjau(g: HasilGerbang, aset: AsetPaket, paket: PaketKerja): string {
+function pesanPratinjau(g: HasilGerbang, aset: AsetPaket, paket: PaketKerja, modeDemo: boolean): string {
   const namaArea = aset.areaId != null ? (paket.gerbang?.area[aset.areaId]?.nama ?? null) : null;
+  if (g.hasil === "ditolak" && modeDemo) {
+    const jarak = g.jarakKeKawasanM === null ? "" : ` (${labelJarak(g.jarakKeKawasanM)} dari batas)`;
+    return `Posisi Anda berada di luar kawasan galangan${jarak}.`;
+  }
   if (g.hasil === "ditolak") return pesanDitolak(g.jarakKeKawasanM);
   if (g.status === "sesuai") {
     if (!namaArea) return "Lokasi sesuai.";
@@ -231,7 +242,17 @@ export function KartuLokasi({
         </p>
       ) : (
         <p className={cn("text-sm", g.hasil === "ditolak" ? "text-danger" : "text-foreground/85")} data-testid="pesan-gps">
-          {pesanPratinjau(g, aset, paket)}
+          {pesanPratinjau(g, aset, paket, keadaan.modeDemo)}
+        </p>
+      )}
+
+      {keadaan.modeDemo && (
+        <p
+          className="flex flex-wrap items-center gap-2 rounded-[var(--a-radius-kontrol,10px)] bg-info-soft px-3 py-2 text-sm text-info"
+          data-testid="catatan-mode-demo"
+        >
+          <LencanaModeDemo className="border border-info/40" />
+          <span>Akun demo: tetap bisa dikirim untuk percobaan; masuk antrean tinjauan.</span>
         </p>
       )}
 

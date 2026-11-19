@@ -3,16 +3,17 @@ import { capKoordinatAktif, koordinatUntukPeran } from "@/lib/foto/pengaturan";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues } from "@/db/schema";
+import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues, users } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai } from "@/lib/domain/asset";
 import { periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
 import { jatuhTempoUntuk, periodeUntuk, rentangPeriode } from "@/lib/domain/jadwal";
-import type { Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
+import type { GateAlasan, Kesimpulan, TipeKotakP3k } from "@/lib/domain/constants";
 import type { LangkahFoto } from "@/lib/domain/langkah-foto";
 import { bacaTipeKotak } from "@/lib/domain/modul/p3k";
 import type { PengaturanGerbang } from "@/lib/geo/akurasi";
 import { dataArea, pengaturanGerbang } from "@/lib/geo/data";
+import { modeDemoBerlaku } from "@/lib/geo/mode-demo";
 import type { GeometriArea } from "@/lib/geo/geometri";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
@@ -53,6 +54,8 @@ export type TerkirimPaket = {
   kesimpulan: Kesimpulan | null;
   jumlahTemuan: number;
   gateStatus: string;
+  /** Alasan `perlu_tinjauan` (mis. `mode_demo`); paket lama tanpa bidang ini. */
+  gateAlasan?: GateAlasan | null;
 };
 
 export type PaketKerja = {
@@ -80,6 +83,11 @@ export type PaketKerja = {
   gerbang: GerbangPaket;
   /** Cap foto (lapisan tampilan, bukan dibakar ke JPEG): nama inspektur dan pengaturan koordinat. */
   cap?: { inspektur: string; koordinat: boolean };
+  /**
+   * Mode demo (src/lib/geo/mode-demo.ts): akun demo boleh mengirim dari luar galangan. Dihitung
+   * di peladen (users.is_demo + AKUN_DEMO_LEWATI_KAWASAN=1); hanya untuk tampilan, keputusan di finalisasi.
+   */
+  modeDemo?: boolean;
 };
 
 export type AreaPaket = { nama: string; polygon: GeometriArea | null; restricted: boolean };
@@ -204,6 +212,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
       inspectedAt: inspections.inspectedAt,
       kesimpulan: inspections.kesimpulan,
       gateStatus: inspections.gateStatus,
+      gateAlasan: inspections.gateAlasan,
       jumlahTemuan: sql<number>`(select count(*)::int from ${issues} where ${issues.inspectionId} = ${inspections.id})`,
     })
     .from(inspections)
@@ -219,7 +228,12 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     .orderBy(desc(inspections.inspectedAt))
     .limit(100);
 
-  const [pengaturan, dataGerbang, capKoordinat] = await Promise.all([pengaturanGerbang(), dataArea(), capKoordinatAktif()]);
+  const [pengaturan, dataGerbang, capKoordinat, [akun]] = await Promise.all([
+    pengaturanGerbang(),
+    dataArea(),
+    capKoordinatAktif(),
+    db.select({ isDemo: users.isDemo }).from(users).where(eq(users.id, user.id)).limit(1),
+  ]);
   // Denah bersifat rahasia (ADR-10): perangkat hanya menerima poligon area aset unitnya sendiri
   // dan batas kawasan. Area lain hanya dinilai di peladen.
   const areaDipakai = new Set(aset.map((x) => x.areaId).filter((id): id is number => id !== null));
@@ -260,6 +274,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     asetUnitLain,
     // Koordinat pada cap hanya untuk Admin K3 (ADR-15); inspektur tidak menerimanya.
     cap: { inspektur: user.name, koordinat: koordinatUntukPeran(user.role, capKoordinat) },
+    modeDemo: modeDemoBerlaku(akun?.isDemo === true),
     terkirim: milikSendiri.map((m) => ({ ...m, inspectedAt: m.inspectedAt!.toISOString() })),
   };
 }

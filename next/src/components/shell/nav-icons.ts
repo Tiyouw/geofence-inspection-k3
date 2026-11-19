@@ -8,6 +8,7 @@ import {
   History,
   LayoutDashboard,
   MapPin,
+  MessageSquareText,
   QrCode,
   ScanSearch,
   ShieldAlert,
@@ -30,6 +31,7 @@ export const NAV_ICONS = {
   pindai: QrCode,
   riwayat: History,
   tinjauan: ScanSearch,
+  masukan: MessageSquareText,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIcon = keyof typeof NAV_ICONS;

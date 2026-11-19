@@ -88,11 +88,13 @@ export const GATE_STATUS_LAMA: Partial<Record<GateStatus, GateAlasan>> = {
 export const GATE_PERLU_TINJAUAN: GateStatus[] = ["perlu_tinjauan", "perlu_review", "jauh", "gps_lemah", "tanpa_gps"];
 
 /** Alasan status `perlu_tinjauan`. */
-export const GATE_ALASAN = ["di_luar_gedung", "gps_lemah"] as const;
+/** mode_demo: akun demo di luar galangan, diterima hanya bila AKUN_DEMO_LEWATI_KAWASAN=1 (ADR panduan Faldy). */
+export const GATE_ALASAN = ["di_luar_gedung", "gps_lemah", "mode_demo"] as const;
 export type GateAlasan = (typeof GATE_ALASAN)[number];
 export const LABEL_GATE_ALASAN: Record<GateAlasan, string> = {
   di_luar_gedung: "Di luar gedung aset",
   gps_lemah: "GPS lemah",
+  mode_demo: "Mode demo (di luar galangan)",
 };
 
 /** Kunci tabel `settings` untuk toleransi gerbang (meter), dengan nilai bawaan PRD. */
