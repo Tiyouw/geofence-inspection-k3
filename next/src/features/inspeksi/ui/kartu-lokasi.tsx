@@ -31,8 +31,10 @@ import { LencanaGerbang } from "./lencana";
 export type StatusGps = "mencari" | "ada" | "ditolak" | "gagal" | "tidak_didukung";
 
 export type KeadaanLokasi = {
-  /** false = Kirim dinonaktifkan (lokasi mati / izin ditolak / belum ada posisi). */
+  /** false = Kirim dinonaktifkan (lokasi mati / izin ditolak / belum ada posisi / di luar galangan). */
   bolehKirim: boolean;
+  /** Alasan Kirim dinonaktifkan, ditampilkan di bawah tombol Kirim; null bila boleh kirim. */
+  alasanTidakKirim: string | null;
   /** Akurasi bacaan terakhir lemah: tampilkan pilihan Tunggu / Kirim sekarang. */
   lemah: boolean;
   gerbang: HasilGerbang;
@@ -108,8 +110,18 @@ export function useLokasi(draf: DrafLokal, aktif: boolean, berubah: () => void) 
 export function useKeadaanLokasi(paket: PaketKerja, aset: AsetPaket, draf: DrafLokal, bisaUbah: boolean, berubah: () => void) {
   const { status, mulai } = useLokasi(draf, bisaUbah, berubah);
   const gerbang = useMemo(() => pratinjauGerbang(paket, aset, draf.gps), [paket, aset, draf.gps]);
+  // Objek bergerak tidak pernah diblokir. Di luar galangan: peladen pasti menolak (422), jadi Kirim
+  // dinonaktifkan di sini juga, termasuk saat luring (pratinjau dari paket kerja), dengan alasannya.
+  const alasanTidakKirim = aset.bergerak
+    ? null
+    : !draf.gps
+      ? "Lokasi belum diperoleh. Nyalakan Lokasi (GPS), lalu tekan Coba lagi."
+      : gerbang.hasil === "ditolak"
+        ? "Tidak bisa dikirim: posisi Anda di luar kawasan galangan. Pergi ke lokasi aset, lalu tekan Ambil ulang posisi."
+        : null;
   const keadaan: KeadaanLokasi = {
-    bolehKirim: !!aset.bergerak || !!draf.gps,
+    bolehKirim: alasanTidakKirim === null,
+    alasanTidakKirim,
     lemah: gerbang.alasan === "gps_lemah",
     gerbang,
     ambilUlang: mulai,
@@ -120,7 +132,11 @@ export function useKeadaanLokasi(paket: PaketKerja, aset: AsetPaket, draf: DrafL
 function pesanPratinjau(g: HasilGerbang, aset: AsetPaket, paket: PaketKerja): string {
   const namaArea = aset.areaId != null ? (paket.gerbang?.area[aset.areaId]?.nama ?? null) : null;
   if (g.hasil === "ditolak") return pesanDitolak(g.jarakKeKawasanM);
-  if (g.status === "sesuai") return namaArea ? `Posisi Anda di ${namaArea}.` : "Lokasi sesuai.";
+  if (g.status === "sesuai") {
+    if (!namaArea) return "Lokasi sesuai.";
+    // Masuk berkat kelonggaran akurasi: titik di luar poligon, tetapi dalam toleransi.
+    return g.jarakKeAreaM ? `Posisi Anda di dekat ${namaArea} (dalam toleransi).` : `Posisi Anda di ${namaArea}.`;
+  }
   if (g.alasan === "gps_lemah") return pesanSinyalLemah(g.akurasiM ?? 999);
   if (g.alasan === "di_luar_gedung") return pesanPerluTinjauan(namaArea);
   return "";
