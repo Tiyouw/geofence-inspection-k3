@@ -27,7 +27,7 @@ merujuk ID-nya (mis. B5, J1, K5). Butir arsip yang bertentangan dengan keputusan
 | AC-4 | Langkah foto kosong → pesan per langkah, tetap draf | `e2e/petugas/kamera.spec.ts` (kirim tanpa foto) | |
 | AC-5 | Dalam poligon gedung → "Lokasi sesuai", final | `e2e/petugas/gerbang.spec.ts`; `src/lib/geo/__tests__/gerbang.test.ts` | §4 titik A |
 | AC-6 | Dalam kawasan, luar gedung → final "Perlu tinjauan", masuk antrean | `e2e/petugas/gerbang.spec.ts` | §4 titik C |
-| AC-7 | Luar kawasan (akurasi ≤ 100 m): Kirim nonaktif dengan alasan; peladen tetap menolak 422, tetap draf, audit `inspeksi.ditolak_lokasi` | `e2e/petugas/gerbang.spec.ts` | §4 titik D |
+| AC-7 | Luar kawasan (akurasi ≤ 100 m): Kirim nonaktif dengan alasan; peladen tetap menolak 422, tetap draf, audit `inspeksi.ditolak_lokasi` dengan koordinat | `e2e/petugas/gerbang.spec.ts` | §4 titik D |
 | AC-8 | Lokasi mati/izin ditolak: Kirim nonaktif, pesan + Coba lagi | `e2e/petugas/gerbang.spec.ts` | §4 titik F |
 | AC-8a | Akurasi 150 m: penjelasan sinyal lemah; Kirim sekarang → "Perlu tinjauan" GPS lemah, akurasi tersimpan | `e2e/petugas/gerbang.spec.ts` | §4 titik E |
 | AC-8b | Kamera terpandu per langkah; beberapa jepretan; unggah setelah langkah terakhir; tautan ke butir | `e2e/petugas/kamera.spec.ts` | |
@@ -37,9 +37,10 @@ merujuk ID-nya (mis. B5, J1, K5). Butir arsip yang bertentangan dengan keputusan
 | AC-11 | "Tekanan manometer: Kurang" → temuan berat + tindakan; usulan Tidak layak pakai | `e2e/petugas/alur.spec.ts` | |
 | AC-12 | Kirim luring → antrean → terkirim saat sinyal kembali, gerbang memakai GPS saat mengisi, tanpa ganda | `e2e/petugas/alur.spec.ts` (luring); `e2e/petugas/api.spec.ts` (idempotensi); `src/features/inspeksi/client/__tests__/outbox.test.ts` | §3 "Luring" |
 
-Catatan AC-7: sejak audit 19 Nov 2026 (S6), jejak audit penolakan menyimpan akurasi dan jarak ke
-kawasan, **tanpa koordinat** (denah rahasia). Catatan User Stories masih berbunyi "dengan koordinat":
-{{Assumption}} keputusan ini menunggu konfirmasi pemilik.
+Catatan AC-7 (keputusan pemilik 19 Nov 2026, ADR-15): jejak audit penolakan menyimpan koordinat,
+akurasi, dan jarak ke kawasan, sesuai User Stories ("dengan koordinat"). Koordinat hanya tampil untuk
+Admin K3 (baris "Koordinat" di Jejak audit); pemantau, inspektur, PDF, dan halaman publik tidak
+pernah menampilkannya.
 
 ### Inspeksi kotak P3K
 

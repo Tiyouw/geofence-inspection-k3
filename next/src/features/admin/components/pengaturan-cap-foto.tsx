@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import { ubahCapKoordinat } from "../actions/cap-foto";
 
 /**
- * Sakelar admin: koordinat pada cap foto bukti (bawaan mati). Cap adalah lapisan tampilan di
- * aplikasi, layar tinjauan, dan PDF; berkas JPEG asli tidak pernah diubah.
+ * Sakelar admin: koordinat pada cap foto bukti dan detail tinjauan (bawaan mati). Cap adalah
+ * lapisan tampilan; berkas JPEG asli tidak pernah diubah. Koordinat hanya tampil untuk Admin K3
+ * (ADR-15): pemantau, inspektur, dan PDF tidak pernah menerimanya, apa pun nilai sakelar ini.
  */
 export function PengaturanCapFoto({ awal }: { awal: boolean }) {
     const [aktif, setAktif] = useState(awal);
@@ -18,8 +19,9 @@ export function PengaturanCapFoto({ awal }: { awal: boolean }) {
             <span className="min-w-0 flex-1">
                 <b className="block">Tampilkan koordinat pada cap foto dan detail tinjauan</b>
                 <span className="text-muted-foreground">
-                    Cap foto selalu memuat waktu, area, kode aset, inspektur, dan akurasi GPS. Koordinat (di cap foto, PDF, dan baris
-                    Koordinat pada detail tinjauan) bawaan disembunyikan karena denah bersifat rahasia. Foto asli tidak diubah.
+                    Cap foto selalu memuat waktu, area, kode aset, inspektur, dan akurasi GPS. Koordinat (di cap foto dan baris
+                    Koordinat pada detail tinjauan) hanya tampil untuk Admin K3, dan bawaan disembunyikan karena denah bersifat
+                    rahasia. Pemantau, inspektur, dan PDF tidak pernah menampilkannya. Foto asli tidak diubah.
                 </span>
             </span>
             <input

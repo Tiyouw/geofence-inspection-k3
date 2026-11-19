@@ -1,6 +1,5 @@
 import "server-only";
 import { barisCap } from "@/lib/foto/cap";
-import { capKoordinatAktif } from "@/lib/foto/pengaturan";
 import { pengaturanGerbang } from "@/lib/geo/data";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { bacaFoto } from "@/lib/storage/photos";
@@ -32,7 +31,7 @@ export async function renderRekap(isi: IsiRekap, dicetak: Date, denganFoto: bool
   let foto: Map<number, FotoLampiran[]> | null = null;
   if (denganFoto && baris.length) {
     foto = new Map();
-    const [sumber, koordinat, gerbang] = await Promise.all([fotoUntukTemuan(baris.map((b) => b.temuan.id)), capKoordinatAktif(), pengaturanGerbang()]);
+    const [sumber, gerbang] = await Promise.all([fotoUntukTemuan(baris.map((b) => b.temuan.id)), pengaturanGerbang()]);
     let sisa = MAKS_FOTO_LAMPIRAN;
     for (const b of baris) {
       for (const f of sumber.get(b.temuan.id) ?? []) {
@@ -53,7 +52,8 @@ export async function renderRekap(isi: IsiRekap, dicetak: Date, denganFoto: bool
             inspektur: f.inspektur,
             akurasiM: f.gpsAccuracy,
             ambangLemahM: gerbang.akurasiLemahM,
-            koordinat: koordinat && f.lat != null && f.lng != null ? { lat: f.lat, lng: f.lng } : null,
+            // PDF bisa beredar ke luar aplikasi: tanpa koordinat (ADR-15).
+            koordinat: null,
           }),
         });
         foto.set(b.temuan.id, list);

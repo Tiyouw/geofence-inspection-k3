@@ -383,7 +383,7 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
         aksi: "inspeksi.ditolak_lokasi",
         entitas: "inspeksi",
         entitasId: ins!.id,
-        data: { demo: true, assetId: aset.id, akurasi: sk.akurasi, jarakKeKawasanM: Math.round(jarakKeAreaM(pt, denahNyata && nyata ? denahNyata.kawasan : kawasanDemo)) },
+        data: { demo: true, assetId: aset.id, lat: plat, lng: plng, akurasi: sk.akurasi, jarakKeKawasanM: Math.round(jarakKeAreaM(pt, denahNyata && nyata ? denahNyata.kawasan : kawasanDemo)) },
         createdAt: t,
       });
       TAMBAH(h, "audit");

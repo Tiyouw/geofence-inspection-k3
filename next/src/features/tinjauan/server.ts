@@ -13,7 +13,7 @@ import {
     users,
 } from "@/db/schema";
 import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
-import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { koordinatUntukSesi } from "@/lib/foto/pengaturan";
 import { GATE_PERLU_TINJAUAN } from "@/lib/domain/constants";
 import { lokasiTemuan } from "@/lib/domain/temuan";
 
@@ -225,8 +225,8 @@ export async function detailTinjauan(id: string) {
             .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut)),
         // Tautan foto ke butir diturunkan dari langkahnya (kamera terpandu, sesi C).
         fotoPerButir(id),
-        // Koordinat mentah hanya bila admin menyalakan pengaturan koordinat (bawaan mati, denah rahasia).
-        capKoordinatAktif(),
+        // Koordinat mentah hanya untuk Admin K3 dan bila pengaturan koordinat menyala (ADR-15).
+        koordinatUntukSesi(),
     ]);
 
     return {

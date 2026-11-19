@@ -1,5 +1,5 @@
 import "server-only";
-import { capKoordinatAktif } from "@/lib/foto/pengaturan";
+import { capKoordinatAktif, koordinatUntukPeran } from "@/lib/foto/pengaturan";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -258,7 +258,8 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
     sudahDiperiksa: sudah.map((s) => s.assetId),
     unit: unitSendiri?.nama ?? null,
     asetUnitLain,
-    cap: { inspektur: user.name, koordinat: capKoordinat },
+    // Koordinat pada cap hanya untuk Admin K3 (ADR-15); inspektur tidak menerimanya.
+    cap: { inspektur: user.name, koordinat: koordinatUntukPeran(user.role, capKoordinat) },
     terkirim: milikSendiri.map((m) => ({ ...m, inspectedAt: m.inspectedAt!.toISOString() })),
   };
 }

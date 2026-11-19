@@ -90,7 +90,7 @@ test("di galangan tetapi di luar gedung: diterima sebagai perlu tinjauan", async
   expect(i!.jarak_ke_area_m).toBeGreaterThanOrEqual(78);
 });
 
-test("jauh di luar galangan: Kirim dinonaktifkan dengan alasan; peladen tetap menolak dan mencatat audit tanpa koordinat", async ({
+test("jauh di luar galangan: Kirim dinonaktifkan dengan alasan; peladen tetap menolak dan mencatat audit dengan koordinat", async ({
   page,
   context,
 }) => {
@@ -127,14 +127,15 @@ test("jauh di luar galangan: Kirim dinonaktifkan dengan alasan; peladen tetap me
   expect(r.status()).toBe(422);
   const [i] = await q("select status from inspections where id = $1", [id]);
   expect(i).toMatchObject({ status: "draf" });
-  const audit = await q<{ data: { jarakKeKawasanM: number; lat: number } }>(
+  const audit = await q<{ data: { jarakKeKawasanM: number; lat: number; lng: number } }>(
     "select data from audit_logs where aksi = 'inspeksi.ditolak_lokasi' and entitas_id = $1",
     [id],
   );
   expect(audit).toHaveLength(1);
   expect(audit[0]!.data.jarakKeKawasanM).toBeGreaterThanOrEqual(495);
-  // Denah rahasia: koordinat penolakan tidak disimpan di jejak audit.
-  expect(audit[0]!.data.lat).toBeUndefined();
+  // AC-7: penolakan tercatat dengan koordinat (hanya tampil di Jejak audit Admin K3).
+  expect(audit[0]!.data.lat).toBeCloseTo(t.jauh.latitude, 6);
+  expect(audit[0]!.data.lng).toBeCloseTo(t.jauh.longitude, 6);
 });
 
 test("sinyal lemah: penjelasan, pilihan tunggu atau kirim, akurasi disimpan", async ({ page, context }) => {

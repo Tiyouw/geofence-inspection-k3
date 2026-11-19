@@ -5,7 +5,7 @@ describe("kebijakanCsp", () => {
     it("produksi: tanpa unsafe-eval, ubin OSM dan Ably diizinkan, framing dilarang, laporan ke /api/csp", () => {
         const k = kebijakanCsp(false);
         expect(k).not.toContain("unsafe-eval");
-        expect(k).toContain("img-src 'self' data: blob: https://tile.openstreetmap.org");
+        expect(k).toContain("img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://tile.openstreetmap.org");
         expect(k).toMatch(/connect-src [^;]*wss:\/\/\*\.ably\.net/);
         expect(k).toContain("frame-ancestors 'none'");
         expect(k).toContain("object-src 'none'");

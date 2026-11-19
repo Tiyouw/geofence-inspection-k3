@@ -1,9 +1,12 @@
+import { ASAL_UBIN } from "./geo/ubin";
+
 /**
  * Content-Security-Policy, dimulai dalam mode Report-Only (audit 19 Nov 2026, S1): pelanggaran
  * hanya dilaporkan ke /api/csp, tidak diblokir. Setelah laporan bersih beberapa hari, header
  * dapat dipindah ke `Content-Security-Policy` (ganti 'unsafe-inline' skrip dengan nonce bila bisa).
  *
- * Sumber luar yang dipakai klien: ubin OpenStreetMap (peta) dan Ably (realtime, REST + WebSocket).
+ * Sumber luar yang dipakai klien: ubin peta (lib/geo/ubin.ts: CARTO tanpa
+ * label, cadangan OSM) dan Ably (realtime, REST + WebSocket).
  * Font dan media disajikan sendiri; foto bukti lewat /api/foto (blob privat tidak pernah ke klien).
  */
 export const CSP_LAPOR = "/api/csp";
@@ -22,7 +25,7 @@ export function kebijakanCsp(pengembangan = process.env.NODE_ENV === "developmen
         // Next menyisipkan skrip inline (muatan RSC); React dev memakai eval.
         "script-src": ["'self'", "'unsafe-inline'", ...(pengembangan ? ["'unsafe-eval'"] : [])],
         "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:", "blob:", "https://tile.openstreetmap.org"],
+        "img-src": ["'self'", "data:", "blob:", ...ASAL_UBIN],
         "font-src": ["'self'", "data:"],
         "media-src": ["'self'", "blob:"],
         "connect-src": [

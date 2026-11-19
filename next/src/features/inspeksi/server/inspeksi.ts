@@ -418,7 +418,8 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
     const gerbang = await nilaiGerbangAset(tx, { areaId: aset.areaId, bergerak: tipe.isMobile }, input.gps ?? null);
     if (gerbang.hasil === "diblokir") throw new GalatApi(422, "lokasi_wajib", PESAN_LOKASI_MATI);
     if (gerbang.hasil === "ditolak") {
-      // Penolakan tidak menjadi inspeksi; dicatat di jejak audit dengan akurasi dan jarak (tanpa koordinat: denah rahasia).
+      // Penolakan tidak menjadi inspeksi; dicatat di jejak audit dengan koordinat, akurasi, dan jarak
+      // (AC-7, ADR-15). Koordinat hanya tampil di Jejak audit Admin K3 (lib/audit.ts).
       await tx.insert(auditLogs).values({
         userId: user.id,
         aksi: "inspeksi.ditolak_lokasi",
@@ -426,6 +427,8 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
         entitasId: inspectionId,
         data: {
           assetId: aset.id,
+          lat: input.gps!.lat,
+          lng: input.gps!.lng,
           akurasi: input.gps!.accuracy,
           jarakKeKawasanM: gerbang.jarakKeKawasanM,
           jarakKeAreaM: gerbang.jarakKeAreaM,

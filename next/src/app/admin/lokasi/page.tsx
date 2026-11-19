@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Lokasi & area" };
 
 const LANGKAH = ["Gambar atau impor batas gedung", "Periksa draf di peta (garis putus-putus)", "Setujui agar mulai dipakai"];
 
-/** Editor area (PRD "Impor denah"): poligon kawasan dan gedung di atas OpenStreetMap. */
+/** Editor area (PRD "Impor denah"): poligon kawasan dan gedung di atas ubin peta dasar. */
 export default async function Lokasi() {
     await requireRole("admin");
     const [data, p, capKoordinat] = await Promise.all([dataEditorArea(), pengaturanGerbang(), capKoordinatAktif()]);
