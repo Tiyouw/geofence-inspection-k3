@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import type { Role } from "@/lib/domain/constants";
 import { authConfig } from "./config";
+import { sisaKunciLuas } from "./kunci";
 
 const credentialsSchema = z.object({
   nip: z.string().trim().min(1).max(32),
@@ -22,6 +23,7 @@ const DUMMY_HASH = "$2b$10$JMyhwEhx0evFFGzeYncUI.XxyAixBcfMKoGVuQNxSCsUCLLNMmSo2
 /** SPEC §6.2: 5 gagal per kunci nip|ip, dikunci 60 detik; berhasil masuk membersihkan hitungan. */
 export const MAX_GAGAL = 5;
 export const KUNCI_DETIK = 60;
+
 
 export class TerlaluBanyakPercobaan extends CredentialsSignin {
   constructor(sisaDetik: number) {
@@ -98,10 +100,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const ip = await clientIp();
 
         // Pemeriksaan kunci dan pencarian akun berjalan bersamaan.
-        const [sisa, [user]] = await Promise.all([
+        const [sisaPasangan, sisaLuas, [user]] = await Promise.all([
           sisaKunci(nip, ip),
+          sisaKunciLuas(nip, ip),
           db.select().from(users).where(eq(users.nip, nip)).limit(1),
         ]);
+        const sisa = Math.max(sisaPasangan, sisaLuas);
         if (sisa > 0) throw new TerlaluBanyakPercobaan(sisa);
 
         const ok = await bcrypt.compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
