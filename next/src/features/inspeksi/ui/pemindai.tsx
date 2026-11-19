@@ -227,14 +227,14 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
       >
         <Label htmlFor="kode-cadangan" className="flex items-center gap-2">
           <Keyboard className="size-4 text-muted-foreground" aria-hidden />
-          Kode cadangan (tulisan kecil PAL-K3-… di bawah QR)
+          Kode cadangan (tulisan kecil GIK3-… di bawah QR)
         </Label>
         <div className="flex gap-2">
           <Input
             id="kode-cadangan"
             value={manual}
             onChange={(e) => setManual(e.target.value)}
-            placeholder="PAL-K3-…"
+            placeholder="GIK3-…"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}

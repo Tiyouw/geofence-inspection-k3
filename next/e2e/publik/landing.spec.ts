@@ -30,7 +30,7 @@ test.describe("halaman depan (M1)", () => {
         expect(gagal).toEqual([]);
 
         const html = await page.content();
-        expect(html).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(html).not.toMatch(/GIK3-[0-9a-f]{32}/i);
         // Anonim (PRD F19): tanpa nama, situs, atau media perusahaan.
         expect(html).not.toMatch(/PT\.? PAL|PAL Indonesia|pal\.co\.id|media\/pal/i);
         expect(html).not.toMatch(/-7\.\d{4,}/);

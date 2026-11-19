@@ -58,7 +58,7 @@ async function keY4m(page: Page, png: Buffer, bg: number, lebar: number, berkas:
     rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = luma[i]!;
     rgba[i * 4 + 3] = 255;
   }
-  expect(jsQR(rgba, W, H, { inversionAttempts: "attemptBoth" })?.data, `bingkai ${berkas} terbaca jsQR`).toMatch(/PAL-K3-[0-9a-f]{32}$/);
+  expect(jsQR(rgba, W, H, { inversionAttempts: "attemptBoth" })?.data, `bingkai ${berkas} terbaca jsQR`).toMatch(/GIK3-[0-9a-f]{32}$/);
   const frame = Buffer.concat([
     Buffer.from("FRAME\n"),
     Buffer.from(y, "base64"),
@@ -157,13 +157,15 @@ test.describe("pemindai QR", () => {
 
   test("kode cadangan tercetak diterima dalam berbagai ketikan; nomor aset diberi petunjuk", async ({ page }) => {
     const a = await aset("01D");
-    const hex = a.token.slice(7);
+    expect(a.token).toMatch(/^GIK3-[0-9a-f]{32}$/);
+    const hex = a.token.slice("GIK3-".length);
     await masuk(page, "inspektur");
     const ketikan = [
-      "PAL-K3-" + (hex.match(/.{4}/g) ?? []).join(" "), // persis seperti tercetak
+      "GIK3-" + (hex.match(/.{4}/g) ?? []).join(" "), // persis seperti tercetak
       a.token.toUpperCase(),
       ` ${a.token.slice(0, 20)}\n${a.token.slice(20)} `,
       hex,
+      "PAL-K3-" + hex, // alias awalan lama (ADR-17)
     ];
     for (const teks of ketikan) {
       await page.goto("/petugas/pindai");

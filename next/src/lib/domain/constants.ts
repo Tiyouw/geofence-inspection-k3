@@ -200,6 +200,11 @@ export const MAKS_BYTE_FOTO = 4 * 1024 * 1024;
 /** SPEC §3.8: tenggat temuan per tingkat, dalam hari. */
 export const TENGGAT_HARI: Record<Severity, number> = { berat: 3, sedang: 14, ringan: 30 };
 
-/** SPEC §3.1: pola token stiker. */
-export const POLA_TOKEN_QR = /^PAL-K3-[0-9a-f]{32}$/i;
+/**
+ * SPEC §3.1: awalan dan pola token stiker. Awalan netral "GIK3-" (Geofence Inspection K3) sejak
+ * 19 Nov 2026 (ADR-17); "PAL-K3-" lama masih diterima pemindai dan peladen sebagai alias.
+ */
+export const AWALAN_TOKEN_QR = "GIK3-";
+export const AWALAN_TOKEN_LAMA = "PAL-K3-";
+export const POLA_TOKEN_QR = /^GIK3-[0-9a-f]{32}$/i;
 

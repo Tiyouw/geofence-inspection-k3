@@ -19,7 +19,7 @@ describe("aturan aset", () => {
 
   it("token QR acak dan berawalan", () => {
     const a = buatTokenQr();
-    expect(a).toMatch(/^PAL-K3-[0-9a-f]{32}$/);
+    expect(a).toMatch(/^GIK3-[0-9a-f]{32}$/);
     expect(buatTokenQr()).not.toBe(a);
   });
 });

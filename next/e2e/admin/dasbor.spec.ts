@@ -19,7 +19,7 @@ test.describe("dasbor admin", () => {
         await expect(modul).toContainText("Minggu ini");
         await expect(page.locator(".leaflet-container")).toBeVisible();
         // C3: token tidak pernah ada di HTML dasbor.
-        expect(await page.content()).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(await page.content()).not.toMatch(/GIK3-[0-9a-f]{32}/i);
     });
 
     test("nilai tab di luar daftar ditolak (I3)", async ({ page }) => {

@@ -161,12 +161,12 @@ describe("jadwal dan tenggat", () => {
 });
 
 describe("ambil token (SPEC §3.1)", () => {
-  const tok = "PAL-K3-" + "a".repeat(32);
+  const tok = "GIK3-" + "a".repeat(32);
   it("menerima URL stiker dengan host apa pun atau token mentah", () => {
     expect(ambilToken(`https://geofencinspection.tech/i/${tok}`)).toBe(tok);
     expect(ambilToken(`https://host-lain.example/i/${tok}/`)).toBe(tok);
     expect(ambilToken(` ${tok} `)).toBe(tok);
-    expect(ambilToken("PAL-K3-" + "A".repeat(32))).toBe(tok);
+    expect(ambilToken("GIK3-" + "A".repeat(32))).toBe(tok);
   });
   it("menolak QR lain", () => {
     expect(ambilToken("https://example.com/promo")).toBeNull();
@@ -176,20 +176,26 @@ describe("ambil token (SPEC §3.1)", () => {
 
 describe("kode cadangan yang diketik dari stiker", () => {
   const hex = "da4f8df08dce241ff05797c2659b6017";
-  const tok = "PAL-K3-" + hex;
+  const tok = "GIK3-" + hex;
   it("menerima ketikan dengan spasi, baris, huruf besar, tanda hubung ponsel, tanpa awalan, dan kelompok 4", () => {
     expect(ambilToken(tok)).toBe(tok);
     expect(ambilToken(tok.toUpperCase())).toBe(tok);
-    expect(ambilToken(` PAL-K3-${hex.slice(0, 14)}\n${hex.slice(14)} `)).toBe(tok);
-    expect(ambilToken("PAL-K3-" + hex.match(/.{4}/g)!.join(" "))).toBe(tok);
+    expect(ambilToken(` GIK3-${hex.slice(0, 14)}\n${hex.slice(14)} `)).toBe(tok);
+    expect(ambilToken("GIK3-" + hex.match(/.{4}/g)!.join(" "))).toBe(tok);
     expect(ambilToken(hex)).toBe(tok);
+    expect(ambilToken("gik3 " + hex)).toBe(tok);
+    expect(ambilToken("G1K3-" + hex)).toBe(tok);
+  });
+  it("awalan lama PAL-K3- tetap diterima sebagai alias dan diubah ke GIK3- (ADR-17)", () => {
+    expect(ambilToken("PAL-K3-" + hex)).toBe(tok);
     expect(ambilToken("PAL–K3–" + hex)).toBe(tok);
     expect(ambilToken("pal k3 " + hex)).toBe(tok);
-    expect(ambilToken("PAL-K3-" + hex.replace(/0/g, "O"))).toBe(tok);
+    expect(ambilToken(`https://dev.geofencinspection.tech/i/PAL-K3-${hex}`)).toBe(tok);
+    expect(ambilToken("GIK3-" + hex.replace(/0/g, "O"))).toBe(tok);
   });
   it("menolak yang bukan token, dan mengenali nomor aset", () => {
-    expect(ambilToken("PAL-K3-" + hex.slice(1))).toBeNull();
-    expect(ambilToken("PAL-K3-" + hex + "0")).toBeNull();
+    expect(ambilToken("GIK3-" + hex.slice(1))).toBeNull();
+    expect(ambilToken("GIK3-" + hex + "0")).toBeNull();
     expect(ambilToken("01D")).toBeNull();
     expect(miripNomorAset("01D")).toBe(true);
     expect(miripNomorAset(tok)).toBe(false);

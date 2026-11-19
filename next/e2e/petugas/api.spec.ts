@@ -30,7 +30,7 @@ test("Idempotency-Key: ulangan sama → respons tersimpan; isi berbeda → 422; 
   expect(beda.status()).toBe(422);
 
   // Token tak dikenal → 410, tanpa membuat draf
-  const asing = await api.post("/api/inspections/start", { data: { inspectionId: randomUUID(), token: "PAL-K3-" + "0".repeat(32) } });
+  const asing = await api.post("/api/inspections/start", { data: { inspectionId: randomUUID(), token: "GIK3-" + "0".repeat(32) } });
   expect(asing.status()).toBe(410);
 
   // Foto dengan hash salah ditolak; hash benar diterima dua kali tanpa duplikat
@@ -96,4 +96,16 @@ test("paket kerja tidak memuat token mentah", async ({ page }) => {
   const teks = await (await page.request.get("/api/field/bundle")).text();
   expect(teks).not.toContain(a.token);
   expect(JSON.parse(teks).aset.length).toBeGreaterThanOrEqual(35);
+});
+
+test("peladen menerima awalan lama PAL-K3- sebagai alias token (ADR-17)", async ({ page }) => {
+  const a = await aset("24D");
+  expect(a.token).toMatch(/^GIK3-[0-9a-f]{32}$/);
+  await masuk(page, "inspektur");
+  const id = randomUUID();
+  const r = await page.request.post("/api/inspections/start", {
+    data: { inspectionId: id, token: "PAL-K3-" + a.token.slice("GIK3-".length) },
+  });
+  expect(r.status()).toBe(200);
+  expect(await r.json()).toMatchObject({ inspectionId: id, assetId: a.id });
 });

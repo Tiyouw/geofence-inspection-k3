@@ -15,7 +15,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         // Seed: semua aset Area Terbuka berkoordinat, jadi gabungan filter kosong.
         await expect(page.getByText("Tidak ada aset yang cocok")).toBeVisible();
         // Token tidak tampil di tabel (C3).
-        expect(await page.content()).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(await page.content()).not.toMatch(/GIK3-[0-9a-f]{32}/i);
     });
 
     test("bilah Filter: Area 'Belum berarea' dan koordinat; Pilihan dapat dipakai dengan papan ketik", async ({ page }) => {
@@ -64,10 +64,10 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         await expect(page.getByLabel("Terakhir dicek")).toHaveValue("Belum pernah");
 
         // Token baru acak dan tidak memuat nomor aset (C1); hanya tampil atas permintaan.
-        expect(await page.content()).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(await page.content()).not.toMatch(/GIK3-[0-9a-f]{32}/i);
         await page.getByRole("button", { name: "Tampilkan token" }).click();
         const token1 = (await page.locator("code").textContent())!.trim();
-        expect(token1).toMatch(/^PAL-K3-[0-9a-f]{32}$/);
+        expect(token1).toMatch(/^GIK3-[0-9a-f]{32}$/);
         expect(token1).not.toContain(kode);
 
         // Ubah tanpa menyentuh token.
@@ -92,7 +92,7 @@ test.describe("aset (H1-H3, C1, C7)", () => {
         await page.reload();
         await page.getByRole("button", { name: "Tampilkan token" }).click();
         const token2 = (await page.locator("code").textContent())!.trim();
-        expect(token2).toMatch(/^PAL-K3-[0-9a-f]{32}$/);
+        expect(token2).toMatch(/^GIK3-[0-9a-f]{32}$/);
         expect(token2).not.toBe(token1);
     });
 });

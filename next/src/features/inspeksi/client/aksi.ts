@@ -94,7 +94,7 @@ export type HasilMulai =
 export const PESAN = {
   bukanStiker: "Kode ini bukan stiker inspeksi K3. Coba stiker yang benar.",
   nomorAset:
-    "Itu nomor aset. Ketik kode panjang PAL-K3-… yang tercetak kecil di bawah QR (spasi dan huruf besar tidak masalah), atau pindai QR-nya.",
+    "Itu nomor aset. Ketik kode panjang GIK3-… yang tercetak kecil di bawah QR (spasi dan huruf besar tidak masalah), atau pindai QR-nya.",
   tidakDikenali: "Stiker tidak dikenali. Laporkan ke Admin K3.",
   tidakDikenaliLuring:
     "Stiker tidak dikenali atau data stiker belum diperbarui. Simpan foto stiker dan coba saat ada sinyal.",
