@@ -17,8 +17,29 @@ defaults:
 
 jobs:
   check:
-    name: Lint, typecheck, unit
+    name: Lint, typecheck, unit + integrasi DB
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Postgres untuk uji *.db.test.ts (otorisasi aksi admin, progres = dasbor, seed aman);
+    # tanpa DATABASE_URL uji itu dilewati diam-diam (audit 19 Nov 2026).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: palk3
+          POSTGRES_PASSWORD: palk3
+          POSTGRES_DB: palk3
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U palk3"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://palk3:palk3@localhost:5432/palk3
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      DEMO_MODE: "true"
+      SEED_SANDI_AWAL: ci-sandi-contoh
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,11 +53,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
       - run: pnpm test
+      # Uji integrasi DB wajib jalan di sini: gagal bila ada yang dilewati karena DATABASE_URL hilang.
+      - run: pnpm exec vitest run --reporter=verbose db.test 2>&1 | tee /tmp/db.log; ! grep -E "↓|skipped" /tmp/db.log
 
   e2e:
     name: E2E (Chromium)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: check
     services:
       postgres:
