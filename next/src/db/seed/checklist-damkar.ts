@@ -61,7 +61,8 @@ export async function seedDamkar(tx: Tx, divisionId: number | null): Promise<voi
         await tx
             .insert(s.assets)
             .values({ ...values, qrToken: buatTokenQr() })
-            .onConflictDoUpdate({ target: [s.assets.assetTypeId, s.assets.kode], set: values });
+            // Aset yang sudah ada tidak pernah diubah.
+            .onConflictDoNothing({ target: [s.assets.assetTypeId, s.assets.kode] });
     }
     console.log(`Mobil pemadam: ${butir} butir checklist, ${CONTOH.length} kendaraan contoh`);
 }

@@ -3,8 +3,12 @@
  * ditambah sedikit contoh inspeksi/temuan/jadwal agar dasbor tidak kosong.
  * Tidak ada data asli perusahaan: nama adalah nama peran, koordinat adalah contoh.
  *
- * Idempoten: aman dijalankan ulang (upsert pada kunci alami). Sandi akun yang
- * sudah ada tidak ditimpa, kecuali akun demo (supaya sandi demo selalu sesuai env).
+ * Idempoten dan aman dijalankan ulang di basis data yang sudah berisi data asli pemilik:
+ * - aset yang sudah ada (kunci tipe + kode) TIDAK PERNAH diubah: titik, area, atribut, status;
+ * - akun yang sudah ada (termasuk akun demo admin/pemantau/inspektur) tidak diubah: sandi tidak
+ *   direset dan akun nonaktif tidak diaktifkan lagi;
+ * - pengaturan tipe objek yang dapat diubah admin (periode, unit pemilik, aktif) tidak ditimpa.
+ * Hanya baris yang belum ada yang dibuat. (Audit 19 Nov 2026, keputusan pemilik.)
  *
  *   pnpm db:seed
  *
@@ -75,7 +79,11 @@ async function tipeObjek(tx: Tx, div: Record<string, number>) {
   ];
   for (const row of data) {
     const values = { ...row, aktif: true, ownerDivisionId: div[PEMILIK_TIPE[row.slug]]! };
-    await tx.insert(s.assetTypes).values(values).onConflictDoUpdate({ target: s.assetTypes.slug, set: values });
+    // Yang sudah ada: hanya nama/urut/objek bergerak (definisi kode); periode, unit, dan status milik admin.
+    await tx
+      .insert(s.assetTypes)
+      .values(values)
+      .onConflictDoUpdate({ target: s.assetTypes.slug, set: { nama: row.nama, isMobile: row.isMobile, urut: row.urut } });
   }
   await tx.update(s.assetTypes).set({ aktif: false, urut: 99 }).where(eq(s.assetTypes.slug, "hydrant"));
   const [apar] = await tx.select().from(s.assetTypes).where(eq(s.assetTypes.slug, "apar"));
@@ -218,7 +226,8 @@ async function petugas(tx: Tx, div: Record<string, number>) {
     const r = await tx
       .insert(s.users)
       .values({ nip, name, email, role, jabatan, divisionId: div[kodeDivisi], passwordHash })
-      .onConflictDoUpdate({ target: s.users.nip, set: { name, email, role, jabatan, divisionId: div[kodeDivisi] } })
+      // Akun yang sudah ada tidak diubah (nama, peran, unit, sandi milik pemilik).
+      .onConflictDoNothing({ target: s.users.nip })
       .returning({ baru: sql<boolean>`xmax = 0` });
     if (r[0]?.baru) baru++;
   }
@@ -249,9 +258,10 @@ async function akunDemo(tx: Tx, div: Record<string, number>) {
       aktif: true,
       passwordHash: await hash(password),
     };
-    await tx.insert(s.users).values(values).onConflictDoUpdate({ target: s.users.nip, set: values });
+    // Akun yang sudah ada tidak diubah: sandi tidak direset, akun nonaktif tidak diaktifkan lagi.
+    await tx.insert(s.users).values(values).onConflictDoNothing({ target: s.users.nip });
   }
-  console.log("Tiga akun demo siap: admin, pemantau, inspektur.");
+  console.log("Akun demo: admin, pemantau, inspektur (yang sudah ada tidak diubah).");
 }
 
 /** Pembaca CSV kecil: koma pemisah, tanda kutip ganda untuk nilai berkoma ("4,5"). */
@@ -297,10 +307,11 @@ async function apar(tx: Tx, aparId: number, divSatPk: number) {
       attributes: { tipe: row.tipe, kapasitas_kg: Number(row.kapasitas_kg!.replace(",", ".")) },
       aktif: true,
     };
+    // Aset yang sudah ada tidak pernah diubah (titik, area, atribut, status milik pemilik).
     await tx
       .insert(s.assets)
       .values({ ...values, qrToken: buatTokenQr() })
-      .onConflictDoUpdate({ target: [s.assets.assetTypeId, s.assets.kode], set: values });
+      .onConflictDoNothing({ target: [s.assets.assetTypeId, s.assets.kode] });
   }
   console.log(`APAR contoh: ${rows.length}`);
 }
@@ -437,6 +448,17 @@ async function contohOperasional(tx: Tx) {
  * Aset yang sudah punya area tidak diubah.
  */
 async function areaDariGedung(tx: Tx) {
+  // Basis data dengan denah pemilik (poligon disetujui non-demo): aset tanpa area dibiarkan
+  // apa adanya ("Belum berarea" adalah keputusan pemilik), seed tidak memasangkan apa pun.
+  const [denah] = await tx
+    .select({ id: s.areas.id })
+    .from(s.areas)
+    .where(and(isNotNull(s.areas.polygon), sql`${s.areas.kode} not like 'DEMO-%'`, sql`${s.areas.kode} <> 'KAWASAN'`))
+    .limit(1);
+  if (denah) {
+    console.log("Area dari gedung dilewati: sudah ada denah disetujui.");
+    return;
+  }
   const [kawasan] = await tx
     .insert(s.areas)
     .values({ kode: "KAWASAN", nama: "Kawasan Galangan", jenis: "kawasan" })
