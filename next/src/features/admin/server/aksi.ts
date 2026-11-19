@@ -7,6 +7,7 @@ import { AksesDitolak, assertRole, type SessionUser } from "@/lib/auth/guards";
 import { PERAN_PENINJAU } from "@/lib/domain/constants";
 import { peristiwaDariAudit } from "@/lib/realtime/saluran";
 import { terbitkan } from "@/lib/realtime/server";
+import { tanpaKoordinat } from "../lib/audit";
 import { galatKolom } from "../lib/skema";
 
 /** Hasil setiap Server Action admin; tidak pernah melempar ke klien untuk galat yang diharapkan. */
@@ -108,7 +109,8 @@ export async function catatAudit(
         aksi,
         entitas,
         entitasId: String(entitasId),
-        data: data ?? null,
+        // Denah rahasia: koordinat dan bentuk peta tidak pernah disimpan di jejak audit.
+        data: data ? (tanpaKoordinat(data) as Record<string, unknown>) : null,
         ip: await ipKlien(),
     });
     const ev = peristiwaDariAudit(aksi, String(entitasId));

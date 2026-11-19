@@ -77,6 +77,12 @@ export async function ubahAset(id: number, _prev: unknown, fd: FormData): Promis
                         .filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(lama[k as keyof typeof lama] ?? null))
                         .map(([k, v]) => [k, { dari: lama[k as keyof typeof lama] ?? null, ke: v }]),
                 );
+                // Titik peta: hanya tanda "berubah"; nilainya tidak dicatat (denah rahasia, catatAudit juga membuang koordinat).
+                if ("lat" in berubah || "lng" in berubah) {
+                    delete berubah.lat;
+                    delete berubah.lng;
+                    berubah.titikPeta = { dari: false, ke: true };
+                }
                 await catatAudit(tx, user, "aset.ubah", "asset", id, { kode: d.kode, berubah });
                 return true;
             });

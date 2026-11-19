@@ -112,6 +112,18 @@ describe("uraikan: kalimat sehari-hari", () => {
         );
     });
 
+    it("aset.ubah: tanda titikPeta (tanpa nilai) tetap terbaca sebagai titik di peta", () => {
+        const u = uraikan(
+            baris("aset.ubah", {
+                entitas: "asset",
+                entitasId: "106",
+                data: { kode: "01D", berubah: { titikPeta: { dari: false, ke: true } } },
+            }),
+            r,
+        );
+        expect(kalimatTeks(u)).toBe("Administrator Demo mengubah titik di peta aset APAR 01D");
+    });
+
     it("aset.ubah: nama area dan tipe diselesaikan; koordinat tidak pernah tampil", () => {
         const u = uraikan(
             baris("aset.ubah", {

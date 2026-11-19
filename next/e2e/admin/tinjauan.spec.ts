@@ -33,6 +33,8 @@ test.describe("tinjauan inspeksi oleh Administrator K3", () => {
         await expect(page.getByText("GPS lemah").first()).toBeVisible();
         await expect(page.getByText("±15 m").first()).toBeVisible();
         await expect(page.locator(".leaflet-container")).toBeVisible();
+        // Koordinat mentah hanya tampil bila pengaturan koordinat admin menyala (bawaan mati).
+        await expect(page.getByText("Koordinat", { exact: true })).toHaveCount(0);
 
         // Foto ditautkan ke butirnya dan disajikan lewat rute bersesi.
         const foto = page.getByTestId("foto-per-butir").getByRole("img", { name: `Foto ${insp.butir} 1` });

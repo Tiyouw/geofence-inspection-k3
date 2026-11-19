@@ -257,7 +257,9 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
                         <Baris label="Jarak ke area aset">{jarak != null ? `${formatAngka(jarak)} m` : "-"}</Baris>
                         <Baris label="Area aset">{d.area ?? "-"}</Baris>
                         <Baris label="Area terdeteksi">{d.areaTerdeteksi ?? "-"}</Baris>
-                        <Baris label="Koordinat">{d.gpsLat != null ? `${d.gpsLat}, ${d.gpsLng}` : "-"}</Baris>
+                        {d.koordinatTampil && (
+                            <Baris label="Koordinat">{d.gpsLat != null ? `${d.gpsLat}, ${d.gpsLng}` : "-"}</Baris>
+                        )}
                     </dl>
                 </Kartu>
 
