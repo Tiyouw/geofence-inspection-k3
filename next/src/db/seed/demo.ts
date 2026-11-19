@@ -7,6 +7,10 @@
  * - batal bila denah demo tumpang tindih dengan area non-demo;
  * - kawasan demo hanya aktif bila belum ada kawasan non-demo yang aktif dan disetujui;
  * - idempoten: area/aset di-upsert; data operasional dibuat sekali (reset dulu untuk membuat ulang).
+ * - bila ada kawasan non-demo yang disetujui (denah pemilik), aset demo ditempatkan DI DALAM kawasan
+ *   itu, di gedung yang disetujui (aturan src/lib/geo/penempatan.ts), dan aset demo yang sudah di
+ *   dalam kawasan tidak dipindah lagi (keputusan pemilik 19 Nov 2026). Area demo tetap di denah
+ *   karangan, jadi penjaga tumpang tindih tetap melindungi denah pemilik.
  * `hapusDemo` menghapus HANYA baris bertanda demo.
  */
 import { and, eq, inArray, isNotNull, like, ne, notLike, or, sql } from "drizzle-orm";
@@ -19,6 +23,7 @@ import { jatuhTempo, periodeDari } from "../../lib/domain/inspeksi";
 import { bakuIsi } from "../../lib/domain/modul/p3k";
 import { hariIniJakarta } from "../../lib/format";
 import { jarakKeAreaM, luasM2, titikDalamPoligon, type GeometriArea } from "../../lib/geo/geometri";
+import { type Bangunan, bangunanDalam, rencanaPenempatan, type Tempat } from "../../lib/geo/penempatan";
 import { kunciFoto, sha256Hex } from "../../lib/storage/photos";
 import { AKUN_DEMO, AREA_DEMO, ASET_DEMO, AWALAN_DEMO, SKENARIO_DEMO, keLngLat, type SkenarioDemo } from "./demo-data";
 
@@ -134,7 +139,7 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
 
   // Area: kawasan demo aktif hanya bila belum ada kawasan non-demo aktif yang disetujui.
   const [kawasanLain] = await tx
-    .select({ id: s.areas.id })
+    .select({ id: s.areas.id, polygon: s.areas.polygon })
     .from(s.areas)
     .where(and(eq(s.areas.jenis, "kawasan"), eq(s.areas.aktif, true), isNotNull(s.areas.polygon), notLike(s.areas.kode, `${AWALAN_DEMO}%`)));
   const idArea: Record<string, number> = {};
@@ -160,15 +165,75 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
     if (r!.baru) TAMBAH(h, "area");
   }
 
+  // Denah pemilik: aset demo ditempatkan di dalam kawasannya (yang sudah di dalam tidak dipindah).
+  const denahNyata = kawasanLain?.polygon
+    ? {
+        kawasan: kawasanLain.polygon as GeometriArea,
+        bangunan: (
+          await tx
+            .select({ id: s.areas.id, nama: s.areas.nama, polygon: s.areas.polygon, restricted: s.areas.restricted })
+            .from(s.areas)
+            .where(and(eq(s.areas.aktif, true), isNotNull(s.areas.polygon), ne(s.areas.jenis, "kawasan"), notLike(s.areas.kode, `${AWALAN_DEMO}%`)))
+        ).map((b) => ({ ...b, polygon: b.polygon as GeometriArea })) as Bangunan[],
+      }
+    : null;
+  const tempatNyata = new Map<string, Tempat & { tetap: boolean }>();
+  if (denahNyata) {
+    const ada = new Map(
+      (
+        await tx
+          .select({ kode: s.assets.kode, lat: s.assets.lat, lng: s.assets.lng, areaId: s.assets.areaId, gedung: s.assets.gedung })
+          .from(s.assets)
+          .where(like(s.assets.kode, `${AWALAN_DEMO}%`))
+      ).map((r) => [r.kode, r]),
+    );
+    const perlu: typeof ASET_DEMO = [];
+    for (const a of ASET_DEMO) {
+      const r = ada.get(a.kode);
+      if (r?.lat != null && r.lng != null && titikDalamPoligon({ lat: r.lat, lng: r.lng }, denahNyata.kawasan)) {
+        tempatNyata.set(a.kode, { lat: r.lat, lng: r.lng, areaId: r.areaId, namaArea: r.gedung, tetap: true });
+      } else perlu.push(a);
+    }
+    const terbatasDemo = (a: (typeof ASET_DEMO)[number]) => !!(a.area && AREA_DEMO.find((x) => x.kode === a.area)!.restricted);
+    const dalam = new Set(bangunanDalam(denahNyata).map((b) => b.id));
+    let rencana = new Map<number, Tempat>();
+    try {
+      rencana = rencanaPenempatan(
+        perlu.map((a, i) => ({
+          id: -(i + 1),
+          kode: a.kode,
+          slug: a.tipe,
+          kelompok: a.area ? AREA_DEMO.find((x) => x.kode === a.area)!.nama : null,
+          lokasiTeks: a.lokasiTeks,
+          lantai: a.lantai,
+          areaTetap: null,
+          terbatas: terbatasDemo(a),
+        })),
+        { kawasan: denahNyata.kawasan, bangunan: denahNyata.bangunan.filter((b) => dalam.has(b.id)) },
+      );
+    } catch (e) {
+      // Denah tanpa gedung yang bisa dipakai: aset demo tetap di denah karangan.
+      console.log(`Aset demo tetap di denah karangan: ${(e as Error).message}`);
+    }
+    const idTerbatas = new Set(denahNyata.bangunan.filter((b) => b.restricted).map((b) => b.id));
+    perlu.forEach((a, i) => {
+      const t = rencana.get(-(i + 1));
+      // Aset demo di area terbatas hanya pindah ke gedung terbatas pemilik; bila tidak ada, tetap di
+      // denah karangan supaya skenario "area terbatas" (tanpa foto, otomatis ditinjau) tetap ada.
+      if (t && (!terbatasDemo(a) || (t.areaId !== null && idTerbatas.has(t.areaId)))) tempatNyata.set(a.kode, { ...t, tetap: false });
+    });
+  }
+
   // Aset: upsert pada (tipe, kode); token QR hanya diterbitkan saat dibuat.
   const idAset: Record<string, typeof s.assets.$inferSelect> = {};
   for (const a of ASET_DEMO) {
     const area = a.area ? AREA_DEMO.find((x) => x.kode === a.area)! : null;
-    const [lng, lat] = a.titik ? keLngLat(...a.titik) : [null, null];
+    const nyata = tempatNyata.get(a.kode);
+    const [lng, lat] = nyata ? [nyata.lng, nyata.lat] : a.titik ? keLngLat(...a.titik) : [null, null];
     const nilai = {
       divisionId: div[PEMILIK_TIPE[a.tipe]] ?? null,
-      gedung: area?.nama ?? null,
-      areaId: a.area ? idArea[a.area]! : null,
+      gedung: nyata ? (nyata.namaArea ?? (a.tipe === "mobil_pemadam" ? null : (area?.nama ?? null))) : (area?.nama ?? null),
+      areaId: nyata ? nyata.areaId : a.area ? idArea[a.area]! : null,
       lantai: a.lantai,
       lokasiTeks: a.lokasiTeks,
       lokasiTipe: a.tipe === "mobil_pemadam" ? ("kendaraan" as const) : area?.jenis === "bengkel" ? ("bengkel" as const) : area && area.jenis !== "gedung" ? ("area_terbuka" as const) : ("dalam_gedung" as const),
@@ -239,11 +304,27 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
     const aset = idAset[sk.aset]!;
     const t = waktu(sk);
     const areaDef = def.area ? AREA_DEMO.find((a) => a.kode === def.area)! : null;
-    const [plng, plat] = keLngLat(...sk.posisi);
+    // Denah pemilik: posisi skenario digeser bersama asetnya (selisih meter yang sama), lalu diukur
+    // terhadap poligon nyata, supaya hasil gerbang tetap masuk akal.
+    const nyata = tempatNyata.get(sk.aset);
+    let [plng, plat] = keLngLat(...sk.posisi);
+    if (nyata) {
+      const [ax, ay] = def.titik ?? sk.posisi;
+      const [dx, dy] = [sk.posisi[0] - ax, sk.posisi[1] - ay];
+      plat = Number((nyata.lat + dy / 111_320).toFixed(7));
+      plng = Number((nyata.lng + dx / (111_320 * Math.cos((nyata.lat * Math.PI) / 180))).toFixed(7));
+    }
     const pt = { lat: plat, lng: plng };
-    const terdeteksi = AREA_DEMO.filter((a) => a.jenis !== "kawasan" && a.disetujui && titikDalamPoligon(pt, a.geometri)).sort(
-      (a, b) => luasM2(a.geometri) - luasM2(b.geometri),
-    )[0];
+    const areaNyata = nyata?.areaId != null ? (denahNyata?.bangunan.find((b) => b.id === nyata.areaId) ?? null) : null;
+    const geomArea = nyata ? (areaNyata?.polygon ?? null) : (areaDef?.geometri ?? null);
+    const terdeteksiNyata = nyata
+      ? (denahNyata?.bangunan.filter((b) => titikDalamPoligon(pt, b.polygon)).sort((a, b) => luasM2(a.polygon) - luasM2(b.polygon))[0] ?? null)
+      : null;
+    const terdeteksi = nyata
+      ? null
+      : AREA_DEMO.filter((a) => a.jenis !== "kawasan" && a.disetujui && titikDalamPoligon(pt, a.geometri)).sort(
+          (a, b) => luasM2(a.geometri) - luasM2(b.geometri),
+        )[0];
     const userId = pengguna[PEMILIK_TIPE[def.tipe] === "MATRA" ? "inspektur.matra" : "inspektur.satpk"]!;
     const daftarButir = await butir(aset.assetTypeId);
     const tipeKotak = ((def.atribut.tipe_kotak as string) ?? "A") as "A" | "B" | "C";
@@ -257,7 +338,7 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
       return r.j;
     });
     const kesimpulan: Kesimpulan = temuan.some((x) => x.severity === "berat") ? "tidak_layak" : temuan.length ? "layak_catatan" : "layak";
-    const terbatas = !!areaDef?.restricted;
+    const terbatas = nyata ? !!areaNyata?.restricted : !!areaDef?.restricted;
     const final = !sk.ditolak;
     const [ins] = await tx
       .insert(s.inspections)
@@ -275,11 +356,11 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
         gpsLng: plng,
         gpsAccuracy: sk.akurasi,
         gpsCapturedAt: t,
-        jarakM: areaDef ? Math.round(jarakKeAreaM(pt, areaDef.geometri)) : null,
-        jarakKeAreaM: areaDef ? Math.round(jarakKeAreaM(pt, areaDef.geometri)) : null,
+        jarakM: geomArea ? Math.round(jarakKeAreaM(pt, geomArea)) : null,
+        jarakKeAreaM: geomArea ? Math.round(jarakKeAreaM(pt, geomArea)) : null,
         gateStatus: final ? sk.gate : "tanpa_gps",
         gateAlasan: final ? (sk.alasan ?? null) : null,
-        detectedAreaId: terdeteksi ? idArea[terdeteksi.kode]! : null,
+        detectedAreaId: terdeteksiNyata ? terdeteksiNyata.id : terdeteksi ? idArea[terdeteksi.kode]! : null,
         restrictedArea: final && terbatas,
         qrVerified: true,
         qrVerification: "online",
@@ -302,7 +383,7 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
         aksi: "inspeksi.ditolak_lokasi",
         entitas: "inspeksi",
         entitasId: ins!.id,
-        data: { demo: true, assetId: aset.id, lat: plat, lng: plng, akurasi: sk.akurasi, jarakKeKawasanM: Math.round(jarakKeAreaM(pt, kawasanDemo)) },
+        data: { demo: true, assetId: aset.id, lat: plat, lng: plng, akurasi: sk.akurasi, jarakKeKawasanM: Math.round(jarakKeAreaM(pt, denahNyata && nyata ? denahNyata.kawasan : kawasanDemo)) },
         createdAt: t,
       });
       TAMBAH(h, "audit");
@@ -345,7 +426,7 @@ export async function seedDemo(tx: Tx, opsi: OpsiDemo): Promise<Hitungan> {
           checklistItemId: x.b.id,
           item: x.item,
           severity: x.severity,
-          lokasi: [areaDef?.nama, labelLantai(def.lantai), def.lokasiTeks].filter(Boolean).join(" · "),
+          lokasi: [nyata?.namaArea ?? areaDef?.nama, labelLantai(def.lantai), def.lokasiTeks].filter(Boolean).join(" · "),
           tindakanRekomendasi: (x.b.tindakanBawaan ?? "perbaiki") as TindakanRekomendasi,
           status,
           targetSelesai: hariIniJakarta(new Date(t.getTime() + 7 * 86400_000)),

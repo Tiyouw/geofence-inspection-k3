@@ -478,6 +478,28 @@ const PENERJEMAH: Record<string, Penerjemah> = {
             " (stiker lama tidak berlaku lagi)",
         ],
     }),
+    "aset.taruh_di_area": ({ d }) => ({
+        ikon: "pasang",
+        label: "Menaruh aset di area",
+        kalimat: [`menaruh ${formatAngka(angka(d.jumlah) ?? 0)} aset di dalam poligon area-nya`],
+    }),
+    "aset.tempatkan_ulang": ({ d }) => {
+        const per = d.perGedung && typeof d.perGedung === "object" ? Object.entries(d.perGedung as Record<string, unknown>) : [];
+        return {
+            ikon: "pasang",
+            label: "Menempatkan ulang aset di denah",
+            kalimat: [
+                `menempatkan ${formatAngka(angka(d.jumlah) ?? 0)} aset di dalam kawasan galangan sesuai denah yang disetujui`,
+                ...(teks(d.alasan) ? [` (${String(d.alasan)})`] : []),
+            ],
+            detail: per.map(([g, n]) => ({ bidang: g, ke: `${formatAngka(angka(n) ?? 0)} aset` })),
+        };
+    },
+    "aset.pulihkan_tempat": ({ d }) => ({
+        ikon: "buang",
+        label: "Memulihkan letak aset",
+        kalimat: [`memulihkan letak dan area ${formatAngka(angka(d.jumlah) ?? 0)} aset ke keadaan sebelum penempatan ulang`],
+    }),
     "aset.lihat_token": (k) => ({
         ikon: "lihat",
         label: "Melihat kode QR",

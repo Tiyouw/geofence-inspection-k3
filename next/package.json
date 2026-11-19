@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "build:sw": "node scripts/build-sw.mjs",
     "predev": "node scripts/build-sw.mjs",
-    "prebuild": "node scripts/build-sw.mjs && node scripts/migrasi-deploy.mjs"
+    "prebuild": "node scripts/build-sw.mjs && node scripts/migrasi-deploy.mjs",
+    "aset:tempatkan": "tsx scripts/penempatan-aset.ts"
   },
   "dependencies": {
     "@ably/pubsub-device": "3.0.0",
