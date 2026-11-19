@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { SambunganRealtime, type StatusRealtime } from "./klien";
-import type { Peristiwa } from "./saluran";
+import type { KonfigurasiKlienRealtime, Peristiwa } from "./saluran";
 
 /** Tab tersembunyi selama ini: sambungan ditutup (hemat kuota sambungan), dibuka lagi saat terlihat. */
 const TUTUP_SETELAH_SEMBUNYI_MS = 30_000;
 
-export type KonfigurasiRealtime = { key: string; ws: string; saluran: string[] } | null;
+/** Dari peladen: null = realtime mati (bendera fitur), perilaku cadangan saja. */
+export type KonfigurasiRealtime = (KonfigurasiKlienRealtime & { saluran: string[] }) | null;
 
 /**
  * Sambungan realtime selama komponen terpasang. `onPulih` dipanggil saat tersambung lagi setelah
@@ -26,7 +27,7 @@ export function useRealtime(
         peristiwaRef.current = onPeristiwa;
         pulihRef.current = onPulih;
     });
-    const kunci = konfigurasi ? `${konfigurasi.ws}|${konfigurasi.key}|${konfigurasi.saluran.join(",")}` : "";
+    const kunci = konfigurasi ? JSON.stringify(konfigurasi) : "";
 
     useEffect(() => {
         const html = document.documentElement;
@@ -35,11 +36,10 @@ export function useRealtime(
             html.dataset.realtime = "mati";
             return;
         }
-        const [ws, key, daftar] = kunci.split("|");
+        const { saluran, ...k } = JSON.parse(kunci) as NonNullable<KonfigurasiRealtime>;
         const sambungan = new SambunganRealtime({
-            key: key!,
-            ws: ws!,
-            saluran: daftar!.split(","),
+            konfigurasi: k,
+            saluran,
             onPeristiwa: (p) => peristiwaRef.current(p),
             onStatus: (s, pulih) => {
                 status.current = s;
@@ -56,18 +56,20 @@ export function useRealtime(
                 sambungan.lanjutkan();
             }
         };
-        const daring = () => sambungan.segera();
+        const daring = () => sambungan.lanjutkan();
         const luring = () => sambungan.hentikan();
-        if (navigator.onLine) sambungan.mulai();
+        // Setelah halaman tampil: SDK dimuat terpisah dan tidak bersaing dengan isi halaman.
+        const mulai = setTimeout(() => navigator.onLine && sambungan.mulai(), 300);
         document.addEventListener("visibilitychange", saatTerlihat);
         window.addEventListener("online", daring);
         window.addEventListener("offline", luring);
         return () => {
+            clearTimeout(mulai);
             clearTimeout(pewaktuTutup);
             document.removeEventListener("visibilitychange", saatTerlihat);
             window.removeEventListener("online", daring);
             window.removeEventListener("offline", luring);
-            sambungan.hentikan();
+            sambungan.tutup();
             delete html.dataset.realtime;
         };
     }, [kunci]);

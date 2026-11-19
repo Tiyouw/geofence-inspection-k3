@@ -4,7 +4,7 @@ import { buatInspeksiAntre } from "./data";
 
 /**
  * ADR K-12: perubahan oleh pengguna A tampil di layar pengguna B dalam beberapa detik tanpa
- * B memuat ulang. Di CI peristiwa lewat peladen tiruan Pusher (e2e/realtime-tiruan.mjs).
+ * B memuat ulang. Di CI peristiwa lewat peladen tiruan Ably (e2e/realtime-tiruan.mjs).
  */
 test("tinjauan oleh pemantau hilang dari antrean admin yang sedang terbuka dalam beberapa detik", async ({
     page,
@@ -49,26 +49,22 @@ test("tinjauan oleh pemantau hilang dari antrean admin yang sedang terbuka dalam
     await ctx.close();
 });
 
-test("langganan saluran: hanya saluran milik peran/unit sendiri yang ditandatangani", async ({ page, browser }) => {
+const klaim = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1]!, "base64url").toString("utf8"));
+
+test("token langganan: hanya saluran peran/unit sendiri, hanya subscribe", async ({ page, browser }) => {
     const anon = await browser.newContext();
-    const r0 = await anon.request.post("/api/realtime/auth", {
-        data: { socket_id: "1.1", channel_name: "private-staf" },
-    });
-    expect(r0.status()).toBe(401);
+    expect((await anon.request.get("/api/realtime/token")).status()).toBe(401);
     await anon.close();
 
     await masuk(page, "inspektur");
-    const staf = await page.request.post("/api/realtime/auth", {
-        data: { socket_id: "1.1", channel_name: "private-staf" },
-    });
-    expect(staf.status()).toBe(403);
-    const unitLain = await page.request.post("/api/realtime/auth", {
-        data: { socket_id: "1.1", channel_name: "private-unit-999999" },
-    });
-    expect(unitLain.status()).toBe(403);
-    const milik = await page.request.post("/api/realtime/auth", {
-        data: { socket_id: "1.1", channel_name: "private-inspektur" },
-    });
-    expect(milik.status()).toBe(200);
-    expect((await milik.json()).auth).toMatch(/^[^:]+:[0-9a-f]{64}$/);
+    const res = await page.request.get("/api/realtime/token");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("application/jwt");
+    const kap = JSON.parse(klaim(await res.text())["x-ably-capability"]) as Record<string, string[]>;
+    expect(Object.keys(kap)).toContain("palk3:inspektur");
+    expect(Object.keys(kap)).not.toContain("palk3:staf");
+    expect(Object.keys(kap).filter((c) => c.startsWith("palk3:unit:"))).toHaveLength(
+        Object.keys(kap).some((c) => c.startsWith("palk3:unit:")) ? 1 : 0,
+    );
+    expect(Object.values(kap).flat()).toEqual(Object.values(kap).map(() => "subscribe"));
 });

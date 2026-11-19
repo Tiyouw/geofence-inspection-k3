@@ -13,7 +13,10 @@ export type JenisPeristiwa = (typeof JENIS_PERISTIWA)[number];
 /** Isi pesan di kabel. `id` hanya dikirim ke saluran staf (admin/pemantau). */
 export type Peristiwa = { t: JenisPeristiwa; id?: string };
 
-/** Nama event Pusher untuk semua peristiwa data. */
+/** Yang boleh diketahui peramban: alamat peladen saja (kunci API tidak pernah keluar). Kosong = Ably. */
+export type KonfigurasiKlienRealtime = { endpoint?: string; port?: number; tls?: boolean };
+
+/** Nama pesan Ably untuk semua peristiwa data. */
 export const NAMA_EVENT = "berubah";
 
 /** Siapa yang perlu tahu. */
@@ -28,15 +31,20 @@ export type Sasaran = {
     pengguna?: (number | null | undefined)[];
 };
 
-export const SALURAN_STAF = "private-staf";
-export const SALURAN_INSPEKTUR = "private-inspektur";
-export const saluranUnit = (id: number) => `private-unit-${id}`;
-export const saluranPengguna = (id: number) => `private-pengguna-${id}`;
+export const SALURAN_STAF = "palk3:staf";
+export const SALURAN_INSPEKTUR = "palk3:inspektur";
+export const saluranUnit = (id: number) => `palk3:unit:${id}`;
+export const saluranPengguna = (id: number) => `palk3:pengguna:${id}`;
 
 /** Saluran yang boleh didengar pengguna ini. Dihitung di peladen dari data DB, bukan dari klien. */
 export function saluranUntuk(u: { id: number; role: Role; divisionId: number | null }): string[] {
     if (u.role === "admin" || u.role === "pemantau") return [SALURAN_STAF, saluranPengguna(u.id)];
     return [SALURAN_INSPEKTUR, ...(u.divisionId ? [saluranUnit(u.divisionId)] : []), saluranPengguna(u.id)];
+}
+
+/** Kapabilitas token Ably: hanya "subscribe" pada saluran yang disebut (tanpa wildcard, tanpa publish). */
+export function kapabilitas(saluran: string[]): Record<string, ["subscribe"]> {
+    return Object.fromEntries(saluran.map((c) => [c, ["subscribe"]]));
 }
 
 export function bolehBerlangganan(u: Parameters<typeof saluranUntuk>[0], saluran: string): boolean {

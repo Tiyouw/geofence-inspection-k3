@@ -10,27 +10,24 @@ import {
 
 describe("saluran realtime", () => {
     it("staf mendengar saluran staf dan saluran pribadinya saja", () => {
-        expect(saluranUntuk({ id: 3, role: "pemantau", divisionId: 7 })).toEqual([
-            "private-staf",
-            "private-pengguna-3",
-        ]);
+        expect(saluranUntuk({ id: 3, role: "pemantau", divisionId: 7 })).toEqual(["palk3:staf", "palk3:pengguna:3"]);
     });
 
     it("inspektur hanya saluran inspektur, unitnya, dan dirinya", () => {
         const u = { id: 9, role: "inspektur" as const, divisionId: 2 };
-        expect(saluranUntuk(u)).toEqual(["private-inspektur", "private-unit-2", "private-pengguna-9"]);
-        expect(bolehBerlangganan(u, "private-staf")).toBe(false);
-        expect(bolehBerlangganan(u, "private-unit-3")).toBe(false);
-        expect(bolehBerlangganan(u, "private-pengguna-10")).toBe(false);
-        expect(bolehBerlangganan({ ...u, divisionId: null }, "private-unit-2")).toBe(false);
+        expect(saluranUntuk(u)).toEqual(["palk3:inspektur", "palk3:unit:2", "palk3:pengguna:9"]);
+        expect(bolehBerlangganan(u, "palk3:staf")).toBe(false);
+        expect(bolehBerlangganan(u, "palk3:unit:3")).toBe(false);
+        expect(bolehBerlangganan(u, "palk3:pengguna:10")).toBe(false);
+        expect(bolehBerlangganan({ ...u, divisionId: null }, "palk3:unit:2")).toBe(false);
     });
 
     it("id hanya dikirim ke staf; saluran inspektur/unit/pengguna hanya jenisnya", () => {
         const m = pesanUntukSasaran({ t: "inspeksi", id: "abc" }, { staf: true, unit: 4, pengguna: [5, 5, null] });
         expect(m).toEqual([
-            { saluran: "private-staf", data: { t: "inspeksi", id: "abc" } },
-            { saluran: "private-unit-4", data: { t: "inspeksi" } },
-            { saluran: "private-pengguna-5", data: { t: "inspeksi" } },
+            { saluran: "palk3:staf", data: { t: "inspeksi", id: "abc" } },
+            { saluran: "palk3:unit:4", data: { t: "inspeksi" } },
+            { saluran: "palk3:pengguna:5", data: { t: "inspeksi" } },
         ]);
     });
 

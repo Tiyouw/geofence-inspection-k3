@@ -1,18 +1,29 @@
-// Peladen tiruan Pusher Channels untuk E2E dan pengembangan lokal (ADR K-12), tanpa dependensi.
-// Mendukung bagian protokol yang dipakai aplikasi: WebSocket /app/{key} (protokol 7, saluran privat
-// dengan tanda tangan diperiksa, ping/pong) dan REST POST /apps/{id}/batch_events bertanda tangan.
+// Peladen tiruan Ably untuk E2E dan pengembangan lokal (ADR K-12), tanpa dependensi.
+// Hanya bagian protokol yang dipakai aplikasi: WebSocket realtime format JSON dengan token JWT
+// (diperiksa: HS256, kid, kedaluwarsa, kapabilitas subscribe), ATTACH/MESSAGE/HEARTBEAT/CLOSE,
+// dan REST batch publish POST /messages dengan Basic auth.
 //
-//   PUSHER_APP_ID=uji PUSHER_KEY=kunci-uji PUSHER_SECRET=rahasia-uji node e2e/realtime-tiruan.mjs 6001
+//   ABLY_API_KEY=uji.kunci:rahasia-uji node e2e/realtime-tiruan.mjs 6001
 //
-// Aplikasi diarahkan ke sini dengan PUSHER_HOST=http://127.0.0.1:6001 dan PUSHER_WS_URL=ws://127.0.0.1:6001.
-import { createHash, createHmac, randomInt } from "node:crypto";
+// Aplikasi diarahkan ke sini dengan ABLY_ENDPOINT=127.0.0.1 ABLY_PORT=6001 ABLY_TLS=0.
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 
 const PORT = Number(process.argv[2] ?? process.env.REALTIME_PORT ?? 6001);
-const APP_ID = process.env.PUSHER_APP_ID ?? "uji";
-const KEY = process.env.PUSHER_KEY ?? "kunci-uji";
-const SECRET = process.env.PUSHER_SECRET ?? "rahasia-uji";
-const hmac = (s) => createHmac("sha256", SECRET).update(s).digest("hex");
+const KUNCI = process.env.ABLY_API_KEY ?? "uji.kunci:rahasia-uji";
+const [NAMA_KUNCI, RAHASIA] = [KUNCI.slice(0, KUNCI.indexOf(":")), KUNCI.slice(KUNCI.indexOf(":") + 1)];
+const A = {
+    HEARTBEAT: 0,
+    CONNECTED: 4,
+    CLOSE: 7,
+    CLOSED: 8,
+    ERROR: 9,
+    ATTACH: 10,
+    ATTACHED: 11,
+    DETACH: 12,
+    DETACHED: 13,
+    MESSAGE: 15,
+};
 
 /** saluran -> Set<soket> */
 const saluran = new Map();
@@ -20,28 +31,29 @@ const saluran = new Map();
 function bingkai(teks) {
     const data = Buffer.from(teks);
     const n = data.length;
-    const kepala = n < 126 ? Buffer.from([0x81, n]) : n < 65536 ? Buffer.from([0x81, 126, n >> 8, n & 255]) : null;
-    if (!kepala) {
-        const k = Buffer.alloc(10);
-        k[0] = 0x81;
-        k[1] = 127;
-        k.writeBigUInt64BE(BigInt(n), 2);
-        return Buffer.concat([k, data]);
+    let kepala;
+    if (n < 126) kepala = Buffer.from([0x81, n]);
+    else if (n < 65536) kepala = Buffer.from([0x81, 126, n >> 8, n & 255]);
+    else {
+        kepala = Buffer.alloc(10);
+        kepala[0] = 0x81;
+        kepala[1] = 127;
+        kepala.writeBigUInt64BE(BigInt(n), 2);
     }
     return Buffer.concat([kepala, data]);
 }
 
-function kirim(sock, event, data, channel) {
-    if (sock.destroyed) return;
-    sock.write(
-        bingkai(
-            JSON.stringify({
-                event,
-                ...(channel ? { channel } : {}),
-                data: typeof data === "string" ? data : JSON.stringify(data),
-            }),
-        ),
-    );
+const kirim = (sock, pesan) => !sock.destroyed && sock.write(bingkai(JSON.stringify(pesan)));
+
+function periksaJwt(jwt) {
+    const [h, p, t] = String(jwt).split(".");
+    if (!h || !p || !t) return null;
+    const harap = Buffer.from(createHmac("sha256", RAHASIA).update(`${h}.${p}`).digest("base64url"));
+    if (harap.length !== Buffer.from(t).length || !timingSafeEqual(harap, Buffer.from(t))) return null;
+    const kepala = JSON.parse(Buffer.from(h, "base64url").toString());
+    const isi = JSON.parse(Buffer.from(p, "base64url").toString());
+    if (kepala.alg !== "HS256" || kepala.kid !== NAMA_KUNCI || isi.exp * 1000 < Date.now()) return null;
+    return { clientId: isi["x-ably-clientId"], kapabilitas: JSON.parse(isi["x-ably-capability"] ?? "{}") };
 }
 
 function tanganiPesan(sock, teks) {
@@ -51,16 +63,29 @@ function tanganiPesan(sock, teks) {
     } catch {
         return;
     }
-    if (m.event === "pusher:ping") return kirim(sock, "pusher:pong", {});
-    if (m.event === "pusher:subscribe") {
-        const { channel, auth } = m.data ?? {};
-        if (!channel?.startsWith("private-") || auth !== `${KEY}:${hmac(`${sock.socketId}:${channel}`)}`) {
-            return kirim(sock, "pusher:error", { code: 4009, message: "auth salah" });
+    if (m.action === A.HEARTBEAT) return kirim(sock, { action: A.HEARTBEAT, id: m.id });
+    if (m.action === A.CLOSE) {
+        kirim(sock, { action: A.CLOSED });
+        return sock.end(Buffer.from([0x88, 0]));
+    }
+    if (m.action === A.ATTACH) {
+        const boleh = sock.kapabilitas[m.channel]?.includes("subscribe");
+        if (!boleh) {
+            return kirim(sock, {
+                action: A.ERROR,
+                channel: m.channel,
+                error: { code: 40160, statusCode: 401, message: "kapabilitas tidak mengizinkan" },
+            });
         }
-        if (!saluran.has(channel)) saluran.set(channel, new Set());
-        saluran.get(channel).add(sock);
-        sock.saluran.add(channel);
-        kirim(sock, "pusher_internal:subscription_succeeded", {}, channel);
+        if (!saluran.has(m.channel)) saluran.set(m.channel, new Set());
+        saluran.get(m.channel).add(sock);
+        sock.saluran.add(m.channel);
+        return kirim(sock, { action: A.ATTACHED, channel: m.channel, flags: 1 << 18 }); // MESSAGE_SUBSCRIBE
+    }
+    if (m.action === A.DETACH) {
+        saluran.get(m.channel)?.delete(sock);
+        sock.saluran.delete(m.channel);
+        return kirim(sock, { action: A.DETACHED, channel: m.channel });
     }
 }
 
@@ -89,27 +114,23 @@ function bacaBingkai(sock, potongan) {
         if (topeng) for (let j = 0; j < isi.length; j++) isi[j] ^= topeng[j % 4];
         sock.sisa = b.subarray(i + n);
         if (op === 1) tanganiPesan(sock, isi.toString("utf8"));
-        else if (op === 8) {
-            sock.end(Buffer.from([0x88, 0]));
-            return;
-        } else if (op === 9) sock.write(Buffer.concat([Buffer.from([0x8a, isi.length]), isi]));
+        else if (op === 8) return void sock.end(Buffer.from([0x88, 0]));
+        else if (op === 9) sock.write(Buffer.concat([Buffer.from([0x8a, isi.length]), isi]));
     }
 }
 
-function sahRest(url, body) {
-    const q = Object.fromEntries(url.searchParams);
-    const { auth_signature, ...param } = q;
-    if (param.auth_key !== KEY) return false;
-    if (param.body_md5 !== createHash("md5").update(body).digest("hex")) return false;
-    const query = Object.keys(param)
-        .sort()
-        .map((k) => `${k}=${param[k]}`)
-        .join("&");
-    return auth_signature === hmac(`POST\n${url.pathname}\n${query}`);
-}
-
-function siarkan(name, channel, data) {
-    for (const s of saluran.get(channel) ?? []) kirim(s, name, data, channel);
+let nomor = 0;
+function siarkan(channel, messages) {
+    for (const s of saluran.get(channel) ?? []) {
+        const id = `${s.connectionId}:${nomor++}`;
+        kirim(s, {
+            action: A.MESSAGE,
+            channel,
+            id,
+            timestamp: Date.now(),
+            messages: messages.map((m, k) => ({ ...m, id: `${id}:${k}`, timestamp: Date.now() })),
+        });
+    }
 }
 
 const peladen = createServer((req, res) => {
@@ -118,34 +139,52 @@ const peladen = createServer((req, res) => {
     const bagian = [];
     req.on("data", (c) => bagian.push(c));
     req.on("end", () => {
-        const body = Buffer.concat(bagian).toString("utf8");
-        if (req.method !== "POST" || !url.pathname.startsWith(`/apps/${APP_ID}/`)) return res.writeHead(404).end();
-        if (!sahRest(url, body)) return res.writeHead(401).end("tanda tangan salah");
-        const j = JSON.parse(body);
-        if (url.pathname.endsWith("/batch_events")) for (const e of j.batch ?? []) siarkan(e.name, e.channel, e.data);
-        else for (const c of j.channels ?? []) siarkan(j.name, c, j.data);
-        res.writeHead(200, { "content-type": "application/json" }).end("{}");
+        if (req.method !== "POST" || url.pathname !== "/messages") return res.writeHead(404).end();
+        if (req.headers.authorization !== `Basic ${Buffer.from(KUNCI).toString("base64")}`)
+            return res.writeHead(401).end();
+        const spesifikasi = [].concat(JSON.parse(Buffer.concat(bagian).toString("utf8")));
+        for (const s of spesifikasi) for (const c of [].concat(s.channels)) siarkan(c, [].concat(s.messages));
+        res.writeHead(201, { "content-type": "application/json" }).end("[]");
     });
 });
 
 peladen.on("upgrade", (req, sock) => {
     const kunci = req.headers["sec-websocket-key"];
-    if (!kunci || !req.url?.startsWith(`/app/${KEY}`)) return sock.destroy();
+    if (!kunci) return sock.destroy();
     const terima = createHash("sha1").update(`${kunci}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest("base64");
     sock.write(
         `HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${terima}\r\n\r\n`,
     );
     sock.setNoDelay(true);
-    sock.socketId = `${randomInt(1e6)}.${randomInt(1e6)}`;
     sock.saluran = new Set();
     sock.sisa = Buffer.alloc(0);
-    sock.on("data", (c) => bacaBingkai(sock, c));
+    sock.connectionId = randomUUID().slice(0, 8);
     const lepas = () => {
+        clearInterval(sock.detak);
         for (const c of sock.saluran) saluran.get(c)?.delete(sock);
     };
     sock.on("close", lepas);
     sock.on("error", lepas);
-    kirim(sock, "pusher:connection_established", { socket_id: sock.socketId, activity_timeout: 120 });
+    const token = periksaJwt(new URL(req.url, "http://x").searchParams.get("access_token"));
+    if (!token) {
+        kirim(sock, { action: A.ERROR, error: { code: 40142, statusCode: 401, message: "token tidak sah" } });
+        return sock.end(Buffer.from([0x88, 0]));
+    }
+    sock.kapabilitas = token.kapabilitas;
+    sock.on("data", (c) => bacaBingkai(sock, c));
+    kirim(sock, {
+        action: A.CONNECTED,
+        connectionId: sock.connectionId,
+        connectionDetails: {
+            connectionKey: `${sock.connectionId}!kunci`,
+            clientId: token.clientId,
+            maxIdleInterval: 15000,
+            connectionStateTtl: 120000,
+            maxMessageSize: 65536,
+            serverId: "tiruan",
+        },
+    });
+    sock.detak = setInterval(() => kirim(sock, { action: A.HEARTBEAT }), 5000);
 });
 
-peladen.listen(PORT, "127.0.0.1", () => console.log(`realtime tiruan di :${PORT}`));
+peladen.listen(PORT, "127.0.0.1", () => console.log(`realtime tiruan (Ably) di :${PORT}`));
