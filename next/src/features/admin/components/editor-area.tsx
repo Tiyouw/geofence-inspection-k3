@@ -517,7 +517,7 @@ function PanelArea({
         <Kartu
             judul={a.nama}
             aksi={
-                <Button variant="ghost" size="icon-sm" onClick={tutup} aria-label="Tutup">
+                <Button variant="ghost" size="icon-sm" onClick={tutup} aria-label="Tutup panel area">
                     <X aria-hidden />
                 </Button>
             }

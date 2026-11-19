@@ -71,7 +71,19 @@ const keadaanPeta = (peta: Locator, b: [[number, number], [number, number]]) =>
         return { ...awal, setelahMundur: m.getZoom() };
     }, b);
 
+/** Pasang penunggu "moveend" sebelum aksi yang menggerakkan peta; klik selama animasi diabaikan Leaflet. */
+const tungguDiam = async (peta: Locator, aksi: () => Promise<void>) => {
+  await peta.evaluate((el) => {
+    const m = (el as HTMLElement & { petaLeaflet: { once(e: string, f: () => void): void } }).petaLeaflet;
+    (el as HTMLElement & { diam?: Promise<void> }).diam = new Promise<void>((res) => m.once("moveend", () => setTimeout(res, 150)));
+  });
+  await aksi();
+  await peta.evaluate((el) => Promise.race([(el as HTMLElement & { diam: Promise<void> }).diam, new Promise((r) => setTimeout(r, 5000))]));
+};
+
 async function klikDi(page: Page, peta: Locator, x: number, y: number) {
+    // Jeda > interval klik ganda supaya dua klik di titik sama tidak digabung.
+    await page.waitForTimeout(600);
     const kotak = (await peta.boundingBox())!;
     await page.mouse.click(kotak.x + x, kotak.y + y);
 }
@@ -97,12 +109,13 @@ test("Lokasi: kawasan terpilih tidak menelan klik gedung; lepas pilihan lewat kl
 
     const daftar = page.getByTestId("daftar-area");
     await page.getByLabel("Cari area").fill(kawasan.nama);
-    await daftar
-        .getByRole("button", { name: new RegExp(kawasan.nama) })
-        .first()
-        .click();
+    await tungguDiam(peta, () =>
+        daftar
+            .getByRole("button", { name: new RegExp(kawasan.nama) })
+            .first()
+            .click(),
+    );
     await expect(peta).toHaveAttribute("data-terpilih", String(kawasan.id));
-    await page.waitForTimeout(900); // animasi terbang ke kawasan
 
     // Klik gedung di dalam kawasan terpilih → gedung itu yang terpilih.
     let p = await piksel(peta, t.lat, t.lng);
