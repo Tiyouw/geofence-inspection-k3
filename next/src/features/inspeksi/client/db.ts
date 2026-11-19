@@ -34,6 +34,15 @@ export function bukaDb(userId: number): Promise<DbAkun> {
   let p = cache.get(userId);
   if (!p) {
     p = openDB<Skema>(namaDb(userId), 1, {
+      /**
+       * Konteks lain (tab lain, atau jendela saat keluar) ingin menghapus basis data ini: tutup
+       * koneksi ini dan lupakan dari cache. Tanpa ini koneksi service worker yang terbuka selamanya
+       * membuat deleteDB tertahan, dan inspektur tidak bisa keluar (bug 19 Nov 2026).
+       */
+      blocking() {
+        void p?.then((db) => db.close());
+        if (cache.get(userId) === p) cache.delete(userId);
+      },
       upgrade(db) {
         db.createObjectStore("meta");
         db.createObjectStore("drafts", { keyPath: "inspectionId" }).createIndex("byAsset", "assetId");

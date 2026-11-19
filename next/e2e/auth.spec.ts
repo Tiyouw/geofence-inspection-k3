@@ -43,7 +43,14 @@ test("keluar mengakhiri sesi", async ({ page }) => {
   await masuk(page, "pemantau");
   // Tunggu papan selesai dirender: navigasi yang masih berjalan bisa menimpa pengalihan aksi keluar.
   await expect(page.getByText("Ringkasan untuk manajemen")).toBeVisible();
+  // Dialog konfirmasi: batal tetap di dalam, lanjut keluar.
   await page.getByRole("button", { name: "Keluar" }).first().click();
+  const dialog = page.getByRole("alertdialog", { name: "Keluar dari akun?" });
+  await dialog.getByRole("button", { name: "Tetap masuk" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/pemantau/);
+  await page.getByRole("button", { name: "Keluar" }).first().click();
+  await dialog.getByRole("button", { name: "Keluar", exact: true }).click();
   await expect(page).toHaveURL(/\/masuk/);
   await expect(page.getByRole("status").filter({ hasText: "Anda sudah keluar." })).toBeVisible();
   await page.goto("/pemantau");

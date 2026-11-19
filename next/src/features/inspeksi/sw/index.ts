@@ -16,7 +16,7 @@
  *   atau jawaban yang dialihkan (sesi habis) mengosongkannya.
  * - Background Sync "outbox": menguras antrean akun yang sedang masuk (kode sama dengan jendela).
  */
-import { bukaDb, getPenggunaAktif } from "../client/db";
+import { bukaDb, getPenggunaAktif, tutupDb } from "../client/db";
 import { kuras, pengirimHttp } from "../client/outbox";
 import { KANAL, denganKunci } from "../client/sinkron";
 
@@ -231,8 +231,12 @@ self.addEventListener("message", (event) => {
   }
   if (data?.jenis === "bersihkan-dokumen") event.waitUntil(caches.delete(DOKUMEN));
   if (data?.jenis === "bersihkan") {
-    // Keluar: hapus salinan halaman berautentikasi (SPEC §7.10).
-    event.waitUntil(Promise.all([caches.delete(HALAMAN), caches.delete(DOKUMEN)]));
+    // Keluar: hapus salinan halaman berautentikasi (SPEC §7.10) dan lepas koneksi basis data akun
+    // supaya jendela dapat menghapusnya (bug 19 Nov: inspektur tidak bisa keluar).
+    const uid = (data as { userId?: number }).userId;
+    event.waitUntil(
+      Promise.all([caches.delete(HALAMAN), caches.delete(DOKUMEN), typeof uid === "number" ? tutupDb(uid) : Promise.resolve()]),
+    );
   }
   if (data?.jenis === "kuras") event.waitUntil(kurasLatar().catch(() => {}));
 });
