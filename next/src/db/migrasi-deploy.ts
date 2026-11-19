@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type EntriJurnal = { idx: number; tag: string };
+export type EntriJurnal = { idx: number; tag: string; when?: number };
 
 /** Hash yang dicatat drizzle di drizzle.__drizzle_migrations: sha256 isi berkas SQL. */
 export function hashMigrasi(sql: string): string {
@@ -31,7 +31,12 @@ export function migrasiTertunda(jurnal: EntriJurnal[], isiSql: (tag: string) => 
  * kolom yang sudah ada. Menambah tabel/kolom/indeks (nullable atau berdefault) dianggap aman.
  */
 const POLA_BERISIKO: [RegExp, string][] = [
-  [/\bdrop\s+(table|column|schema|type|constraint)\b/i, "DROP"],
+  [/\bdrop\s+(table|column|schema|type|constraint|index)\b/i, "DROP"],
+  [/\bdrop\s+default\b/i, "DROP DEFAULT"],
+  [/\balter\s+type\s+[\w."]+\s+add\s+value\b/i, "ALTER TYPE ADD VALUE"],
+  // Mengubah data yang sudah ada (audit 19 Nov 2026, S5): jalankan manual setelah ditinjau.
+  [/\bupdate\s+[\w."]+\s+set\b/i, "UPDATE data"],
+  [/\binsert\s+into\b/i, "INSERT data"],
   [/\brename\b/i, "RENAME"],
   [/\balter\s+column\s+"?[\w]+"?\s+(set\s+data\s+)?type\b/i, "ubah tipe kolom"],
   [/\bset\s+not\s+null\b/i, "SET NOT NULL"],
@@ -42,6 +47,19 @@ const POLA_BERISIKO: [RegExp, string][] = [
 export function pernyataanBerisiko(sql: string): string[] {
   return POLA_BERISIKO.filter(([p]) => p.test(sql)).map(([, nama]) => nama);
 }
+
+/**
+ * Drizzle (node-postgres migrator) hanya menjalankan migrasi yang `when`-nya lebih baru dari
+ * created_at migrasi terakhir yang tercatat. Migrasi tertunda dengan `when` lebih lama (mis. urutan
+ * merge cabang) akan DILEWATI diam-diam: tolak sebelum migrate (audit 19 Nov 2026, S4).
+ */
+export function tertundaTerlewati(jurnal: EntriJurnal[], tertunda: string[], terakhirMs: number | null): string[] {
+  if (terakhirMs === null) return [];
+  return jurnal.filter((e) => tertunda.includes(e.tag) && (e.when ?? 0) <= terakhirMs).map((e) => e.tag);
+}
+
+/** Kunci sesi Postgres supaya dua build produksi bersamaan tidak memigrasi berbarengan. */
+export const KUNCI_MIGRASI = 7_202_611_19;
 
 export function harusMigrasi(env: Record<string, string | undefined>): boolean {
   return env.VERCEL === "1" && env.VERCEL_ENV === "production" && !!(env.DATABASE_URL_UNPOOLED || env.DATABASE_URL);
@@ -60,12 +78,15 @@ export async function jalankan(dir = process.cwd(), env: Record<string, string |
   const { Client } = await import("pg");
   const client = new Client({ connectionString: env.DATABASE_URL_UNPOOLED || env.DATABASE_URL });
   await client.connect();
+  const bacaTercatat = () =>
+    client
+      .query<{ hash: string; created_at: string | null }>("select hash, created_at from drizzle.__drizzle_migrations")
+      .then((r) => r.rows)
+      .catch(() => [] as { hash: string; created_at: string | null }[]);
   try {
-    const ada = await client
-      .query<{ hash: string }>("select hash from drizzle.__drizzle_migrations")
-      .then((r) => r.rows.map((x) => x.hash))
-      .catch(() => [] as string[]);
-    const tertunda = migrasiTertunda(jurnal, isiSql, new Set(ada));
+    await client.query("select pg_advisory_lock($1)", [KUNCI_MIGRASI]);
+    const ada = await bacaTercatat();
+    const tertunda = migrasiTertunda(jurnal, isiSql, new Set(ada.map((x) => x.hash)));
     if (!tertunda.length) {
       console.log("migrasi-deploy: skema sudah terbaru.");
       return;
@@ -76,12 +97,23 @@ export async function jalankan(dir = process.cwd(), env: Record<string, string |
         `migrasi-deploy: migrasi tidak aditif, jalankan manual setelah ditinjau: ${berisiko.map((x) => `${x.t} (${x.p.join(", ")})`).join("; ")}`,
       );
     }
+    const terakhir = ada.reduce<number | null>((m, x) => (x.created_at == null ? m : Math.max(m ?? 0, Number(x.created_at))), null);
+    const terlewati = tertundaTerlewati(jurnal, tertunda, terakhir);
+    if (terlewati.length) {
+      throw new Error(
+        `migrasi-deploy: ${terlewati.join(", ")} lebih lama dari migrasi terakhir yang tercatat; drizzle akan melewatinya. Perbaiki "when" di jurnal atau jalankan manual.`,
+      );
+    }
     console.log(`migrasi-deploy: menjalankan ${tertunda.join(", ")}`);
     const { drizzle } = await import("drizzle-orm/node-postgres");
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     await migrate(drizzle({ client }), { migrationsFolder: folder });
+    // Periksa ulang: yang masih tertunda berarti dilewati drizzle; gagalkan build.
+    const sisa = migrasiTertunda(jurnal, isiSql, new Set((await bacaTercatat()).map((x) => x.hash)));
+    if (sisa.length) throw new Error(`migrasi-deploy: setelah migrate masih tertunda: ${sisa.join(", ")}. Build digagalkan.`);
     console.log("migrasi-deploy: selesai.");
   } finally {
+    await client.query("select pg_advisory_unlock($1)", [KUNCI_MIGRASI]).catch(() => {});
     await client.end();
   }
 }

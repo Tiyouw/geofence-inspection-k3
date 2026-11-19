@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { harusMigrasi, hashMigrasi, migrasiTertunda, pernyataanBerisiko } from "../migrasi-deploy";
+import { harusMigrasi, hashMigrasi, migrasiTertunda, pernyataanBerisiko, tertundaTerlewati } from "../migrasi-deploy";
 
 const FOLDER = join(__dirname, "../../../drizzle");
 const jurnal = JSON.parse(readFileSync(join(FOLDER, "meta/_journal.json"), "utf8")).entries as { idx: number; tag: string }[];
@@ -32,5 +32,27 @@ describe("migrasi saat deploy (insiden 18 Nov: 0003 tidak dijalankan di dev)", (
     expect(pernyataanBerisiko('ALTER TABLE "a" RENAME COLUMN "b" TO "c";')).toEqual(["RENAME"]);
     expect(pernyataanBerisiko('ALTER TABLE "a" ALTER COLUMN "b" SET DATA TYPE integer;')).toEqual(["ubah tipe kolom"]);
     expect(pernyataanBerisiko('ALTER TABLE "a" ALTER COLUMN "b" SET NOT NULL;')).toEqual(["SET NOT NULL"]);
+    expect(pernyataanBerisiko('DROP INDEX "a_b_idx";')).toEqual(["DROP"]);
+    expect(pernyataanBerisiko('ALTER TABLE "a" ALTER COLUMN "b" DROP DEFAULT;')).toEqual(["DROP DEFAULT"]);
+    expect(pernyataanBerisiko(`ALTER TYPE "public"."peran" ADD VALUE 'tamu';`)).toEqual(["ALTER TYPE ADD VALUE"]);
+    expect(pernyataanBerisiko('UPDATE "inspections" SET "x" = 1;')).toEqual(["UPDATE data"]);
+    expect(pernyataanBerisiko('INSERT INTO "settings" VALUES (1);')).toEqual(["INSERT data"]);
+    expect(pernyataanBerisiko('CREATE TABLE "baru" ("id" serial); CREATE INDEX "baru_idx" ON "baru" ("id");')).toEqual([]);
+  });
+
+  it("migrasi tertunda yang when-nya tidak lebih baru dari yang terakhir tercatat ditandai (drizzle akan melewatinya)", () => {
+    const j = [
+      { idx: 0, tag: "0000_a", when: 100 },
+      { idx: 1, tag: "0001_b", when: 300 },
+      { idx: 2, tag: "0002_c", when: 200 },
+    ];
+    expect(tertundaTerlewati(j, ["0002_c"], 300)).toEqual(["0002_c"]);
+    expect(tertundaTerlewati(j, ["0001_b"], 200)).toEqual([]);
+    expect(tertundaTerlewati(j, ["0000_a"], null)).toEqual([]);
+  });
+
+  it("jurnal sekarang: when naik sesuai idx", () => {
+    const urut = [...jurnal].sort((a, b) => a.idx - b.idx) as unknown as { when: number }[];
+    for (let i = 1; i < urut.length; i++) expect(urut[i]!.when).toBeGreaterThan(urut[i - 1]!.when);
   });
 });
