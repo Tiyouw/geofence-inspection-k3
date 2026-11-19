@@ -111,7 +111,8 @@
   --secondary: #e8eef0;
   --secondary-foreground: #1d4855;
   --muted: #eef2f3;
-  --muted-foreground: #5f727a;
+  /* #566870: kontras 5,2:1 di atas --muted (audit 19 Nov 2026; sebelumnya #5f727a, 4,46:1). */
+  --muted-foreground: #566870;
   --accent: #e8eef0;
   --accent-foreground: #031e25;
   --destructive: #b32136;

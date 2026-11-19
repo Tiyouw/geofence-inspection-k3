@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useInspektur } from "./konteks";
 import { IndikatorKoneksi } from "./status-bar";
 import { TautanLapangan } from "./tautan";
+import { TautanLewati } from "@/components/shell/tautan-lewati";
 
 type Tujuan = { href: string; label: string; Ikon: LucideIcon; cocok?: (p: string) => boolean };
 
@@ -73,6 +74,7 @@ function NavPil() {
 export function KerangkaInspektur({ children }: { children: ReactNode }) {
   return (
     <div data-peran="inspektur" className="flex min-h-dvh flex-col bg-background text-foreground">
+      <TautanLewati />
       {/* Dialog, menu, dan toast di portal <body> ikut palet dan huruf inspektur. */}
       <PeranDokumen peran="inspektur" />
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur pt-[env(safe-area-inset-top)] print:hidden">
