@@ -8,6 +8,7 @@ import { PeranDokumen } from "@/components/shell/peran-dokumen";
 import { cn } from "@/lib/utils";
 import { useInspektur } from "./konteks";
 import { IndikatorKoneksi } from "./status-bar";
+import { TautanLapangan } from "./tautan";
 
 type Tujuan = { href: string; label: string; Ikon: LucideIcon; cocok?: (p: string) => boolean };
 
@@ -45,8 +46,8 @@ function NavPil() {
       {NAV_INSPEKTUR.map(({ href, label, Ikon, cocok }) => {
         const aktif = cocok ? cocok(path) : path === href || path.startsWith(`${href}/`);
         return (
-          // <a> biasa: navigasi penuh yang tetap jalan luring lewat service worker.
-          <a
+          // Navigasi klien saat daring; luring jatuh ke navigasi penuh lewat service worker.
+          <TautanLapangan
             key={href}
             href={href}
             aria-current={aktif ? "page" : undefined}
@@ -58,7 +59,7 @@ function NavPil() {
             <Ikon className={cn("size-5", aktif && "text-foreground")} aria-hidden />
             {label}
             {href === "/petugas/antrean" && <JumlahAntrean />}
-          </a>
+          </TautanLapangan>
         );
       })}
     </nav>
@@ -76,10 +77,10 @@ export function KerangkaInspektur({ children }: { children: ReactNode }) {
       <PeranDokumen peran="inspektur" />
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur pt-[env(safe-area-inset-top)] print:hidden">
         <div className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 px-4">
-          <a href="/petugas" className="flex items-center gap-2 text-foreground">
+          <TautanLapangan href="/petugas" className="flex items-center gap-2 text-foreground">
             <BrandMark accentPin className="size-7" />
             <span className="text-[15px] font-bold tracking-tight">Inspeksi K3</span>
-          </a>
+          </TautanLapangan>
           <IndikatorKoneksi />
         </div>
       </header>

@@ -6,7 +6,10 @@
  *   dengan batas 4 detik, jatuh ke salinan terakhir saat luring/sinyal lemah. Query diabaikan
  *   sehingga /petugas/isi?id=… memakai cangkang yang sama.
  * - /i/{token} saat luring: dialihkan ke pemindai lokal /petugas/pindai?token=… (SPEC §7.3 butir 2).
- * - Aset statis Next dan ikon: cache-first (nama berkas ber-hash).
+ * - Navigation preload: permintaan halaman berangkat bersamaan dengan bangunnya service worker,
+ *   jadi service worker tidak menambah jeda pada setiap navigasi penuh.
+ * - Aset statis Next dan ikon: cache-first (nama berkas ber-hash). "hangatkan" juga menyimpan JS/CSS
+ *   yang dirujuk halaman lapangan, karena navigasi klien tidak memuat halaman itu secara penuh.
  * - Background Sync "outbox": menguras antrean akun yang sedang masuk (kode sama dengan jendela).
  */
 import { bukaDb, getPenggunaAktif } from "../client/db";
@@ -32,6 +35,8 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith("pal-k3-precache-") && k !== PRECACHE).map((k) => caches.delete(k))))
+      .then(() => self.registration.navigationPreload?.enable())
+      .catch(() => {})
       .then(() => self.clients.claim()),
   );
 });
@@ -46,9 +51,15 @@ function denganBatas(p: Promise<Response>, ms: number): Promise<Response> {
   });
 }
 
-async function halamanLapangan(req: Request, path: string): Promise<Response> {
+/** Jawaban navigation preload bila ada, kalau tidak permintaan biasa. */
+async function ambilNavigasi(event: FetchEvent): Promise<Response> {
+  const pra = (await event.preloadResponse.catch(() => undefined)) as Response | undefined;
+  return pra ?? fetch(event.request);
+}
+
+async function halamanLapangan(event: FetchEvent, path: string): Promise<Response> {
   const cache = await caches.open(HALAMAN);
-  const jaringan = fetch(req).then(async (res) => {
+  const jaringan = ambilNavigasi(event).then(async (res) => {
     // Simpan hanya halaman sungguhan, bukan pengalihan ke /masuk.
     if (res.ok && !res.redirected && new URL(res.url).pathname === path) await cache.put(path, res.clone());
     return res;
@@ -78,17 +89,17 @@ self.addEventListener("fetch", (event) => {
   if (req.mode === "navigate") {
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (HALAMAN_LAPANGAN.includes(path)) {
-      event.respondWith(halamanLapangan(req, path));
+      event.respondWith(halamanLapangan(event, path));
       return;
     }
     const stiker = path.match(/^\/i\/([^/]+)$/);
     if (stiker) {
       event.respondWith(
-        fetch(req).catch(() => Response.redirect(`/petugas/pindai?token=${encodeURIComponent(stiker[1]!)}`, 302)),
+        ambilNavigasi(event).catch(() => Response.redirect(`/petugas/pindai?token=${encodeURIComponent(stiker[1]!)}`, 302)),
       );
       return;
     }
-    event.respondWith(fetch(req).catch(async () => (await caches.match("/offline")) ?? Response.error()));
+    event.respondWith(ambilNavigasi(event).catch(async () => (await caches.match("/offline")) ?? Response.error()));
     return;
   }
 
@@ -122,20 +133,37 @@ self.addEventListener("sync", (event: Event) => {
   if (e.tag === "outbox") e.waitUntil(kurasLatar());
 });
 
+/**
+ * Simpan cangkang halaman lapangan beserta JS/CSS yang dirujuknya. Dulu aset ikut tersimpan karena
+ * tiap ketukan menu memuat halaman penuh; kini menu memakai navigasi klien, jadi aset halaman yang
+ * belum pernah dibuka penuh harus diambil di sini supaya halaman itu tetap hidup saat luring.
+ */
+async function hangatkan() {
+  const [halaman, statis] = await Promise.all([caches.open(HALAMAN), caches.open(STATIC)]);
+  const aset = new Set<string>();
+  await Promise.all(
+    HALAMAN_LAPANGAN.map(async (p) => {
+      const res = await fetch(p, { credentials: "same-origin" }).catch(() => null);
+      if (!res?.ok || res.redirected) return;
+      const html = await res.clone().text();
+      await halaman.put(p, res);
+      for (const m of html.matchAll(/\/_next\/static\/[^"'\s)\\]+?\.(?:js|css)/g)) aset.add(m[0]);
+    }),
+  );
+  await Promise.all(
+    [...aset].map(async (u) => {
+      if (await statis.match(u)) return;
+      const res = await fetch(u).catch(() => null);
+      if (res?.ok) await statis.put(u, res);
+    }),
+  );
+}
+
 self.addEventListener("message", (event) => {
   const data = event.data as { jenis?: string; urls?: string[] } | undefined;
   if (data?.jenis === "hangatkan") {
     // Simpan cangkang halaman lapangan saat daring supaya bisa dibuka luring.
-    event.waitUntil(
-      caches.open(HALAMAN).then((cache) =>
-        Promise.all(
-          HALAMAN_LAPANGAN.map(async (p) => {
-            const res = await fetch(p, { credentials: "same-origin" }).catch(() => null);
-            if (res?.ok && !res.redirected) await cache.put(p, res);
-          }),
-        ),
-      ),
-    );
+    event.waitUntil(hangatkan());
   }
   if (data?.jenis === "bersihkan") {
     // Keluar: hapus salinan halaman berautentikasi (SPEC §7.10).

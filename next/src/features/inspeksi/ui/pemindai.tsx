@@ -1,6 +1,7 @@
 "use client";
 
 import { Camera, CameraOff, Keyboard, LocateFixed, MapPinOff, ShieldAlert, SwitchCamera, TriangleAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { LANGKAH_LOKASI_ANDROID } from "@/lib/geo/gerbang";
 import { cn } from "@/lib/utils";
 import { Cip, KARTU, KONTROL, Pita } from "./a";
 import { useInspektur } from "./konteks";
+import { pindahLapangan } from "./tautan";
 
 /**
  * SPEC §3.1/§3.2: pemindai di aplikasi. Kamera belakang dulu, bisa ganti kamera, dilepas
@@ -19,6 +21,7 @@ import { useInspektur } from "./konteks";
  */
 export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
   const { db, daring, berubah, siap } = useInspektur();
+  const router = useRouter();
   const video = useRef<HTMLVideoElement>(null);
   const kanvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -43,15 +46,13 @@ export function Pemindai({ tokenAwal }: { tokenAwal?: string }) {
       if (r.ok) {
         navigator.vibrate?.(30);
         berubah();
-        // navigasi penuh: halaman lapangan dilayani service worker saat luring
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/petugas/isi?id=${r.inspectionId}`);
+        pindahLapangan(router, `/petugas/isi?id=${r.inspectionId}`);
         return;
       }
       setPesan(r.pesan);
       sibuk.current = false;
     },
-    [db, berubah],
+    [db, berubah, router],
   );
 
   const lepas = useCallback(() => {

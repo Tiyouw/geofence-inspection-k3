@@ -4,7 +4,28 @@ import { Skeleton } from "@/components/ui/skeleton";
  * Kerangka muat (skeleton) sementara isi halaman diambil: bentuknya mirip halaman sebenarnya,
  * jadi pergantian ke isi terasa halus, bukan kedipan kosong lalu penuh.
  */
-export function KerangkaHalaman({ varian = "desktop", label = "Memuat halaman…" }: { varian?: "desktop" | "ponsel"; label?: string }) {
+export function KerangkaHalaman({ varian = "desktop", label = "Memuat halaman…" }: { varian?: "desktop" | "daftar" | "ponsel"; label?: string }) {
+  if (varian === "daftar") {
+    // Halaman daftar admin/pemantau: judul, bilah saring, lalu baris-baris tabel.
+    return (
+      <div className="space-y-6" role="status" aria-label={label}>
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-10 w-full max-w-xs rounded-lg" />
+          <Skeleton className="h-10 w-28 rounded-lg" />
+          <Skeleton className="h-10 w-28 rounded-lg" />
+        </div>
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (varian === "ponsel") {
     return (
       <div className="space-y-6" role="status" aria-label={label}>

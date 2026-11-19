@@ -222,6 +222,7 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 | K-07 | Foto di Blob privat, disajikan rute yang memeriksa sesi | SPEC §3.6, §9 #1-2 |
 | K-08 | Pembatas percobaan masuk memakai `audit_logs` | Tanpa layanan tambahan (Redis) di Hobby |
 | K-09 | Id integer identity (bukan bigserial) untuk tabel non-perangkat | Setara, gaya Postgres modern; tabel perangkat tetap UUID sesuai SPEC |
+| K-10 | Setiap segmen menu punya `loading.tsx`; `PrefetchMenu` mem-prefetch semua butir menu saat senggang; menu lapangan memakai navigasi klien (`TautanLapangan`), luring jatuh ke navigasi penuh | Diukur 19 Nov (ponsel, CPU 4x, Fast 4G): peladen menjawab RSC dalam ~60–120 ms, tetapi tanpa `loading.tsx` rute dinamis tidak di-prefetch dan layar diam sampai seluruh isi tiba; menu inspektur memuat ulang halaman penuh (0,8–3,4 s per ketukan, plus unduh paket kerja dan 6 halaman setiap kali) |
 
 ## 10. PWA Inspektur (luring)
 
@@ -244,8 +245,13 @@ Catatan:
 - Draf dibuat di perangkat (UUIDv7). Operasi `start` membuat baris draf di peladen; draf peladen
   lama milik inspektur yang sama untuk aset yang sama diganti (perangkat sumber kebenaran).
 - Peladen tidak menyimpan jawaban sebelum `finalize`; semua aturan §3.7 dijalankan ulang di sana.
-- Navigasi antarhalaman lapangan memakai `<a>`/`location.assign` (navigasi penuh), supaya
-  service worker bisa melayani salinan halaman saat luring.
+- Navigasi antarhalaman lapangan memakai `TautanLapangan`/`pindahLapangan` (`ui/tautan.tsx`):
+  navigasi klien Next saat daring (kerangka dan data IndexedDB tetap terpasang), navigasi penuh
+  saat `navigator.onLine` palsu supaya service worker melayani salinan halaman (navigasi klien
+  Next 16 menunggu sinyal kembali, tidak jatuh ke salinan). Karena halaman tak lagi dimuat penuh,
+  pesan `hangatkan` juga menyimpan JS/CSS yang dirujuk halaman lapangan, dan paket kerja
+  disegarkan saat berpindah halaman bila sudah lebih dari 2 menit (dulu: tiap muat penuh).
+- Service worker memakai navigation preload: permintaan halaman tidak menunggu SW bangun.
 - Uji: `src/features/inspeksi/client/__tests__` (Vitest + fake-indexeddb), `e2e/petugas/`
   (Playwright, ponsel). Skenario luring butuh service worker, jadi hanya jalan pada build
   produksi: `pnpm build && pnpm start --port 3200` lalu

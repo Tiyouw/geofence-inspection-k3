@@ -12,6 +12,7 @@ import { Cip, GambarAset, JudulBagian, KARTU, Kartu, KONTROL, Pita, lokasiAset }
 import { useInspektur } from "./konteks";
 import { LencanaGerbang, LencanaKesimpulan } from "./lencana";
 import { AjakanPasang } from "./pasang-aplikasi";
+import { TautanLapangan } from "./tautan";
 
 /** Daftar belum diperiksa dipotong supaya beranda tetap ringkas; urut tenggat terdekat dulu. */
 const TAMPIL_AWAL = 8;
@@ -118,17 +119,17 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
         </Pita>
       )}
 
-      <a
+      <TautanLapangan
         href="/petugas/pindai"
         className={cn(KONTROL, "flex h-14 items-center justify-center gap-2.5 bg-brand text-base font-bold text-brand-foreground shadow-sm transition-colors hover:bg-brand-hover")}
       >
         <ScanLine className="size-6" aria-hidden /> Pindai stiker
-      </a>
+      </TautanLapangan>
 
       <AjakanPasang />
 
       {antrean.length > 0 && (
-        <a href="/petugas/antrean" className={cn(KARTU, "flex items-center gap-3 p-4")}>
+        <TautanLapangan href="/petugas/antrean" className={cn(KARTU, "flex items-center gap-3 p-4")}>
           <CloudUpload className={cn("size-6 shrink-0", perluTindakan.length ? "text-danger" : "text-info")} aria-hidden />
           <span className="min-w-0 flex-1">
             <b className="block">{perluTindakan.length ? `${perluTindakan.length} perlu tindakan` : `${antrean.length} inspeksi di antrean kirim`}</b>
@@ -137,7 +138,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
             </span>
           </span>
           <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
-        </a>
+        </TautanLapangan>
       )}
 
       {draf.length > 0 && (
@@ -148,7 +149,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
               const a = asetById.get(d.assetId);
               return (
                 <li key={d.inspectionId}>
-                  <a href={`/petugas/isi?id=${d.inspectionId}`} className="flex min-h-16 items-center gap-3 py-3">
+                  <TautanLapangan href={`/petugas/isi?id=${d.inspectionId}`} className="flex min-h-16 items-center gap-3 py-3">
                     {a && <GambarAset aset={a} />}
                     <span className="min-w-0 flex-1">
                       <b className="block">{a?.kode ?? "Aset"}</b>
@@ -156,7 +157,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
                     </span>
                     <span className="text-sm text-muted-foreground tabular-nums">{Object.keys(d.jawaban).length} terisi</span>
                     <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
-                  </a>
+                  </TautanLapangan>
                 </li>
               );
             })}
@@ -206,7 +207,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
 
       {data.sent.length > 0 && (
         <section className="space-y-2" aria-label="Terkirim (30 hari)">
-          <JudulBagian judul="Terkirim terakhir" kanan={<a href="/petugas/riwayat" className="font-semibold text-foreground underline-offset-4 hover:underline">Riwayat</a>} />
+          <JudulBagian judul="Terkirim terakhir" kanan={<TautanLapangan href="/petugas/riwayat" className="font-semibold text-foreground underline-offset-4 hover:underline">Riwayat</TautanLapangan>} />
           <ul className={cn(KARTU, "divide-y divide-border/70 px-4")}>
             {data.sent.slice(0, 3).map((s) => (
               <li key={s.inspectionId} className="flex items-center gap-3 py-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteDB } from "idb";
+import { usePathname } from "next/navigation";
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bukaDb, getMeta, namaDb, setPenggunaAktif, tutupDb, type DbAkun } from "../client/db";
 import { segarkanPaket, sinkronJam } from "../client/aksi";
@@ -34,6 +35,9 @@ export function useInspektur(): Konteks {
   if (!c) throw new Error("useInspektur harus di dalam PetugasProvider");
   return c;
 }
+
+/** Jarak minimum penyegaran paket kerja saat berpindah halaman lapangan. */
+const SEGARKAN_PAKET_MS = 2 * 60_000;
 
 const KOSONG: DataLokal = { paket: null, paketDiperbarui: null, drafts: [], ops: [], sent: [], fotoPerInspeksi: {} };
 
@@ -134,6 +138,22 @@ export function PetugasProvider({ userId, children }: { userId: number; children
       window.removeEventListener("online", naik);
     };
   }, [userId, baca]);
+
+  // Menu lapangan kini memakai navigasi klien, jadi efek di atas tidak berjalan lagi di tiap ketukan.
+  // Paket kerja tetap disegarkan saat berpindah halaman bila sudah lebih dari SEGARKAN_PAKET_MS.
+  const pathname = usePathname();
+  const terakhirSegar = useRef(0);
+  useEffect(() => {
+    // Render pertama: paket baru saja disegarkan oleh efek pemasangan.
+    if (!terakhirSegar.current) {
+      terakhirSegar.current = Date.now();
+      return;
+    }
+    const d = dbRef.current;
+    if (!d || !navigator.onLine || Date.now() - terakhirSegar.current < SEGARKAN_PAKET_MS) return;
+    terakhirSegar.current = Date.now();
+    void segarkanPaket(d).then(() => baca());
+  }, [pathname, baca]);
 
   // Lencana ikon aplikasi: jumlah inspeksi yang belum diterima peladen (SPEC §7.9).
   const antre = data.drafts.filter((d) => d.status !== "draf").length;
