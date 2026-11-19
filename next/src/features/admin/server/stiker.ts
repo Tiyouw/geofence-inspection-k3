@@ -17,7 +17,12 @@ const areaDisetujui = and(
 export async function pilihanStiker() {
     const [tipe, area, lantai, [belum]] = await Promise.all([
         db.select({ slug: assetTypes.slug, nama: assetTypes.nama }).from(assetTypes).orderBy(asc(assetTypes.urut)),
-        db.select({ id: areas.id, nama: areas.nama }).from(areas).where(areaDisetujui).orderBy(asc(areas.nama)),
+        // Hanya area yang berisi aset aktif: denah impor bisa berisi ratusan gedung tanpa aset.
+        db
+            .select({ id: areas.id, nama: areas.nama })
+            .from(areas)
+            .where(and(areaDisetujui, sql`exists (select 1 from ${assets} where ${assets.areaId} = ${areas.id} and ${assets.aktif})`))
+            .orderBy(asc(areas.nama)),
         db
             .selectDistinct({ l: assets.lantai })
             .from(assets)

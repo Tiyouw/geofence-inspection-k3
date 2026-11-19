@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kosong, Lencana, Paginasi, Pilihan, Tabel, halamanDari, qs } from "@/features/admin/components/ui";
-import { AREA_BELUM, PER_HALAMAN_ASET, daftarAset, hitungBelumLengkap, parseFilterAset, pilihanAset } from "@/features/admin/server/aset";
+import { AREA_BELUM, PER_HALAMAN_ASET, daftarAset, hitungBelumLengkap, parseFilterAset, pilihanFilterAset } from "@/features/admin/server/aset";
 import { requireRole } from "@/lib/auth/guards";
 import { labelLantai } from "@/lib/domain/asset";
 import { formatTanggal } from "@/lib/format";
@@ -19,7 +19,11 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
     const sp = await searchParams;
     const f = parseFilterAset(sp);
     const halaman = halamanDari(sp.hal);
-    const [{ rows, total }, pilihan, belum] = await Promise.all([daftarAset(f, halaman), pilihanAset(), hitungBelumLengkap()]);
+    const [{ rows, total }, pilihan, belum] = await Promise.all([
+        daftarAset(f, halaman),
+        pilihanFilterAset(typeof f.area === "number" ? f.area : undefined),
+        hitungBelumLengkap(),
+    ]);
     const namaArea = f.area === AREA_BELUM ? "Belum berarea" : pilihan.area.find((a) => a.id === f.area)?.nama;
     const aktifFilter = [
         f.q && `Cari: ${f.q}`,
@@ -169,7 +173,11 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                         {rows.map((a) => (
                             <tr key={a.id}>
                                 <td className="font-semibold">
-                                    <Link href={`/admin/aset/${a.id}`} className="inline-flex items-center gap-2.5 hover:underline">
+                                    <Link
+                                        href={`/admin/aset/${a.id}`}
+                                        prefetch={false}
+                                        className="inline-flex items-center gap-2.5 hover:underline"
+                                    >
                                         <IlustrasiModul modul={modulDari(a.tipe)} ukuran={36} />
                                         {a.kode}
                                     </Link>
