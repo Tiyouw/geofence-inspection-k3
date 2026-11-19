@@ -189,7 +189,7 @@ NIP+IP terkunci 60 detik (dicatat di `audit_logs`, tanpa Redis); sesi berakhir s
 ## 8. Lingkungan dan deploy
 
 - Proyek Vercel `pal-k3` (tim `tiyouws-projects`, Hobby) terhubung ke Git (repo
-  `Tiyouw/pal-k3`, Root Directory `next`). Hanya `rewrite/next` yang dibangun, dan cabang itu
+  `Tiyouw/geofence-inspection-k3`, dahulu `Tiyouw/pal-k3`; Root Directory `next`). Hanya `rewrite/next` yang dibangun, dan cabang itu
   menjadi cabang produksi untuk `dev.geofencinspection.tech`. **Deploy = push ke `rewrite/next`**
   (lewat PR). Jangan `vercel deploy` dari `next/`. `geofencinspection.tech` tetap di tc-vps
   sampai cut-over.
