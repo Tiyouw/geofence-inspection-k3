@@ -31,6 +31,7 @@ import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
 import { GalatApi } from "./http";
 import { langkahTipeAset } from "./langkah";
+import { terbitkan } from "@/lib/realtime/server";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -328,6 +329,10 @@ async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
  */
 export async function finalisasi(user: SessionUser, inspectionId: string, input: z.infer<typeof finalizeSchema>): Promise<HasilFinal> {
   const hasil = await finalisasiTx(user, inspectionId, input);
+  if (!("ditolak" in hasil)) {
+    // Papan, antrean tinjauan, dan temuan staf; paket kerja rekan satu unit (jadwal aset ini).
+    terbitkan({ t: "inspeksi", id: inspectionId }, { staf: true, unit: user.divisionId });
+  }
   if ("ditolak" in hasil) {
     // Dilempar SETELAH transaksi selesai supaya baris audit penolakan tetap tersimpan.
     throw new GalatApi(422, "di_luar_kawasan", pesanDitolak(hasil.ditolak.jarakKeKawasanM), {

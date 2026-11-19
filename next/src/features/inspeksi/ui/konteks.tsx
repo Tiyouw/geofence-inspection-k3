@@ -4,6 +4,7 @@ import { deleteDB } from "idb";
 import { usePathname } from "next/navigation";
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bukaDb, getMeta, namaDb, setPenggunaAktif, tutupDb, type DbAkun } from "../client/db";
+import { useRealtime, type KonfigurasiRealtime } from "@/lib/realtime/use-realtime";
 import { segarkanPaket, sinkronJam } from "../client/aksi";
 import { KANAL, kurasSekarang, pasangPemicu, umumkan } from "../client/sinkron";
 import type { DrafLokal, OutboxOp, PaketKerja, Terkirim } from "../client/types";
@@ -74,7 +75,7 @@ async function bacaSemua(db: DbAkun): Promise<DataLokal> {
   };
 }
 
-export function PetugasProvider({ userId, children }: { userId: number; children: ReactNode }) {
+export function PetugasProvider({ userId, realtime = null, children }: { userId: number; realtime?: KonfigurasiRealtime; children: ReactNode }) {
   const [db, setDb] = useState<DbAkun | null>(null);
   const [data, setData] = useState<DataLokal>(KOSONG);
   const [siap, setSiap] = useState(false);
@@ -154,6 +155,21 @@ export function PetugasProvider({ userId, children }: { userId: number; children
     terakhirSegar.current = Date.now();
     void segarkanPaket(d).then(() => baca());
   }, [pathname, baca]);
+
+  // Realtime (ADR K-12): perubahan aset, area, jadwal, atau inspeksi rekan satu unit memicu
+  // pengunduhan ulang paket kerja. Hanya membaca; antrean luring (outbox) tidak disentuh.
+  const segarPaket = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const segarkanDariPeristiwa = useCallback(() => {
+    if (segarPaket.current) return;
+    segarPaket.current = setTimeout(() => {
+      segarPaket.current = undefined;
+      const d = dbRef.current;
+      if (!d || !navigator.onLine) return;
+      terakhirSegar.current = Date.now();
+      void segarkanPaket(d).then(() => baca());
+    }, 300);
+  }, [baca]);
+  useRealtime(realtime, segarkanDariPeristiwa, segarkanDariPeristiwa);
 
   // Lencana ikon aplikasi: jumlah inspeksi yang belum diterima peladen (SPEC §7.9).
   const antre = data.drafts.filter((d) => d.status !== "draf").length;

@@ -5,6 +5,8 @@ import { db } from "@/db";
 import { auditLogs } from "@/db/schema";
 import { AksesDitolak, assertRole, type SessionUser } from "@/lib/auth/guards";
 import { PERAN_PENINJAU } from "@/lib/domain/constants";
+import { peristiwaDariAudit } from "@/lib/realtime/saluran";
+import { terbitkan } from "@/lib/realtime/server";
 import { galatKolom } from "../lib/skema";
 
 /** Hasil setiap Server Action admin; tidak pernah melempar ke klien untuk galat yang diharapkan. */
@@ -88,7 +90,11 @@ async function ipKlien(): Promise<string | null> {
     }
 }
 
-/** Jejak aksi penting di audit_logs (ARCHITECTURE §7). Jangan pernah menyimpan sandi atau token. */
+/**
+ * Jejak aksi penting di audit_logs (ARCHITECTURE §7). Jangan pernah menyimpan sandi atau token.
+ * Sekaligus titik terbit peristiwa realtime (ADR K-12): terkirim setelah jawaban, jadi setelah
+ * transaksi selesai. Isinya hanya jenis dan id, bukan `data`.
+ */
 export async function catatAudit(
     tx: DbAtauTx,
     user: Pick<SessionUser, "id">,
@@ -105,6 +111,8 @@ export async function catatAudit(
         data: data ?? null,
         ip: await ipKlien(),
     });
+    const ev = peristiwaDariAudit(aksi, String(entitasId));
+    if (ev) terbitkan(ev.p, ev.s);
 }
 
 /** Kode galat Postgres unique_violation. */
