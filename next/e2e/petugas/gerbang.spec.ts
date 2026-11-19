@@ -108,6 +108,8 @@ test("jauh di luar galangan: ditolak, tetap draf, dicatat di jejak audit", async
   );
   expect(audit).toHaveLength(1);
   expect(audit[0]!.data.jarakKeKawasanM).toBeGreaterThanOrEqual(495);
+  // Denah rahasia: koordinat penolakan tidak disimpan di jejak audit.
+  expect(audit[0]!.data.lat).toBeUndefined();
 });
 
 test("sinyal lemah: penjelasan, pilihan tunggu atau kirim, akurasi disimpan", async ({ page, context }) => {

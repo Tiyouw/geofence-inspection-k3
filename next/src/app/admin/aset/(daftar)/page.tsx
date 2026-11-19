@@ -191,7 +191,7 @@ export default async function DaftarAset({ searchParams }: PageProps<"/admin/ase
                                 </td>
                                 <td data-label="Titik di peta">
                                     {a.lat != null && a.lng != null ? (
-                                        <span title={`${a.lat}, ${a.lng}`} aria-label={`Koordinat ${a.lat}, ${a.lng}`}>
+                                        <span title="Bertitik di peta" aria-label="Bertitik di peta">
                                             <Check className="size-4 text-success" aria-hidden />
                                         </span>
                                     ) : (

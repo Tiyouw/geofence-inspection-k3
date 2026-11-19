@@ -13,6 +13,7 @@ import {
     users,
 } from "@/db/schema";
 import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
+import { capKoordinatAktif } from "@/lib/foto/pengaturan";
 import { GATE_PERLU_TINJAUAN } from "@/lib/domain/constants";
 import { lokasiTemuan } from "@/lib/domain/temuan";
 
@@ -192,7 +193,7 @@ export async function detailTinjauan(id: string) {
         .where(eq(inspections.id, id));
     if (!i) return null;
 
-    const [kawasan, jawaban, foto] = await Promise.all([
+    const [kawasan, jawaban, foto, koordinatTampil] = await Promise.all([
         db
             .select({ id: areas.id, nama: areas.nama, polygon: areas.polygon })
             .from(areas)
@@ -224,12 +225,15 @@ export async function detailTinjauan(id: string) {
             .orderBy(asc(checklistGroups.urut), asc(checklistItems.urut)),
         // Tautan foto ke butir diturunkan dari langkahnya (kamera terpandu, sesi C).
         fotoPerButir(id),
+        // Koordinat mentah hanya bila admin menyalakan pengaturan koordinat (bawaan mati, denah rahasia).
+        capKoordinatAktif(),
     ]);
 
     return {
         ...i,
         menunggu: i.status === "final" && i.ditinjauPada === null && (GATE_PERLU_TINJAUAN.includes(i.gateStatus) || i.restrictedArea),
         kawasan,
+        koordinatTampil,
         butir: jawaban,
         foto,
     };

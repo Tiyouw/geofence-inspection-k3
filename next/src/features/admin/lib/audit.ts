@@ -264,7 +264,8 @@ function bandingkan(
         const a = dari[k] ?? null;
         const b = ke[k] ?? null;
         if (JSON.stringify(a) === JSON.stringify(b)) continue;
-        if (KUNCI_KOORDINAT.test(k)) {
+        // `titikPeta`: tanda titik berubah tanpa nilai (baris sejak 19 Nov 2026); lat/lng: baris lama.
+        if (KUNCI_KOORDINAT.test(k) || k === "titikPeta") {
             titikBerubah = true;
             continue;
         }

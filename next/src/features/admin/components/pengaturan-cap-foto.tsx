@@ -16,10 +16,10 @@ export function PengaturanCapFoto({ awal }: { awal: boolean }) {
         <label className="mb-4 flex items-start gap-3 rounded-[var(--a-radius-kartu,16px)] border bg-card p-4 text-sm" data-testid="pengaturan-cap-foto">
             <Camera className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="min-w-0 flex-1">
-                <b className="block">Tampilkan koordinat pada cap foto</b>
+                <b className="block">Tampilkan koordinat pada cap foto dan detail tinjauan</b>
                 <span className="text-muted-foreground">
-                    Cap foto selalu memuat waktu, area, kode aset, inspektur, dan akurasi GPS. Koordinat bawaan disembunyikan karena denah
-                    bersifat rahasia. Foto asli tidak diubah.
+                    Cap foto selalu memuat waktu, area, kode aset, inspektur, dan akurasi GPS. Koordinat (di cap foto, PDF, dan baris
+                    Koordinat pada detail tinjauan) bawaan disembunyikan karena denah bersifat rahasia. Foto asli tidak diubah.
                 </span>
             </span>
             <input

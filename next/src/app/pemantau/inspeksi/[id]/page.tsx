@@ -96,7 +96,9 @@ export default async function DetailInspeksiPage({ params }: PageProps<"/pemanta
                 {i.jarakKeAreaM != null ? `${i.jarakKeAreaM} m dari tepi ${d.area?.nama ?? "area"}` : "-"}
               </Baris>
               <Baris label="Akurasi GPS">{i.gpsAccuracy != null ? `±${i.gpsAccuracy} m` : "-"}</Baris>
-              <Baris label="Koordinat">{i.gpsLat != null && i.gpsLng != null ? `${i.gpsLat}, ${i.gpsLng}` : "-"}</Baris>
+              {koordinatCap && (
+                <Baris label="Koordinat">{i.gpsLat != null && i.gpsLng != null ? `${i.gpsLat}, ${i.gpsLng}` : "-"}</Baris>
+              )}
             </dl>
           </CardContent>
         </Card>
