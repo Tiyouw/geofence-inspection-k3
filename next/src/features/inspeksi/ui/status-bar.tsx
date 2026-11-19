@@ -6,13 +6,14 @@ import { useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { keluar } from "@/app/(publik)/masuk/actions";
 import { bersihkanPerangkat, useInspektur } from "./konteks";
+import { TautanLapangan } from "./tautan";
 
 /** Indikator koneksi + jumlah antrean di bilah atas (SPEC §7.9). Ketuk untuk membuka Antrean. */
 export function IndikatorKoneksi() {
   const { daring, data } = useInspektur();
   const antre = data.drafts.filter((d) => d.status !== "draf").length;
   return (
-    <a href="/petugas/antrean" className="flex items-center gap-1.5 text-xs font-semibold" role="status" aria-live="polite">
+    <TautanLapangan href="/petugas/antrean" className="flex items-center gap-1.5 text-xs font-semibold" role="status" aria-live="polite">
       <span
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
@@ -27,7 +28,7 @@ export function IndikatorKoneksi() {
           {daring ? `${antre} dalam antrean` : `${antre} menunggu sinyal`}
         </span>
       )}
-    </a>
+    </TautanLapangan>
   );
 }
 

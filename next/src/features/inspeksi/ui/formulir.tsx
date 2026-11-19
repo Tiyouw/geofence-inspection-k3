@@ -2,6 +2,7 @@
 
 import { useKonfirmasi } from "@/components/ui/konfirmasi";
 import { Check, CircleCheck, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { KerangkaKartu } from "@/components/shell/kerangka-muat";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TautanLapangan, pindahLapangan } from "./tautan";
 
 export function Formulir({ inspectionId }: { inspectionId: string }) {
   const { db, data, daring, siap, berubah } = useInspektur();
@@ -57,7 +59,7 @@ export function Formulir({ inspectionId }: { inspectionId: string }) {
       <div className="space-y-4">
         <p className="rounded-lg bg-muted p-4 text-sm">Draf tidak ditemukan di perangkat ini. Pindai ulang stiker untuk memulai.</p>
         <Button asChild variant="brand">
-          <a href="/petugas/pindai">Pindai stiker</a>
+          <TautanLapangan href="/petugas/pindai">Pindai stiker</TautanLapangan>
         </Button>
       </div>
     );
@@ -107,10 +109,10 @@ function AksiLanjut() {
   return (
     <div className="grid grid-cols-2 gap-3">
       <Button asChild variant="brand" size="lg" className={cn(KONTROL, "h-14 text-base")}>
-        <a href="/petugas/pindai">Pindai berikutnya</a>
+        <TautanLapangan href="/petugas/pindai">Pindai berikutnya</TautanLapangan>
       </Button>
       <Button asChild variant="outline" size="lg" className={cn(KONTROL, "h-14 text-base")}>
-        <a href="/petugas">Ke beranda</a>
+        <TautanLapangan href="/petugas">Ke beranda</TautanLapangan>
       </Button>
     </div>
   );
@@ -125,6 +127,7 @@ function IsiDraf(props: { draf: DrafLokal; daring: boolean; berubah: () => void 
 
 function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring: boolean; berubah: () => void; aset: AsetPaket }) {
   const { db, data } = useInspektur();
+  const router = useRouter();
   const paket = data.paket!;
   const grup = useMemo(() => paket.checklist[aset.assetTypeId] ?? [], [paket, aset]);
   const items = useMemo(() => butirUntuk(paket, aset.assetTypeId), [paket, aset]);
@@ -372,9 +375,7 @@ function IsiDrafAset({ draf, daring, berubah, aset }: { draf: DrafLokal; daring:
             if (!ya) return;
             await buangDraf(db!, draf.inspectionId);
             berubah();
-            // navigasi penuh: halaman lapangan dilayani service worker saat luring
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-            window.location.assign("/petugas");
+            pindahLapangan(router, "/petugas");
           }}
         >
           Buang draf

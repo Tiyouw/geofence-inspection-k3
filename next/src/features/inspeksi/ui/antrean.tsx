@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { statusAntrean } from "../client/status";
 import { Cip, GambarAset, JudulBagian, KARTU, Kartu, Pita } from "./a";
 import { useInspektur } from "./konteks";
+import { TautanLapangan } from "./tautan";
 
 export function formatUkuran(b: number) {
   if (b < 1024 * 1024) return `${Math.max(1, Math.round(b / 1024))} KB`;
@@ -90,7 +91,7 @@ export function Antrean() {
               const f = data.fotoPerInspeksi[d.inspectionId];
               return (
                 <li key={d.inspectionId}>
-                  <a href={`/petugas/isi?id=${d.inspectionId}`} className="flex min-h-16 items-center gap-3 py-3">
+                  <TautanLapangan href={`/petugas/isi?id=${d.inspectionId}`} className="flex min-h-16 items-center gap-3 py-3">
                     {a && <GambarAset aset={a} />}
                     <span className="min-w-0 flex-1">
                       <b className="block">{a?.kode ?? "Aset"}</b>
@@ -108,7 +109,7 @@ export function Antrean() {
                       {st.label}
                     </Cip>
                     <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-                  </a>
+                  </TautanLapangan>
                 </li>
               );
             })}
