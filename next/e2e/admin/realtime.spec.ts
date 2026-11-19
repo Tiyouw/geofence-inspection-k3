@@ -6,15 +6,15 @@ import { buatInspeksiAntre } from "./data";
  * ADR K-12: perubahan oleh pengguna A tampil di layar pengguna B dalam beberapa detik tanpa
  * B memuat ulang. Di CI peristiwa lewat peladen tiruan Ably (e2e/realtime-tiruan.mjs).
  */
-test("tinjauan oleh pemantau hilang dari antrean admin yang sedang terbuka dalam beberapa detik", async ({
+test("tinjauan oleh admin hilang dari antrean pemantau yang sedang terbuka dalam beberapa detik", async ({
     page,
     browser,
 }) => {
     const insp = await buatInspeksiAntre("sesuai", { terbatas: true });
 
-    // B: admin membuka antrean tinjauan dan tetap di sana.
-    await masuk(page, "admin");
-    await page.goto("/admin/tinjauan");
+    // B: pemantau membuka antrean tinjauan dan tetap di sana.
+    await masuk(page, "pemantau");
+    await page.goto("/pemantau/tinjauan");
     await expect(page.locator("html")).toHaveAttribute("data-realtime", "tersambung", { timeout: 15_000 });
     const barisB = page
         .getByRole("table", { name: "Antrean tinjauan" })
@@ -23,11 +23,11 @@ test("tinjauan oleh pemantau hilang dari antrean admin yang sedang terbuka dalam
     await expect(barisB.first()).toBeVisible();
     await page.evaluate(() => ((window as unknown as { __tanpaMuatUlang: boolean }).__tanpaMuatUlang = true));
 
-    // A: pemantau di peramban lain memutuskan tinjauan.
+    // A: admin di peramban lain memutuskan tinjauan.
     const ctx = await browser.newContext();
     const a = await ctx.newPage();
-    await masuk(a, "pemantau");
-    await a.goto(`/pemantau/tinjauan/${insp.id}`);
+    await masuk(a, "admin");
+    await a.goto(`/admin/tinjauan/${insp.id}`);
     await a.getByText("Diterima", { exact: true }).click();
     await a.getByLabel("Catatan tinjauan").fill("Diperiksa ulang lewat telepon, petugas memang di lokasi.");
     await a.getByRole("button", { name: "Simpan tinjauan" }).click();
@@ -41,7 +41,7 @@ test("tinjauan oleh pemantau hilang dari antrean admin yang sedang terbuka dalam
     });
     const jedaMs = Date.now() - t0;
     test.info().annotations.push({ type: "jeda-realtime-ms", description: String(jedaMs) });
-    console.log(`[realtime] jeda tinjauan A -> antrean B: ${jedaMs} ms`);
+    console.log(`[realtime] jeda tinjauan admin -> antrean pemantau: ${jedaMs} ms`);
     // Halaman B tidak dimuat ulang penuh: hanya isinya yang disegarkan.
     expect(await page.evaluate(() => (window as unknown as { __tanpaMuatUlang?: boolean }).__tanpaMuatUlang)).toBe(
         true,
