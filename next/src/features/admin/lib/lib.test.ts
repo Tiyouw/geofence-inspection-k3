@@ -69,6 +69,23 @@ describe("dasbor (I3, I4, I6)", () => {
         ...o,
     });
 
+    it("titik di luar kawasan tidak digambar dan ditandai (bug 19 Nov: titik seed lama di permukiman)", () => {
+        const kawasan = { type: "Polygon" as const, coordinates: [[[112.69, -7.21], [112.71, -7.21], [112.71, -7.19], [112.69, -7.19], [112.69, -7.21]]] as [number, number][][] };
+        const { titik, tanpaTitik, luarKawasan } = titikPeta(
+            [
+                aset({ id: 1, lat: -7.2, lng: 112.7 }),
+                aset({ id: 2, lat: -8.186, lng: 113.706, areaId: 5 }),
+                aset({ id: 3, lat: null, lng: null }),
+            ],
+            kawasan,
+        );
+        expect(titik.map((t) => t.id)).toEqual([1]);
+        expect(luarKawasan).toEqual([{ id: 2, kode: "01D", area: "Gedung PIP · Lt. 1", areaId: 5 }]);
+        expect(tanpaTitik).toBe(1);
+        // Tanpa kawasan disetujui: semua titik berkoordinat tetap digambar.
+        expect(titikPeta([aset({ id: 2, lat: -8.186, lng: 113.706 })]).titik).toHaveLength(1);
+    });
+
     it("aset tanpa koordinat dihitung tetapi tidak digambar; status dan tanda tinjau benar", () => {
         const { titik, tanpaTitik } = titikPeta([
             aset({ id: 1 }),

@@ -129,3 +129,17 @@ describe("validasiGeometri", () => {
     expect(n.type === "Polygon" && n.coordinates[0].length).toBe(5);
   });
 });
+
+describe("titikWakil", () => {
+  it("titik tengah untuk poligon cembung, titik di dalam untuk poligon cekung (L)", async () => {
+    const { titikWakil, titikDalamPoligon } = await import("../geometri");
+    const kotak = { type: "Polygon" as const, coordinates: [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]] as [number, number][][] };
+    expect(titikWakil(kotak)).toEqual({ lng: 1, lat: 1 });
+    const L = {
+      type: "Polygon" as const,
+      coordinates: [[[0, 0], [10, 0], [10, 1], [1, 1], [1, 10], [0, 10], [0, 0]]] as [number, number][][],
+    };
+    const t = titikWakil(L)!;
+    expect(titikDalamPoligon(t, L)).toBe(true);
+  });
+});

@@ -3,6 +3,7 @@
  * Peninjau melihat foto per butir, titik GPS di atas poligon gedung dan kawasan, akurasi, dan
  * alasan masuk antrean, lalu memutuskan Diterima atau Ditolak dengan catatan.
  */
+import { batasTinjauan } from "./peta";
 import Link from "next/link";
 import { FotoPerButir } from "@/features/inspeksi/ui/foto-per-butir";
 import { Peta, type LingkaranTampil, type PoligonTampil, type TitikTampil } from "@/features/admin/components/peta";
@@ -219,12 +220,24 @@ export function PanelTinjauan({ d, hrefTemuan }: { d: DetailTinjauan; hrefTemuan
                             titik={titik}
                             poligon={poligon}
                             lingkaran={lingkaran}
+                            batas={batasTinjauan({
+                                area: d.areaPoligon ?? null,
+                                kawasan: d.kawasan?.polygon ?? null,
+                                aset: d.asetLat != null && d.asetLng != null ? { lat: d.asetLat, lng: d.asetLng } : null,
+                                inspektur:
+                                    d.gpsLat != null && d.gpsLng != null ? { lat: d.gpsLat, lng: d.gpsLng, akurasi: d.gpsAccuracy } : null,
+                            })}
                             tinggi={340}
                             label="Peta posisi inspektur, poligon area aset, dan kawasan"
                         />
                     ) : (
                         <p className="text-sm text-muted-foreground">
                             Tidak ada posisi atau poligon untuk ditampilkan.
+                        </p>
+                    )}
+                    {!d.bergerak && !d.areaPoligon && (
+                        <p className="mt-2 text-xs text-muted-foreground" data-testid="tanpa-poligon-area">
+                            Area aset belum punya poligon yang disetujui; peta memakai titik aset.
                         </p>
                     )}
                     <dl className="mt-3 divide-y">

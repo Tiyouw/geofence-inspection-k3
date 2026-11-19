@@ -19,6 +19,8 @@ export type SlotProgres = AsetProgres & {
     periode: string;
     lat: number | null;
     lng: number | null;
+    /** Area aset (untuk menaruh titik di poligon areanya). */
+    areaId: number | null;
 };
 
 /**
@@ -73,6 +75,7 @@ export async function progres(opsi: OpsiProgres = {}, now = new Date()) {
                       area: areas.nama,
                       lat: assets.lat,
                       lng: assets.lng,
+                      areaId: assets.areaId,
                   })
                   .from(assets)
                   .leftJoin(areas, eq(areas.id, assets.areaId))
@@ -112,6 +115,7 @@ export async function progres(opsi: OpsiProgres = {}, now = new Date()) {
                 lokasi: lokasiTemuan({ lantai: a.lantai, lokasiTeks: a.lokasiTeks }),
                 lat: a.lat,
                 lng: a.lng,
+                areaId: a.areaId,
             });
             // Daftar terurut terbaru dulu: inspeksi pertama di rentang = kesimpulan terakhir periode itu.
             const t = perAset

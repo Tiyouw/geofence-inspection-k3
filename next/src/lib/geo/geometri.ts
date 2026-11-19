@@ -292,3 +292,23 @@ export function normalkanGeometri(g: GeometriArea): GeometriArea {
     ? { type: "Polygon", coordinates: g.coordinates.map(cincin) }
     : { type: "MultiPolygon", coordinates: g.coordinates.map((p) => p.map(cincin)) };
 }
+
+/**
+ * Titik wakil yang pasti di dalam poligon: titik tengah bila di dalam, selain itu titik pertama
+ * dari kisi 15x15 di dalam kotak batas yang jatuh di dalam (poligon cekung, mis. huruf L).
+ */
+export function titikWakil(g: GeometriArea): Titik | null {
+  const t = titikTengah(g);
+  if (t && titikDalamPoligon(t, g)) return t;
+  const luar = daftarPoligon(g)[0]?.[0];
+  if (!luar?.length) return null;
+  const lngs = luar.map((p) => p[0]);
+  const lats = luar.map((p) => p[1]);
+  const [w, e, s, n] = [Math.min(...lngs), Math.max(...lngs), Math.min(...lats), Math.max(...lats)];
+  for (let i = 1; i < 15; i++)
+    for (let j = 1; j < 15; j++) {
+      const p = { lng: w + ((e - w) * i) / 15, lat: s + ((n - s) * j) / 15 };
+      if (titikDalamPoligon(p, g)) return p;
+    }
+  return null;
+}

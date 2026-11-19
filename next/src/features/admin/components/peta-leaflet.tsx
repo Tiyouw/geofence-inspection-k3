@@ -7,7 +7,7 @@
  */
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { batasPeta } from "../lib/dasbor";
 
 export type TitikTampil = {
@@ -59,6 +59,7 @@ export default function PetaLeaflet({
     onPilih,
     poligon,
     lingkaran,
+    batas,
     label = "Peta lokasi aset",
 }: {
     titik: TitikTampil[];
@@ -68,6 +69,8 @@ export default function PetaLeaflet({
     onPilih?: (p: { lat: number; lng: number }) => void;
     poligon?: PoligonTampil[];
     lingkaran?: LingkaranTampil[];
+    /** Bingkai tampilan yang ditentukan pemanggil (mis. peta tinjauan); menggantikan bingkai otomatis. */
+    batas?: [[number, number], [number, number]] | null;
     label?: string;
 }) {
     const wadah = useRef<HTMLDivElement>(null);
@@ -76,6 +79,9 @@ export default function PetaLeaflet({
     const lapisPilih = useRef<L.LayerGroup | null>(null);
     const lapisBentuk = useRef<L.LayerGroup | null>(null);
     const onPilihRef = useRef(onPilih);
+    // Nilai stabil (string) supaya array batas baru tiap render tidak memicu fitBounds berulang.
+    const kunciBatas = batas ? JSON.stringify(batas) : "";
+    const bingkai = useMemo(() => (kunciBatas ? (JSON.parse(kunciBatas) as [[number, number], [number, number]]) : null), [kunciBatas]);
     useEffect(() => {
         onPilihRef.current = onPilih;
     }, [onPilih]);
@@ -120,8 +126,9 @@ export default function PetaLeaflet({
             batas.extend(lapis.getBounds());
         }
         for (const t of titik) batas.extend([t.lat, t.lng]);
-        if (batas.isValid() && (poligon?.length || lingkaran?.length)) m.fitBounds(batas, { padding: [24, 24], maxZoom: 18 });
-    }, [poligon, lingkaran, titik]);
+        if (bingkai) m.fitBounds(bingkai, { padding: [32, 32], maxZoom: 18 });
+        else if (batas.isValid() && (poligon?.length || lingkaran?.length)) m.fitBounds(batas, { padding: [24, 24], maxZoom: 18 });
+    }, [poligon, lingkaran, titik, bingkai]);
 
     useEffect(() => {
         const m = peta.current;
@@ -143,11 +150,11 @@ export default function PetaLeaflet({
             c.bindPopup(isi);
             c.bindTooltip(esc(t.judul));
         }
-        if (!pilih && !poligon?.length && !lingkaran?.length) {
+        if (!pilih && !bingkai && !poligon?.length && !lingkaran?.length) {
             const b = batasPeta(titik);
             if (b) m.fitBounds(b, { padding: [24, 24], maxZoom: 18 });
         }
-    }, [titik, pilih, poligon, lingkaran]);
+    }, [titik, pilih, poligon, lingkaran, bingkai]);
 
     useEffect(() => {
         const m = peta.current;
