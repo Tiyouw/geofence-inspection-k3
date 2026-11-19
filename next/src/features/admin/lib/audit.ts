@@ -571,6 +571,28 @@ const PENERJEMAH: Record<string, Penerjemah> = {
             ],
         };
     },
+    "inspeksi.mode_demo": (k) => {
+        const jarak = typeof k.d.jarakKeKawasanM === "number" ? k.d.jarakKeKawasanM : null;
+        const jarakArea = typeof k.d.jarakKeAreaM === "number" ? k.d.jarakKeAreaM : null;
+        const akurasi = typeof k.d.akurasi === "number" ? k.d.akurasi : null;
+        return {
+            ikon: "inspeksi",
+            label: "Inspeksi mode demo",
+            kalimat: [
+                "mengirim inspeksi ",
+                { tegas: namaAset(k.r, k.d.assetId) },
+                jarak !== null
+                    ? ` dari ${formatAngka(jarak)} m di luar kawasan dengan akun demo, masuk antrean tinjauan`
+                    : " dari luar kawasan dengan akun demo, masuk antrean tinjauan",
+            ],
+            detail: [
+                { bidang: "Alasan", ke: LABEL_GATE_ALASAN.mode_demo },
+                ...(jarak !== null ? [{ bidang: "Jarak ke kawasan", ke: `${formatAngka(jarak)} m` }] : []),
+                ...(jarakArea !== null ? [{ bidang: "Jarak ke area aset", ke: `${formatAngka(jarakArea)} m` }] : []),
+                ...(akurasi !== null ? [{ bidang: "Ketelitian GPS", ke: `± ${formatAngka(akurasi)} m` }] : []),
+            ],
+        };
+    },
     "inspeksi.tinjau": (k) => {
         const hasil = teks(k.d.hasil) as HasilTinjauan | null;
         const label = hasil ? (LABEL_HASIL_TINJAUAN[hasil] ?? hasil) : null;

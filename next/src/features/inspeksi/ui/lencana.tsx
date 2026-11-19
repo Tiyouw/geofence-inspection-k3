@@ -25,6 +25,15 @@ export function LencanaGerbang({ status, className }: { status: string; classNam
   return <span className={cn(dasar, NADA_GERBANG[status] ?? NADA_GERBANG.tanpa_gps, className)}>{LABEL_GERBANG[status] ?? status}</span>;
 }
 
+/** Inspeksi akun demo yang diterima dari luar galangan (alasan gerbang `mode_demo`). */
+export function LencanaModeDemo({ className }: { className?: string }) {
+  return (
+    <span className={cn(dasar, "bg-info-soft text-info", className)} data-testid="lencana-mode-demo">
+      Mode demo
+    </span>
+  );
+}
+
 export function LencanaKesimpulan({ k, className }: { k: Kesimpulan; className?: string }) {
   return <span className={cn(dasar, NADA_KESIMPULAN[k], className)}>{LABEL_KESIMPULAN[k]}</span>;
 }

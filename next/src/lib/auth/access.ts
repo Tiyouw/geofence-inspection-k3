@@ -15,7 +15,8 @@ export const AREA_ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/laporan", roles: ["admin", "pemantau"] },
 ];
 
-const PUBLIC_PATHS = ["/", "/masuk", "/offline"];
+/** /panduan: panduan mencoba aplikasi untuk klien (tanpa login), lihat src/features/panduan. */
+const PUBLIC_PATHS = ["/", "/masuk", "/offline", "/panduan"];
 /**
  * /api/* dilewatkan proxy: Route Handler memeriksa sesi sendiri dan membalas 401/403 JSON,
  * bukan pengalihan HTML ke /masuk (antrean luring perlu membedakan "sesi habis").

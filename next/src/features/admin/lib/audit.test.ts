@@ -259,6 +259,7 @@ describe("uraikan: kalimat sehari-hari", () => {
             "area.buat",
             "inspeksi.final",
             "inspeksi.ditolak_lokasi",
+            "inspeksi.mode_demo",
             "inspeksi.tinjau",
             "pengguna.buat",
             "pengguna.ubah",

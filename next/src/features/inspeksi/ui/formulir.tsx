@@ -33,7 +33,7 @@ import { BuktiFoto } from "./bukti-foto";
 import { IsianIsiP3k, type IsianIsi } from "./isian-isi-p3k";
 import { useInspektur } from "./konteks";
 import { KartuLokasi, useKeadaanLokasi } from "./kartu-lokasi";
-import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "./lencana";
+import { LencanaGerbang, LencanaKesimpulan, LencanaModeDemo, LencanaSeverity } from "./lencana";
 import { TemuanDraf } from "./temuan-draf";
 import {
   AlertDialog,
@@ -84,6 +84,7 @@ function Terkirim({ id }: { id: string }) {
       <div className="flex flex-wrap gap-2">
         {s.kesimpulan && <LencanaKesimpulan k={s.kesimpulan} />}
         <LencanaGerbang status={s.gateStatus} />
+        {s.gateAlasan === "mode_demo" && <LencanaModeDemo />}
       </div>
       {s.temuan && s.temuan.length > 0 && (
         <Card className="gap-0 rounded-[var(--a-radius-kartu,16px)] py-0">

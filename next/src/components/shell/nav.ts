@@ -28,6 +28,7 @@ export const NAV_ADMIN: NavItem[] = [
   { href: "/stiker", label: "Stiker QR", icon: "pindai", grup: "Lainnya" },
   { href: "/admin/pengguna", label: "Pengguna", icon: "pengguna", grup: "Lainnya" },
   { href: "/admin/audit", label: "Riwayat perubahan", icon: "riwayat", grup: "Lainnya" },
+  { href: "/admin/masukan", label: "Masukan panduan", icon: "masukan", grup: "Lainnya" },
 ];
 
 export const NAV_PEMANTAU: NavItem[] = [
@@ -41,6 +42,11 @@ export const NAV_PEMANTAU: NavItem[] = [
 /** Menu dengan lencana jumlah antrean pada butir Tinjauan. */
 export function denganLencanaTinjauan(nav: NavItem[], antrean: number): NavItem[] {
   return nav.map((n) => (n.href.endsWith("/tinjauan") && antrean > 0 ? { ...n, lencana: antrean } : n));
+}
+
+/** Lencana jumlah masukan panduan yang belum ditangani. */
+export function denganLencanaMasukan(nav: NavItem[], terbuka: number): NavItem[] {
+  return nav.map((n) => (n.href === "/admin/masukan" && terbuka > 0 ? { ...n, lencana: terbuka } : n));
 }
 
 export const NAV_PETUGAS: NavItem[] = [

@@ -43,6 +43,13 @@
       "when": 1795102390151,
       "tag": "0005_sesi_versi",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795131257945,
+      "tag": "0006_panduan_masukan",
+      "breakpoints": true
     }
   ]
 }

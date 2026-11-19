@@ -15,9 +15,10 @@ import {
   inspections,
   issues,
   schedules,
+  users,
 } from "@/db/schema";
 import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
-import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, TINDAKAN_REKOMENDASI, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
+import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, TINDAKAN_REKOMENDASI, type GateAlasan, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
 import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
 import { bangunTemuan, periksaKirim, waktuResmi, type ButirChecklist, type Temuan } from "@/lib/domain/inspeksi";
@@ -26,6 +27,7 @@ import { identitasDamkar, type AtributDamkar } from "@/lib/domain/modul/damkar";
 import { lokasiTemuan } from "@/lib/domain/temuan";
 import { nilaiGerbangAset } from "@/lib/geo/data";
 import { PESAN_LOKASI_MATI, pesanDitolak, type HasilGerbang } from "@/lib/geo/gerbang";
+import { modeDemoAktif, terapkanModeDemo } from "@/lib/geo/mode-demo";
 import { hariIniJakarta } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth/guards";
 import { hapusFoto, kunciFoto, sha256Hex, simpanFoto } from "@/lib/storage/photos";
@@ -286,6 +288,8 @@ export type HasilFinal = {
   offline: boolean;
   kesimpulan: Kesimpulan;
   gateStatus: GateStatus;
+  /** Alasan `perlu_tinjauan` (mis. `mode_demo`); opsional untuk respons lama. */
+  gateAlasan?: GateAlasan | null;
   jarakM: number | null;
   qrVerified: boolean;
   jumlahFoto: number;
@@ -316,6 +320,7 @@ async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
     offline: i.offline,
     kesimpulan: i.kesimpulan!,
     gateStatus: i.gateStatus,
+    gateAlasan: i.gateAlasan,
     jarakM: i.jarakM,
     qrVerified: i.qrVerified,
     jumlahFoto: n,
@@ -415,7 +420,29 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
 
     // Gerbang lokasi poligon (PRD "Aturan gerbang lokasi", ADR-2/7). Peladen adalah otoritas:
     // dihitung ulang dari posisi mentah dengan poligon yang sudah disetujui.
-    const gerbang = await nilaiGerbangAset(tx, { areaId: aset.areaId, bergerak: tipe.isMobile }, input.gps ?? null);
+    const gerbangAsli = await nilaiGerbangAset(tx, { areaId: aset.areaId, bergerak: tipe.isMobile }, input.gps ?? null);
+    // Mode demo (src/lib/geo/mode-demo.ts): akun demo boleh mengirim dari luar galangan bila sakelar
+    // AKUN_DEMO_LEWATI_KAWASAN=1. Tanda demo dibaca ulang dari DB, bukan dari sesi.
+    let gerbang = gerbangAsli;
+    if (gerbangAsli.hasil === "ditolak" && modeDemoAktif()) {
+      const [u] = await tx.select({ isDemo: users.isDemo }).from(users).where(eq(users.id, user.id)).limit(1);
+      gerbang = terapkanModeDemo(gerbangAsli, { isDemo: u?.isDemo === true, aktif: true });
+      if (gerbang.alasan === "mode_demo") {
+        // Dicatat seperti penolakan: akurasi dan jarak, tanpa koordinat (denah rahasia).
+        await tx.insert(auditLogs).values({
+          userId: user.id,
+          aksi: "inspeksi.mode_demo",
+          entitas: "inspection",
+          entitasId: inspectionId,
+          data: {
+            assetId: aset.id,
+            akurasi: input.gps!.accuracy,
+            jarakKeKawasanM: gerbangAsli.jarakKeKawasanM,
+            jarakKeAreaM: gerbangAsli.jarakKeAreaM,
+          },
+        });
+      }
+    }
     if (gerbang.hasil === "diblokir") throw new GalatApi(422, "lokasi_wajib", PESAN_LOKASI_MATI);
     if (gerbang.hasil === "ditolak") {
       // Penolakan tidak menjadi inspeksi; dicatat di jejak audit dengan koordinat, akurasi, dan jarak

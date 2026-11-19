@@ -52,3 +52,12 @@ describe("saluran realtime", () => {
         expect(bacaPeristiwa("bukan json")).toBeNull();
     });
 });
+
+describe("peristiwa masukan panduan", () => {
+    it("tanda selesai masukan hanya ke saluran staf dan menyegarkan halaman admin saja", async () => {
+        const { peristiwaDariAudit, terdampak } = await import("../saluran");
+        expect(peristiwaDariAudit("masukan.selesai", "abc")).toEqual({ p: { t: "masukan", id: "abc" }, s: { staf: true } });
+        expect(terdampak("masukan", "/admin/masukan")).toBe(true);
+        expect(terdampak("masukan", "/pemantau")).toBe(false);
+    });
+});

@@ -6,7 +6,7 @@ import { IlustrasiModul, KosongModul, modulDari } from "@/components/ilustrasi/m
 import { db } from "@/db";
 import { assets, assetTypes, inspections, issues } from "@/db/schema";
 import { KARTU } from "@/features/inspeksi/ui/a";
-import { LencanaGerbang, LencanaKesimpulan, LencanaSeverity } from "@/features/inspeksi/ui/lencana";
+import { LencanaGerbang, LencanaKesimpulan, LencanaModeDemo, LencanaSeverity } from "@/features/inspeksi/ui/lencana";
 import { requireRole } from "@/lib/auth/guards";
 import { GATE_PERLU_TINJAUAN } from "@/lib/domain/constants";
 import { formatWaktu } from "@/lib/format";
@@ -38,6 +38,7 @@ export default async function RiwayatPage({ searchParams }: PageProps<"/petugas/
         inspectedAt: inspections.inspectedAt,
         kesimpulan: inspections.kesimpulan,
         gateStatus: inspections.gateStatus,
+        gateAlasan: inspections.gateAlasan,
         offline: inspections.offline,
         ditinjauPada: inspections.ditinjauPada,
       })
@@ -113,6 +114,7 @@ export default async function RiwayatPage({ searchParams }: PageProps<"/petugas/
                 <div className="flex flex-col items-end gap-1">
                   {r.kesimpulan && <LencanaKesimpulan k={r.kesimpulan} />}
                   <LencanaGerbang status={r.gateStatus} />
+                  {r.gateAlasan === "mode_demo" && <LencanaModeDemo />}
                   {r.ditinjauPada && <span className="text-[11px] text-muted-foreground">sudah ditinjau</span>}
                 </div>
               </div>
