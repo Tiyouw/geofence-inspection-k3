@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -96,6 +96,8 @@ export async function ubahPengguna(id: number, _prev: unknown, fd: FormData): Pr
                         jabatan: d.jabatan,
                         aktif: d.aktif,
                         ...(d.password ? { passwordHash: await bcrypt.hash(d.password, BIAYA_BCRYPT) } : {}),
+                        // Sandi baru, peran lain, atau nonaktif: sesi lama akun itu berakhir.
+                        ...(d.password || d.role !== lama.role || (!d.aktif && lama.aktif) ? { sesiVersi: sql`${users.sesiVersi} + 1` } : {}),
                     })
                     .where(eq(users.id, id));
                 await catatAudit(tx, user, "pengguna.ubah", "user", id, {
@@ -125,7 +127,7 @@ export async function aturAktifPengguna(id: number, aktif: boolean): Promise<Has
                 return { ok: false, status: 403, pesan: "Anda tidak bisa menonaktifkan akun sendiri." };
             const [r] = await db
                 .update(users)
-                .set({ aktif: d.aktif })
+                .set({ aktif: d.aktif, ...(d.aktif ? {} : { sesiVersi: sql`${users.sesiVersi} + 1` }) })
                 .where(eq(users.id, d.id))
                 .returning({ nip: users.nip });
             if (!r) return { ok: false, status: 404, pesan: "Akun tidak ditemukan." };
@@ -148,7 +150,7 @@ export async function terbitkanSandi(id: number): Promise<HasilAksi<{ sandi: str
         const hasil = await db.transaction(async (tx) => {
             const [r] = await tx
                 .update(users)
-                .set({ passwordHash: await bcrypt.hash(sandi, BIAYA_BCRYPT) })
+                .set({ passwordHash: await bcrypt.hash(sandi, BIAYA_BCRYPT), sesiVersi: sql`${users.sesiVersi} + 1` })
                 .where(eq(users.id, userId))
                 .returning({ nip: users.nip });
             if (!r) return null;

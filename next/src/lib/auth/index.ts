@@ -122,7 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const wadah = wadahPeran.getStore();
         if (wadah) wadah.role = user.role;
 
-        return { id: String(user.id), name: user.name, email: user.email, role: user.role, nip: user.nip };
+        return { id: String(user.id), name: user.name, email: user.email, role: user.role, nip: user.nip, sesiVersi: user.sesiVersi };
       },
     }),
   ],

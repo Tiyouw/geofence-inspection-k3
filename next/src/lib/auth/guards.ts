@@ -35,11 +35,14 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       jabatan: users.jabatan,
       divisionId: users.divisionId,
       aktif: users.aktif,
+      sesiVersi: users.sesiVersi,
     })
     .from(users)
     .where(eq(users.id, id))
     .limit(1);
   if (!u || !u.aktif) return null;
+  // Sandi diganti, peran diubah, atau akun dinonaktifkan sesudah token ini terbit: sesi berakhir.
+  if ((session?.user?.sesiVersi ?? 0) < u.sesiVersi) return null;
   return { id: u.id, name: u.name, nip: u.nip, role: u.role, jabatan: u.jabatan, divisionId: u.divisionId };
 });
 
