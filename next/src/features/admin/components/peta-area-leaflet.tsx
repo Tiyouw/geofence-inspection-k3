@@ -113,6 +113,7 @@ export default function PetaAreaLeaflet({
     const pilihRef = useRef(pilihId);
     /** Pilihan terakhir berasal dari klik di peta: jangan pindahkan peta. */
     const dariPeta = useRef(false);
+    const kanvasTitik = useRef<L.Canvas | null>(null);
     const cb = useRef({ onPilih, onSunting, onKlikPeta });
     useEffect(() => {
         cb.current = { onPilih, onSunting, onKlikPeta };
@@ -126,8 +127,10 @@ export default function PetaAreaLeaflet({
             maxNativeZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(m);
-        // Pane sorot di atas poligon (overlayPane 400), di bawah titik aset (markerPane 600).
+        // Pane sorot di atas poligon (overlayPane 400), di bawah penanda (markerPane 600); pane titik
+        // (kanvas titik aset) di bawah poligon.
         m.createPane("sorot").style.zIndex = "450";
+        m.createPane("titik").style.zIndex = "350";
         m.getPane("sorot")!.style.pointerEvents = "none";
         lapis.current = {
             poligon: L.layerGroup().addTo(m),
@@ -142,6 +145,7 @@ export default function PetaAreaLeaflet({
         return () => {
             m.remove();
             peta.current = null;
+            kanvasTitik.current = null;
         };
     }, []);
 
@@ -212,8 +216,14 @@ export default function PetaAreaLeaflet({
         const g = lapis.current?.aset;
         if (!g) return;
         g.clearLayers();
+        // Ratusan titik aset digambar di satu kanvas, bukan satu <path> SVG per titik: di ponsel
+        // lambat, SVG membuat halaman Lokasi tertahan ~1 detik. Poligon tetap SVG (kelas CSS, uji).
+        // Kanvas di pane "titik" di bawah poligon: kanvas menangkap semua klik di atasnya, jadi
+        // bila di atas poligon, poligon tak bisa dipilih lagi.
+        const kanvas = (kanvasTitik.current ??= L.canvas({ padding: 0.5, pane: "titik" }));
         for (const a of aset) {
             L.circleMarker([a.lat, a.lng], {
+                renderer: kanvas,
                 radius: 4,
                 color: "#fff",
                 weight: 1,
