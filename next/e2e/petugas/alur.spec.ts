@@ -67,6 +67,13 @@ test.describe("daring", () => {
     const fotos = await q<{ content_type: string; width: number }>("select content_type, width from inspection_photos where inspection_id = $1", [id]);
     expect(fotos).toHaveLength(5);
     expect(fotos.every((f) => f.content_type === "image/jpeg" && f.width > 0 && f.width <= 1600)).toBe(true);
+    // Bukti tetap: tautan foto → butir disalin saat final; 5 langkah APAR mencakup 10 butir.
+    const tautan = await q<{ n: number; butir: number }>(
+      "select count(*)::int n, count(distinct pi.checklist_item_id)::int butir from inspection_photo_items pi join inspection_photos p on p.id = pi.photo_id where p.inspection_id = $1",
+      [id],
+    );
+    expect(tautan[0]!.n).toBeGreaterThan(0);
+    expect(tautan[0]!.butir).toBe(10);
     const [jadwal] = await q<{ status: string }>("select status from schedules where inspection_id = $1", [id]);
     expect(jadwal?.status).toBe("selesai");
     expect((await q("select 1 from inspection_answers where inspection_id = $1", [id])).length).toBe(10);
