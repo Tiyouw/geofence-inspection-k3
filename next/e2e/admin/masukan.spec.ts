@@ -7,7 +7,7 @@ test("masukan dari panduan sampai ke halaman admin", async ({ page, browser }) =
     const tamu = await browser.newContext();
     const p = await tamu.newPage();
     await p.goto("/panduan");
-    await expect(p.getByRole("heading", { level: 1 })).toContainText("Coba PAL-K3 v2");
+    await expect(p.getByRole("heading", { level: 1 })).toContainText("Coba Geofence Inspection K3");
     await expect(p.locator(".pd[data-siap]")).toBeAttached();
     await p.keyboard.press("ArrowRight");
     await expect(p.getByRole("heading", { level: 1 })).toContainText("Kartu kertas");

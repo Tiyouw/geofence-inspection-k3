@@ -57,6 +57,13 @@
       "when": 1795132643511,
       "tag": "0007_awalan_token_gik3",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795151913508,
+      "tag": "0008_onboarding",
+      "breakpoints": true
     }
   ]
 }

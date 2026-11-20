@@ -76,7 +76,7 @@ export function Beranda({ namaDepan }: { namaDepan: string }) {
       ) : !paket ? (
         <Kartu className="text-sm">{daring ? "Mengunduh data stiker…" : "Data stiker belum diunduh. Buka aplikasi sekali saat ada sinyal."}</Kartu>
       ) : (
-        <Kartu className="space-y-3">
+        <Kartu className="space-y-3" data-tur="progres">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Periode {tgl(periode!.mulai, { month: "long", year: "numeric" })}</p>
