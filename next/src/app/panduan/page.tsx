@@ -8,11 +8,29 @@ import { Panduan } from "@/features/panduan/panduan";
 import { SLIDES } from "@/features/panduan/slides";
 import "./panduan.css";
 
-export const metadata: Metadata = {
-    title: "Panduan mencoba",
-    description: "Panduan langkah demi langkah mencoba Geofence Inspection K3 sebagai inspektur, admin, dan pemantau.",
-    robots: { index: false, follow: false },
-};
+const DESKRIPSI = "Panduan langkah demi langkah mencoba Geofence Inspection K3 sebagai inspektur, admin, dan pemantau.";
+
+/** Pratinjau tautan (WhatsApp dll.): og:image absolut dari host permintaan ini. */
+export async function generateMetadata(): Promise<Metadata> {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+    return {
+        metadataBase: new URL(`${proto}://${host}`),
+        title: "Panduan mencoba",
+        description: DESKRIPSI,
+        robots: { index: false, follow: false },
+        openGraph: {
+            type: "website",
+            locale: "id_ID",
+            siteName: "Geofence Inspection K3",
+            title: "Panduan mencoba Inspeksi K3",
+            description: DESKRIPSI,
+            url: "/panduan",
+        },
+        twitter: { card: "summary_large_image", title: "Panduan mencoba Inspeksi K3", description: DESKRIPSI },
+    };
+}
 export const viewport: Viewport = { themeColor: "#031e25" };
 
 const svg = (url: string) => QRCode.toString(url, { type: "svg", errorCorrectionLevel: "M", margin: 4 });
