@@ -1,31 +1,16 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, ExternalLink, KeyRound, Laptop, ListOrdered, Monitor, Smartphone, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ExternalLink, KeyRound, Laptop, ListOrdered, Monitor, RotateCcw, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BrandMark } from "@/components/shell/brand";
 import { IlustrasiModul, type ModulIlustrasi as Modul } from "@/components/ilustrasi/modul";
 import { GerakLayar } from "./gerak";
 import { WidgetMasukan } from "./masukan";
+import { bacaProgres, hapusProgres, LAMA_DILIHAT_MS, tambahDilihat } from "./progres";
 import { AKUN_DEMO, BAB, type Slide, type Sorot } from "./tipe";
 
 const MODUL: Record<string, Modul> = { apar: "apar", p3k: "p3k", hp: "hydrant_pilar", pmk: "mobil_pemadam" };
-const KUNCI_KUNJUNGAN = "pal-k3-panduan-dikunjungi";
-
-function baca<T>(k: string, cadangan: T): T {
-    try {
-        const v = localStorage.getItem(k);
-        return v ? (JSON.parse(v) as T) : cadangan;
-    } catch {
-        return cadangan;
-    }
-}
-function tulis(k: string, v: unknown) {
-    try {
-        localStorage.setItem(k, JSON.stringify(v));
-    } catch {}
-}
-
 const peranData = (s: Slide) => (s.peran === "umum" ? "inspektur" : s.peran);
 
 /**
@@ -47,21 +32,15 @@ export function Panduan({
     const [i, setI] = useState(0);
     const [arah, setArah] = useState<1 | -1>(1);
     const [dikunjungi, setDikunjungi] = useState<string[]>([]);
+    const [progresDimuat, setProgresDimuat] = useState(false);
+    const [konfirmasiReset, setKonfirmasiReset] = useState(false);
+    const [putaranReset, setPutaranReset] = useState(0);
     const [daftarBuka, setDaftarBuka] = useState(false);
     const [pilihMode, setPilihMode] = useState<{ id: string; mode: "gambar" | "langsung" } | null>(null);
     const s = slides[i]!;
     // Pratinjau kembali ke tangkapan layar setiap pindah langkah.
     const mode = pilihMode?.id === s.id ? pilihMode.mode : "gambar";
     const setMode = (m: "gambar" | "langsung") => setPilihMode({ id: s.id, mode: m });
-
-    const tandai = useCallback((id: string) => {
-        setDikunjungi((d) => {
-            if (d.includes(id)) return d;
-            const baru = [...d, id];
-            tulis(KUNCI_KUNJUNGAN, baru);
-            return baru;
-        });
-    }, []);
 
     // Langkah awal dari #id dan langkah yang pernah dibuka (penyimpanan peramban): dibaca setelah
     // hidrasi supaya HTML peladen dan klien sama.
@@ -74,10 +53,9 @@ export function Panduan({
         const r = requestAnimationFrame(() => {
             // Penanda untuk uji E2E: navigasi papan ketik sudah aktif.
             document.querySelector(".pd")?.setAttribute("data-siap", "");
-            const lama = baca<string[]>(KUNCI_KUNJUNGAN, []);
+            setDikunjungi(bacaProgres(localStorage, slides.map((x) => x.id)));
+            setProgresDimuat(true);
             const n = slides.findIndex((x) => `#${x.id}` === hashAwal);
-            const awal = slides[Math.max(n, 0)]!.id;
-            setDikunjungi(lama.includes(awal) ? lama : [...lama, awal]);
             if (n >= 0) setI(n);
         });
         window.addEventListener("hashchange", dariHash);
@@ -86,6 +64,14 @@ export function Panduan({
             window.removeEventListener("hashchange", dariHash);
         };
     }, [slides]);
+
+    // Langkah dicentang hanya setelah benar-benar tampil sebentar: membuka halaman, menahan panah,
+    // atau melompat lewat daftar tidak mencentang langkah yang hanya dilewati.
+    useEffect(() => {
+        if (!progresDimuat) return;
+        const t = setTimeout(() => setDikunjungi((d) => tambahDilihat(localStorage, d, s.id)), LAMA_DILIHAT_MS);
+        return () => clearTimeout(t);
+    }, [progresDimuat, s.id, putaranReset]);
 
     useEffect(() => {
         document.querySelector(".pd-samping [aria-current=step]")?.scrollIntoView({ block: "nearest" });
@@ -97,11 +83,18 @@ export function Panduan({
             setArah(t >= i ? 1 : -1);
             setI(t);
             setDaftarBuka(false);
-            tandai(slides[t]!.id);
             history.replaceState(null, "", `#${slides[t]!.id}`);
         },
-        [i, slides, tandai],
+        [i, slides],
     );
+
+    const resetProgres = () => {
+        hapusProgres(localStorage);
+        setDikunjungi([]);
+        setKonfirmasiReset(false);
+        setPutaranReset((n) => n + 1);
+        ke(0);
+    };
 
     useEffect(() => {
         const tombol = (e: KeyboardEvent) => {
@@ -140,6 +133,35 @@ export function Panduan({
 
     const daftar = (
         <nav aria-label="Semua langkah" className="pd-daftar">
+            <div className="pd-progres-kepala">
+                {konfirmasiReset ? (
+                    <div role="group" aria-label="Konfirmasi reset progres" className="pd-reset-konfirmasi">
+                        <span>Hapus semua centang dan kembali ke langkah 1?</span>
+                        <span className="flex gap-2">
+                            <button type="button" className="pd-btn pd-btn-kecil pd-btn-utama" onClick={resetProgres}>
+                                Ya, reset
+                            </button>
+                            <button type="button" className="pd-btn pd-btn-kecil" onClick={() => setKonfirmasiReset(false)}>
+                                Batal
+                            </button>
+                        </span>
+                    </div>
+                ) : (
+                    <>
+                        <span className="pd-progres-hitung">
+                            {dikunjungi.length}/{slides.length} dilihat
+                        </span>
+                        <button
+                            type="button"
+                            className="pd-btn pd-btn-kecil"
+                            onClick={() => setKonfirmasiReset(true)}
+                            disabled={!dikunjungi.length && i === 0}
+                        >
+                            <RotateCcw className="size-3.5" aria-hidden /> Reset progres
+                        </button>
+                    </>
+                )}
+            </div>
             {perBab.map(({ bab, item }) => (
                 <div key={bab}>
                     <p className="pd-daftar-bab">{bab}</p>
