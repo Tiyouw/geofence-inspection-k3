@@ -10,7 +10,7 @@ import "./panduan.css";
 
 export const metadata: Metadata = {
     title: "Panduan mencoba",
-    description: "Panduan langkah demi langkah mencoba PAL-K3 v2 sebagai inspektur, admin, dan pemantau.",
+    description: "Panduan langkah demi langkah mencoba Geofence Inspection K3 sebagai inspektur, admin, dan pemantau.",
     robots: { index: false, follow: false },
 };
 export const viewport: Viewport = { themeColor: "#031e25" };

@@ -10,7 +10,7 @@ export const SLIDES: Slide[] = [
     "bab": "Pengenalan",
     "peran": "umum",
     "jenis": "sampul",
-    "judul": "Coba PAL-K3 v2, langkah demi langkah",
+    "judul": "Coba Geofence Inspection K3, langkah demi langkah",
     "teks": "Panduan ini memandu kamu mencoba sistem inspeksi K3 dari dua sisi: HP sebagai inspektur di lapangan, dan laptop sebagai admin dan pemantau. Sekitar 30 menit.",
     "langkah": [
       "Siapkan HP (Chrome atau Safari) dan laptop.",
@@ -27,7 +27,7 @@ export const SLIDES: Slide[] = [
       "label": "Buka halaman masuk",
       "href": "/masuk"
     },
-    "id": "pengenalan-coba-pal-k3-v2-langkah-demi-langkah"
+    "id": "pengenalan-coba-aplikasi"
   },
   {
     "bab": "Pengenalan",
@@ -45,7 +45,7 @@ export const SLIDES: Slide[] = [
         ]
       },
       {
-        "judul": "Dengan PAL-K3",
+        "judul": "Dengan Inspeksi K3",
         "butir": [
           "Formulir hanya terbuka setelah stiker QR dipindai",
           "Lokasi HP dan foto jadi bukti pemeriksaan",

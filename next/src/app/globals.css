@@ -325,3 +325,19 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Onboarding varian B (src/features/onboarding): cincin sorot dan kartu naik. */
+.onb-cincin {
+  box-shadow: 0 0 0 3px #f5b700, 0 0 0 9px rgb(245 183 0 / 0.25);
+  transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
+  animation: onb-denyut 1.6s ease-in-out 3;
+}
+@keyframes onb-denyut {
+  50% { box-shadow: 0 0 0 3px #f5b700, 0 0 0 14px rgb(245 183 0 / 0.1); }
+}
+@keyframes onb-naik {
+  from { opacity: 0; transform: translateY(16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onb-cincin { animation: none; transition: none; }
+}

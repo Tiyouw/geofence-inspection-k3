@@ -14,6 +14,9 @@ import { CacheMenu } from "./cache-menu";
 import { saluranUntuk } from "@/lib/realtime/saluran";
 import { konfigurasiKlien } from "@/lib/realtime/server";
 import { SignOutButton } from "./sign-out-button";
+import { TombolBantuan } from "@/features/onboarding/onboarding";
+import { OnboardingPeran } from "@/features/onboarding/peran";
+import { homeFor } from "@/lib/auth/access";
 
 function inisial(nama: string) {
   return nama
@@ -74,6 +77,7 @@ function SidebarBody({ user, nav, homeHref }: { user: SessionUser; nav: NavItem[
       <nav aria-label="Menu utama" className="-mx-1 flex flex-1 flex-col gap-1 overflow-y-auto px-1">
         <MenuBerkelompok nav={nav} />
       </nav>
+      <TombolBantuan varian="samping" beranda={homeFor(user.role)} />
       <UserBlock user={user} />
     </div>
   );
@@ -113,6 +117,8 @@ export function DesktopShell({
       <TautanLewati />
       <PeranDokumen peran={peran} />
       <CacheMenu hrefs={nav.map((n) => n.href)} userId={user.id} realtime={realtimeUntuk(user)} />
+      <OnboardingPeran user={user} beranda={homeFor(user.role)} />
+      <TombolBantuan varian="melayang" beranda={homeFor(user.role)} hanyaDi={nav.map((n) => n.href)} className="lg:hidden print:hidden" />
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 lg:block print:hidden">
         <SidebarBody user={user} nav={nav} homeHref={home} />
       </aside>
@@ -121,7 +127,7 @@ export function DesktopShell({
           <Link href={home} className="text-foreground lg:hidden">
             <Brand accentPin compact />
           </Link>
-          <div className="flex min-w-0 flex-1 justify-end lg:justify-start">{atas}</div>
+          <div className="flex min-w-0 flex-1 justify-end lg:justify-start" data-tur="cari">{atas}</div>
           <span className="hidden shrink-0 text-sm text-muted-foreground lg:block">{hariIni}</span>
           <span
             aria-hidden

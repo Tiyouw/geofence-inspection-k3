@@ -3,6 +3,7 @@
 import { Check, ChevronLeft, ChevronRight, ExternalLink, KeyRound, Laptop, ListOrdered, Monitor, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { BrandMark } from "@/components/shell/brand";
 import { IlustrasiModul, type ModulIlustrasi as Modul } from "@/components/ilustrasi/modul";
 import { GerakLayar } from "./gerak";
 import { WidgetMasukan } from "./masukan";
@@ -167,13 +168,13 @@ export function Panduan({
     return (
         <div className="pd" data-peran={peranData(s)}>
             <header className="pd-atas">
-                <Link href="/" className="pd-merek" aria-label="PAL-K3, beranda">
+                <Link href="/" className="pd-merek" aria-label="Geofence Inspection K3, beranda">
                     <span className="pd-merek-tanda" aria-hidden>
-                        K3
+                        <BrandMark className="size-6" />
                     </span>
                     <span>
                         <b>Panduan</b>
-                        <small className="pd-lebar-saja">PAL-K3 v2 · coba langkah demi langkah</small>
+                        <small className="pd-lebar-saja">Geofence Inspection K3 · coba langkah demi langkah</small>
                     </span>
                 </Link>
                 <ol className="pd-bab" aria-label="Bab">
