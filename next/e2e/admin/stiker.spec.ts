@@ -30,7 +30,7 @@ test.describe("lembar stiker QR (L7, C3, B10)", () => {
         await expect(page.locator(".stiker-label")).toHaveCount(2);
         const token = (await page.locator(".stiker-token").first().textContent())!.trim();
         // Dicetak per 4 karakter supaya mudah diketik ulang sebagai kode cadangan.
-        expect(token).toMatch(/^PAL-K3-[0-9a-f]{4}( [0-9a-f]{4}){7}$/);
+        expect(token).toMatch(/^GIK3-[0-9a-f]{4}( [0-9a-f]{4}){7}$/);
         await expect(page.locator(".stiker-qr svg").first()).toBeVisible();
         // Label: ikon modul (SVG, bukan emoji), nama area, perintah pindai.
         const pertama = page.locator(".stiker-label").first();
@@ -151,7 +151,7 @@ test.describe("lembar stiker QR (L7, C3, B10)", () => {
             await masuk(page, akun);
             await page.goto("/stiker");
             await expect(page).not.toHaveURL(/\/stiker/);
-            expect(await page.content()).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+            expect(await page.content()).not.toMatch(/GIK3-[0-9a-f]{32}/i);
         });
     }
 });

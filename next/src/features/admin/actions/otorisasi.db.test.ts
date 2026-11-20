@@ -213,7 +213,7 @@ describe.skipIf(!adaDb)("otorisasi aksi admin (integrasi)", async () => {
         }[];
         const admin = await cariPanel(qr_token, "admin");
         expect(admin.flatMap((g) => g.hasil)).toEqual([]);
-        expect(JSON.stringify(await cariPanel("01", "admin"))).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(JSON.stringify(await cariPanel("01", "admin"))).not.toMatch(/GIK3-[0-9a-f]{32}/i);
         expect(await cariPanel("%%", "admin")).toEqual([]);
     });
 

@@ -42,7 +42,7 @@ test.describe("tinjauan inspeksi oleh Administrator K3", () => {
         const tamu = await playwright.request.newContext({ baseURL });
         expect((await tamu.get(`/api/foto/${insp.fotoId}`, { maxRedirects: 0 })).status()).not.toBe(200);
         await tamu.dispose();
-        expect(await page.content()).not.toMatch(/blob\.vercel-storage\.com|PAL-K3-[0-9a-f]{32}/i);
+        expect(await page.content()).not.toMatch(/blob\.vercel-storage\.com|GIK3-[0-9a-f]{32}/i);
 
         // Catatan pendek ditolak peladen; isian dipertahankan.
         await page.getByText("Diterima", { exact: true }).click();

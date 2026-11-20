@@ -21,7 +21,7 @@ import { bolehInspeksiAset, pesanAsetUnitLain } from "@/lib/domain/akses";
 import { KESIMPULAN, KONDISI_ISI, MAKS_BYTE_FOTO, MAKS_FOTO, TINDAKAN_REKOMENDASI, type GateAlasan, type GateStatus, type Kesimpulan } from "@/lib/domain/constants";
 import { konteksP3k } from "@/lib/domain/modul/p3k";
 import { maksFotoInspeksi, periksaFotoLangkah } from "@/lib/domain/langkah-foto";
-import { bangunTemuan, periksaKirim, waktuResmi, type ButirChecklist, type Temuan } from "@/lib/domain/inspeksi";
+import { bangunTemuan, normalisasiKodeCadangan, periksaKirim, waktuResmi, type ButirChecklist, type Temuan } from "@/lib/domain/inspeksi";
 import { jatuhTempoUntuk, periodeUntuk } from "@/lib/domain/jadwal";
 import { identitasDamkar, type AtributDamkar } from "@/lib/domain/modul/damkar";
 import { lokasiTemuan } from "@/lib/domain/temuan";
@@ -84,7 +84,9 @@ export async function mulai(user: SessionUser, input: z.infer<typeof startSchema
     const ada = await drafMilik(tx, user, input.inspectionId);
     if (ada) return { inspectionId: ada.id, assetId: ada.assetId, status: ada.status };
 
-    const [aset] = await tx.select().from(assets).where(eq(assets.qrToken, input.token)).limit(1);
+    // Alias awalan lama PAL-K3- (ADR-17): draf luring lama tetap dikenali.
+    const token = normalisasiKodeCadangan(input.token) ?? input.token;
+    const [aset] = await tx.select().from(assets).where(eq(assets.qrToken, token)).limit(1);
     if (!aset) {
       throw new GalatApi(410, "token_tidak_dikenal", "Stiker tidak dikenali. Laporkan ke Admin K3.");
     }
@@ -415,7 +417,7 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
     const scanned = input.scannedAtDevice ? new Date(input.scannedAtDevice) : ins.scannedAtDevice;
     const scannedTerkoreksi = scanned ? new Date(scanned.getTime() + input.deviceClockOffsetMs) : null;
     const qrVerified =
-      input.token === aset.qrToken ||
+      (normalisasiKodeCadangan(input.token) ?? input.token) === aset.qrToken ||
       (!!aset.qrTokenRotatedAt && !!scannedTerkoreksi && scannedTerkoreksi < aset.qrTokenRotatedAt && ins.qrVerified);
 
     // Gerbang lokasi poligon (PRD "Aturan gerbang lokasi", ADR-2/7). Peladen adalah otoritas:

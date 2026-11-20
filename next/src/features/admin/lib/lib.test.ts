@@ -179,7 +179,7 @@ describe("stiker (L7)", () => {
     it("kode dipisah koma, lembar dibagi, URL /i/{token}", () => {
         expect(parseDaftarKode(" 01D, 02A ,,")).toEqual(["01D", "02A"]);
         expect(bagiLembar([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
-        expect(urlStiker("https://x.test/", "PAL-K3-ab")).toBe("https://x.test/i/PAL-K3-ab");
+        expect(urlStiker("https://x.test/", "GIK3-ab")).toBe("https://x.test/i/GIK3-ab");
     });
 });
 
@@ -199,7 +199,7 @@ describe("skema masukan (H2, H8, H6, M3)", () => {
 
     it("aset: lintang tanpa bujur ditolak; koma desimal dibaca; token tidak diterima", () => {
         expect(skemaAset.safeParse({ ...asetSah, lat: "-7,2" }).success).toBe(false);
-        const ok = skemaAset.parse({ ...asetSah, lat: "-7,25", lng: "112,7", qrToken: "PAL-K3-x" });
+        const ok = skemaAset.parse({ ...asetSah, lat: "-7,25", lng: "112,7", qrToken: "GIK3-x" });
         expect(ok.lat).toBe(-7.25);
         expect("qrToken" in ok).toBe(false);
     });

@@ -30,6 +30,7 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { AWALAN_TOKEN_LAMA, AWALAN_TOKEN_QR } from "../src/lib/domain/constants";
 import { kunciFoto, sha256Hex, simpanFoto } from "../src/lib/storage/photos";
 import {
   AKUN_DEMO,
@@ -130,6 +131,8 @@ async function semuaBerkas(dir: string): Promise<string[]> {
   return out;
 }
 
+/** Token v1 berawalan PAL-K3- disimpan dengan awalan v2 GIK3- (ADR-17); isi heks tetap. */
+export const tokenV2 = (t: string) => (t?.startsWith(AWALAN_TOKEN_LAMA) ? AWALAN_TOKEN_QR + t.slice(AWALAN_TOKEN_LAMA.length) : t);
 const jsonb = (v: unknown) => (v == null ? null : JSON.stringify(v));
 
 export async function migrasi(opts: {
@@ -179,7 +182,7 @@ export async function migrasi(opts: {
       ["divisions", "kode", (r: Baris) => r.kode],
       ["users", "nip", (r: Baris) => r.nip],
       ["asset_types", "slug", (r: Baris) => r.slug],
-      ["assets", "qr_token", (r: Baris) => r.qr_token],
+      ["assets", "qr_token", (r: Baris) => tokenV2(r.qr_token as string)],
     ] as const) {
       const peta = new Map(src[t].filter((r) => nilaiDari(r) != null).map((r) => [String(nilaiDari(r)), Number(r.id)]));
       const ada = await c.query<{ id: number; k: string }>(`select id, "${kol}" as k from "${t}"`);
@@ -268,8 +271,9 @@ export async function migrasi(opts: {
         lat: r.lat ?? null,
         lng: r.lng ?? null,
         radius_m: r.radius_m ?? null,
-        // Disalin persis: stiker yang tertempel harus tetap berlaku (SPEC §2.4).
-        qr_token: r.qr_token,
+        // Isi heks disalin persis; awalan PAL-K3- v1 menjadi GIK3- (ADR-17). Stiker lama tetap
+        // terbaca karena pemindai menerima awalan lama sebagai alias.
+        qr_token: tokenV2(r.qr_token as string),
         attributes: jsonb(json(r.attributes as string)),
         tgl_expired: tanggal(r.tgl_expired as string),
         terakhir_dicek: tanggal(r.terakhir_dicek as string),
@@ -511,7 +515,7 @@ export async function migrasi(opts: {
     }
     const token = await c.query<{ id: number; qr_token: string }>("select id, qr_token from assets");
     const tokenTujuan = new Map(token.rows.map((r) => [r.id, r.qr_token]));
-    laporan.verifikasi = { tokenSama: src.assets.every((a) => tokenTujuan.get(Number(a.id)) === a.qr_token), jumlahSama };
+    laporan.verifikasi = { tokenSama: src.assets.every((a) => tokenTujuan.get(Number(a.id)) === tokenV2(a.qr_token as string)), jumlahSama };
 
     if (laporan.audit.diLuarEnum.length) {
       throw new Error(`Ada ${laporan.audit.diLuarEnum.length} nilai di luar enum v2; putuskan pemetaannya dulu (lihat audit.diLuarEnum).`);

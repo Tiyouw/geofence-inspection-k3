@@ -48,7 +48,7 @@ test.describe("panel admin (H1, K1-K6, G11)", () => {
         await expect(dialog.getByText("Tambah aset")).toBeVisible();
         await page.getByRole("combobox", { name: "Kata pencarian" }).fill("01D");
         await expect(dialog.getByRole("option", { name: /^01D · / })).toBeVisible();
-        expect(await dialog.innerHTML()).not.toMatch(/PAL-K3-[0-9a-f]{32}/i);
+        expect(await dialog.innerHTML()).not.toMatch(/GIK3-[0-9a-f]{32}/i);
         await page.getByRole("combobox", { name: "Kata pencarian" }).fill("%_");
         await expect(dialog.getByText("Tidak ada hasil.")).toBeVisible();
         await page.getByRole("combobox", { name: "Kata pencarian" }).fill("01D");

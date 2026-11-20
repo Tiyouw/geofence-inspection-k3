@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { areas, assets, assetTypes } from "@/db/schema";
+import { AWALAN_TOKEN_QR } from "@/lib/domain/constants";
 import { urlStiker, type SaringStiker } from "../lib/stiker";
 
 /** Area berpoligon disetujui (bukan kawasan): pilihan penyaring Area. */
@@ -76,7 +77,8 @@ export async function qrSvg(origin: string, token: string): Promise<string> {
     return QRCode.toString(urlStiker(origin, token), { type: "svg", errorCorrectionLevel: "M", margin: 4 });
 }
 
-/** Token dicetak berkelompok 4 karakter supaya mudah diketik ulang ("PAL-K3-da4f 8df0 …"). */
+/** Token dicetak berkelompok 4 karakter supaya mudah diketik ulang ("GIK3-da4f 8df0 …"). */
 export function tokenTercetak(token: string): string {
-    return token.startsWith("PAL-K3-") ? "PAL-K3-" + (token.slice(7).match(/.{1,4}/g) ?? []).join(" ") : token;
+    if (!token.startsWith(AWALAN_TOKEN_QR)) return token;
+    return AWALAN_TOKEN_QR + (token.slice(AWALAN_TOKEN_QR.length).match(/.{1,4}/g) ?? []).join(" ");
 }

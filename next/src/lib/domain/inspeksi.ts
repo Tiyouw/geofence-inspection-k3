@@ -4,6 +4,7 @@
  * Sumber: SPEC §3.3, §3.4, §3.7, §3.8, §3.9, §7.6.
  */
 import {
+  AWALAN_TOKEN_QR,
   TENGGAT_HARI,
   type AnswerType,
   type Kesimpulan,
@@ -311,6 +312,7 @@ export function ambilToken(teks: string): string | null {
  * Kode cadangan yang diketik dari stiker. Token tercetak kecil dan terpotong ke beberapa baris
  * (dan sejak perbaikan ini dikelompokkan per 4 karakter), sehingga ketikan petugas bisa memuat
  * spasi, baris baru, tanda hubung panjang dari papan ketik ponsel, huruf besar, atau tanpa awalan.
+ * Awalan lama "PAL-K3-" diterima sebagai alias dan diubah ke awalan baru (ADR-17): isi heksnya sama.
  * Huruf O/I/L tidak ada di heksadesimal, jadi dibaca sebagai 0/1 (salah baca stiker yang pudar).
  */
 export function normalisasiKodeCadangan(teks: string): string | null {
@@ -319,9 +321,9 @@ export function normalisasiKodeCadangan(teks: string): string | null {
     .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
     .replace(/[\s\u200B-\u200D\uFEFF]+/g, "")
     .toLowerCase();
-  s = s.replace(/^pal-?k3-?/, "");
+  s = s.replace(/^(?:g[i1l]k3|pal-?k3)-?/, "");
   s = s.replace(/-/g, "").replace(/o/g, "0").replace(/[il]/g, "1");
-  return /^[0-9a-f]{32}$/.test(s) ? "PAL-K3-" + s : null;
+  return /^[0-9a-f]{32}$/.test(s) ? AWALAN_TOKEN_QR + s : null;
 }
 
 /** Mirip nomor aset ("01D", "14A"), bukan token: petugas mengetik nomor besar di stiker. */

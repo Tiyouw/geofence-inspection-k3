@@ -16,9 +16,9 @@ describe("canAccessPath", () => {
 
   it("membatasi area lapangan dan pintasan QR untuk inspektur", () => {
     expect(canAccessPath("inspektur", "/petugas/riwayat")).toBe(true);
-    expect(canAccessPath("inspektur", "/i/PAL-K3-abc")).toBe(true);
+    expect(canAccessPath("inspektur", "/i/GIK3-abc")).toBe(true);
     expect(canAccessPath("admin", "/petugas")).toBe(false);
-    expect(canAccessPath("admin", "/i/PAL-K3-abc")).toBe(false);
+    expect(canAccessPath("admin", "/i/GIK3-abc")).toBe(false);
   });
 
   it("lembar stiker hanya admin; laporan admin dan pemantau", () => {

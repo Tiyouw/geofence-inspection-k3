@@ -50,6 +50,13 @@
       "when": 1795131257945,
       "tag": "0006_panduan_masukan",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795132643511,
+      "tag": "0007_awalan_token_gik3",
+      "breakpoints": true
     }
   ]
 }

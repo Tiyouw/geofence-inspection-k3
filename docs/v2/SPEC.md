@@ -204,7 +204,7 @@ lain tampil di landing sebagai "belum siap" (`app/Http/Controllers/LandingContro
 | lokasi_tipe | string, default `dalam_gedung` | `dalam_gedung`/`bengkel`/`area_terbuka`/`kendaraan` (`..._100003:22`) |
 | lat, lng | decimal(10,7)? | |
 | radius_m | smallint? | override; null = ikut `lokasi_tipe` |
-| qr_token | string(64) **unik** | `PAL-K3-` + 32 hex acak |
+| qr_token | string(64) **unik** | `PAL-K3-` + 32 hex acak (v2: `GIK3-`, ADR-17) |
 | attributes | json? | `{tipe, kapasitas_kg, jenis?}` |
 | tgl_expired | date? | |
 | terakhir_dicek | date? | diisi otomatis saat inspeksi final |
@@ -559,6 +559,7 @@ export const syncReceipts = pgTable('sync_receipts', {           // baru: idempo
 ### 3.1 Token QR
 
 - [ATURAN] Format: `PAL-K3-` + 32 karakter heksadesimal huruf kecil dari 16 byte acak
+  (v2 sejak 19 Nov 2026: awalan `GIK3-`; `PAL-K3-` diterima sebagai alias, lihat ADR-17)
   kriptografis (`Asset.php:64-67`). Dibuat otomatis saat aset dibuat bila kosong (`Asset.php:56-61`).
 - [ATURAN] Token **bukan** nomor aset dan tidak memuat nomor aset (uji `AssetGateTest::token_qr_acak_dan_tidak_memuat_nomor_aset`, `SeedIntegrityTest::token_tidak_memuat_nomor_aset`).
 - [ATURAN] Token **tidak pernah** ada di repo, CSV seed, atau fixture

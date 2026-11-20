@@ -103,7 +103,7 @@ describe("pindai luring dengan cache HMAC (SPEC §7.7)", () => {
     const a = await mulaiDariTeks(db, TOKEN, { daring: false });
     const b = await mulaiDariTeks(db, TOKEN, { daring: false });
     expect(a.ok && b.ok && a.inspectionId === b.inspectionId && b.dipakaiUlang).toBe(true);
-    const c = await mulaiDariTeks(db, "PAL-K3-" + "0".repeat(32), { daring: false });
+    const c = await mulaiDariTeks(db, "GIK3-" + "0".repeat(32), { daring: false });
     expect(c).toEqual({ ok: false, pesan: PESAN.tidakDikenaliLuring });
     expect(await mulaiDariTeks(db, "https://promo.example/x", { daring: false })).toEqual({ ok: false, pesan: PESAN.bukanStiker });
   });

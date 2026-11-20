@@ -44,8 +44,15 @@ const POLA_BERISIKO: [RegExp, string][] = [
   [/\bdelete\s+from\b/i, "DELETE"],
 ];
 
+/**
+ * Migrasi data yang sudah disetujui pemilik membuka "UPDATE data" saja, dengan baris komentar
+ * `-- migrasi-data-disetujui: <siapa, kapan, ADR>` di berkas SQL. Pola berisiko lain tetap ditolak.
+ */
+export const PENANDA_DATA_DISETUJUI = /^--[ \t]*migrasi-data-disetujui:[ \t]*\S/m;
+
 export function pernyataanBerisiko(sql: string): string[] {
-  return POLA_BERISIKO.filter(([p]) => p.test(sql)).map(([, nama]) => nama);
+  const disetujui = PENANDA_DATA_DISETUJUI.test(sql);
+  return POLA_BERISIKO.filter(([p, nama]) => p.test(sql) && !(disetujui && nama === "UPDATE data")).map(([, nama]) => nama);
 }
 
 /**

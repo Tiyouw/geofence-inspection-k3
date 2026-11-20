@@ -36,6 +36,10 @@ describe("migrasi saat deploy (insiden 18 Nov: 0003 tidak dijalankan di dev)", (
     expect(pernyataanBerisiko('ALTER TABLE "a" ALTER COLUMN "b" DROP DEFAULT;')).toEqual(["DROP DEFAULT"]);
     expect(pernyataanBerisiko(`ALTER TYPE "public"."peran" ADD VALUE 'tamu';`)).toEqual(["ALTER TYPE ADD VALUE"]);
     expect(pernyataanBerisiko('UPDATE "inspections" SET "x" = 1;')).toEqual(["UPDATE data"]);
+    // Penanda persetujuan hanya membuka UPDATE data; pola lain tetap ditolak.
+    expect(pernyataanBerisiko(isi("0007_awalan_token_gik3"))).toEqual([]);
+    expect(pernyataanBerisiko('-- migrasi-data-disetujui: uji\nUPDATE "a" SET "x" = 1; DELETE FROM "a";')).toEqual(["DELETE"]);
+    expect(pernyataanBerisiko('-- migrasi-data-disetujui:\nUPDATE "a" SET "x" = 1;')).toEqual(["UPDATE data"]);
     expect(pernyataanBerisiko('INSERT INTO "settings" VALUES (1);')).toEqual(["INSERT data"]);
     expect(pernyataanBerisiko('CREATE TABLE "baru" ("id" serial); CREATE INDEX "baru_idx" ON "baru" ("id");')).toEqual([]);
   });

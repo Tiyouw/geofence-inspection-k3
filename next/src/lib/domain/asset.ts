@@ -2,13 +2,13 @@
  * Aturan domain aset yang murni (tanpa basis data), dipakai seed, server, dan klien.
  * Diterjemahkan dari app/Models/Asset.php.
  */
-import type { LokasiTipe } from "./constants";
+import { AWALAN_TOKEN_QR, type LokasiTipe } from "./constants";
 
 /** Token acak, bukan nomor aset: nomor aset bisa terbaca orang, token tidak bisa ditebak. */
 export function buatTokenQr(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  return "PAL-K3-" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return AWALAN_TOKEN_QR + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** Jenis lokasi diturunkan dari nama gedung bila datanya belum punya kolom sendiri. */
