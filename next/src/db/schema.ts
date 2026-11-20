@@ -32,7 +32,8 @@ import {
 import {
   ANSWER_TYPES,
   AREA_JENIS,
-  GATE_ALASAN,
+  GATE_ALASAN_DB,
+  type GateAlasan,
   GATE_STATUSES,
   HASIL_TINJAUAN,
   INSPECTION_STATUSES,
@@ -58,7 +59,7 @@ export const kesimpulanEnum = pgEnum("kesimpulan", KESIMPULAN);
 export const issueStatusEnum = pgEnum("issue_status", ISSUE_STATUSES);
 export const scheduleStatusEnum = pgEnum("schedule_status", SCHEDULE_STATUSES);
 export const areaJenisEnum = pgEnum("area_jenis", AREA_JENIS);
-export const gateAlasanEnum = pgEnum("gate_alasan", GATE_ALASAN);
+export const gateAlasanEnum = pgEnum("gate_alasan", GATE_ALASAN_DB);
 export const hasilTinjauanEnum = pgEnum("hasil_tinjauan", HASIL_TINJAUAN);
 export const kondisiIsiEnum = pgEnum("kondisi_isi", KONDISI_ISI);
 export const tindakanRekomendasiEnum = pgEnum("tindakan_rekomendasi", TINDAKAN_REKOMENDASI);
@@ -304,6 +305,8 @@ export const inspections = pgTable(
     gateStatus: gateStatusEnum().notNull().default("tanpa_gps"),
     /** Alasan bila `gate_status = perlu_tinjauan`. */
     gateAlasan: gateAlasanEnum(),
+    /** Akun demo diterima dari luar galangan (ADR-16); alasan aplikasi `mode_demo`, gate_alasan NULL. */
+    modeDemo: boolean().notNull().default(false),
     /** Area tempat posisi jatuh (poligon terdekat yang memuatnya), bila ada. */
     detectedAreaId: integer().references(() => areas.id, { onDelete: "set null" }),
     /** Jarak posisi ke tepi poligon area aset (0 bila di dalam). */
@@ -598,6 +601,9 @@ export const tanyaKiriman = pgTable("tanya_kiriman", {
     jumlahKirim: integer().notNull().default(1),
     ...ts(),
 });
+
+/** Alasan gerbang seperti di aplikasi: `mode_demo` bila inspections.mode_demo, selain itu gate_alasan. */
+export const alasanGerbangSql = sql<GateAlasan | null>`(case when ${inspections.modeDemo} then 'mode_demo' else ${inspections.gateAlasan}::text end)`;
 
 /* ---------- masukan dari panduan (/panduan) ---------- */
 

@@ -12,6 +12,7 @@ import { areas,
     inspections,
     issues,
     users,
+    alasanGerbangSql,
 } from "@/db/schema";
 import {
     DURASI_WAJAR_DETIK,
@@ -116,7 +117,7 @@ export async function daftarInspeksi(f: FilterInspeksi, halaman = 1) {
                 ditinjauPada: inspections.ditinjauPada,
                 catatanReview: inspections.catatanReview,
                 hasilTinjauan: inspections.hasilTinjauan,
-                gateAlasan: inspections.gateAlasan,
+                gateAlasan: alasanGerbangSql,
                 restrictedArea: inspections.restrictedArea,
                 peninjau: peninjau.name,
             })
@@ -173,7 +174,7 @@ export async function detailInspeksi(id: string) {
             gpsCapturedAt: inspections.gpsCapturedAt,
             jarakM: inspections.jarakM,
             gateStatus: inspections.gateStatus,
-            gateAlasan: inspections.gateAlasan,
+            gateAlasan: alasanGerbangSql,
             restrictedArea: inspections.restrictedArea,
             qrVerified: inspections.qrVerified,
             qrVerification: inspections.qrVerification,

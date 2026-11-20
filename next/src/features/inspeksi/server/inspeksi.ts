@@ -322,7 +322,7 @@ async function ringkasan(tx: Tx, inspectionId: string): Promise<HasilFinal> {
     offline: i.offline,
     kesimpulan: i.kesimpulan!,
     gateStatus: i.gateStatus,
-    gateAlasan: i.gateAlasan,
+    gateAlasan: i.modeDemo ? "mode_demo" : i.gateAlasan,
     jarakM: i.jarakM,
     qrVerified: i.qrVerified,
     jumlahFoto: n,
@@ -499,7 +499,9 @@ async function finalisasiTx(user: SessionUser, inspectionId: string, input: z.in
         jarakM: jarak,
         jarakKeAreaM: jarak,
         gateStatus,
-        gateAlasan: gerbang.alasan,
+        // mode_demo tidak ada di enum DB (migrasi aditif): disimpan sebagai kolom boolean.
+        gateAlasan: gerbang.alasan === "mode_demo" ? null : gerbang.alasan,
+        modeDemo: gerbang.alasan === "mode_demo",
         detectedAreaId: gerbang.areaTerdeteksiId,
         // PRD Aturan bukti 4: area terbatas otomatis ditandai dan masuk antrean tinjauan.
         restrictedArea: areaTerbatas || gerbang.areaTerbatas,

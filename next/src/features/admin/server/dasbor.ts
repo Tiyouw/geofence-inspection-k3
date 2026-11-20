@@ -1,9 +1,10 @@
 import "server-only";
+import type { GateAlasan } from "@/lib/domain/constants";
 import { dataArea } from "@/lib/geo/data";
 import { titikDalamPoligon, titikWakil } from "@/lib/geo/geometri";
 import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { areas, assets, assetTypes, inspections, issues, users } from "@/db/schema";
+import { alasanGerbangSql, areas, assets, assetTypes, inspections, issues, users } from "@/db/schema";
 import { progresSemuaModul, temuanSejak, trenEnamBulan } from "@/features/dasbor/server";
 import { hitungTinjauan, syaratAntreanTinjauan } from "@/features/tinjauan/server";
 import { lokasiTemuan } from "@/lib/domain/temuan";
@@ -105,7 +106,7 @@ export type BarisTinjauanAntrean = {
     inspectedAt: Date | null;
     gpsAccuracy: number | null;
     gateStatus: (typeof inspections.$inferSelect)["gateStatus"];
-    gateAlasan: (typeof inspections.$inferSelect)["gateAlasan"];
+    gateAlasan: GateAlasan | null;
     restrictedArea: boolean;
     asetKode: string;
     modul: string;
@@ -178,7 +179,7 @@ export async function antreanDasbor(
                 inspectedAt: inspections.inspectedAt,
                 gpsAccuracy: inspections.gpsAccuracy,
                 gateStatus: inspections.gateStatus,
-                gateAlasan: inspections.gateAlasan,
+                gateAlasan: alasanGerbangSql,
                 restrictedArea: inspections.restrictedArea,
                 inspektur: users.name,
                 ...kolomAset,
