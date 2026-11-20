@@ -1,5 +1,5 @@
 {
-  "id": "68e10d70-b316-43ae-aa5f-3039106cd5dc",
+  "id": "95da1d09-0d0b-46eb-801f-ce4970536c73",
   "prevId": "2de87812-9634-4c40-82b6-80cf162df041",
   "version": "7",
   "dialect": "postgresql",
@@ -1613,6 +1613,13 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
+        },
+        "mode_demo": {
+          "name": "mode_demo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "detected_area_id": {
           "name": "detected_area_id",
@@ -3328,8 +3335,7 @@
       "schema": "public",
       "values": [
         "di_luar_gedung",
-        "gps_lemah",
-        "mode_demo"
+        "gps_lemah"
       ]
     },
     "public.gate_status": {

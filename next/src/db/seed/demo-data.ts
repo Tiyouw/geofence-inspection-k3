@@ -117,7 +117,7 @@ export type SkenarioDemo = {
   /** draf + jejak audit inspeksi.ditolak_lokasi (jauh di luar kawasan). */
   ditolak?: boolean;
   gate: "sesuai" | "perlu_tinjauan" | "tidak_berlaku";
-  alasan?: GateAlasan;
+  alasan?: Exclude<GateAlasan, "mode_demo">;
   posisi: [number, number];
   akurasi: number;
   /** Jumlah butir yang dijawab buruk (menjadi temuan). */

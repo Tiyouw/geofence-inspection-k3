@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { inspections } from "@/db/schema";
+import { alasanGerbangSql, inspections } from "@/db/schema";
 import { aksiPeninjau, catatAudit, dariForm, type HasilAksi } from "@/features/admin/server/aksi";
 import { HASIL_TINJAUAN } from "@/lib/domain/constants";
 import { syaratAntreanTinjauan } from "./server";
@@ -33,7 +33,7 @@ export async function putuskanTinjauan(_prev: unknown, fd: FormData): Promise<Ha
                 .update(inspections)
                 .set({ hasilTinjauan: hasil, catatanReview, ditinjauPada: new Date(), ditinjauOleh: user.id })
                 .where(and(eq(inspections.id, id), syaratAntreanTinjauan))
-                .returning({ gate: inspections.gateStatus, alasan: inspections.gateAlasan, terbatas: inspections.restrictedArea });
+                .returning({ gate: inspections.gateStatus, alasan: alasanGerbangSql, terbatas: inspections.restrictedArea });
             if (!r) return false;
             await catatAudit(tx, user, "inspeksi.tinjau", "inspection", id, {
                 hasil,

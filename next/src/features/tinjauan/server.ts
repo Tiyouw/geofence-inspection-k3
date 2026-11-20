@@ -11,6 +11,7 @@ import {
     inspectionAnswers,
     inspections,
     users,
+    alasanGerbangSql,
 } from "@/db/schema";
 import { fotoPerButir } from "@/features/inspeksi/server/foto-butir";
 import { koordinatUntukSesi } from "@/lib/foto/pengaturan";
@@ -62,7 +63,7 @@ export async function daftarTinjauan(tab: TabTinjauan, halaman = 1) {
                 id: inspections.id,
                 inspectedAt: inspections.inspectedAt,
                 gateStatus: inspections.gateStatus,
-                gateAlasan: inspections.gateAlasan,
+                gateAlasan: alasanGerbangSql,
                 restrictedArea: inspections.restrictedArea,
                 gpsAccuracy: inspections.gpsAccuracy,
                 jarakKeAreaM: inspections.jarakKeAreaM,
@@ -156,7 +157,7 @@ export async function detailTinjauan(id: string) {
             jarakM: inspections.jarakM,
             jarakKeAreaM: inspections.jarakKeAreaM,
             gateStatus: inspections.gateStatus,
-            gateAlasan: inspections.gateAlasan,
+            gateAlasan: alasanGerbangSql,
             restrictedArea: inspections.restrictedArea,
             qrVerified: inspections.qrVerified,
             kesimpulan: inspections.kesimpulan,

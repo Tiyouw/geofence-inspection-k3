@@ -3,7 +3,7 @@ import { capKoordinatAktif, koordinatUntukPeran } from "@/lib/foto/pengaturan";
 import { createHmac, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues, users } from "@/db/schema";
+import { alasanGerbangSql, areas, assets, assetTypes, checklistGroups, checklistItems, divisions, inspections, issues, users } from "@/db/schema";
 import { bolehInspeksiAset } from "@/lib/domain/akses";
 import { labelLantai } from "@/lib/domain/asset";
 import { periodeDari, tambahHari, type ButirChecklist } from "@/lib/domain/inspeksi";
@@ -212,7 +212,7 @@ export async function paketKerja(user: SessionUser): Promise<PaketKerja> {
       inspectedAt: inspections.inspectedAt,
       kesimpulan: inspections.kesimpulan,
       gateStatus: inspections.gateStatus,
-      gateAlasan: inspections.gateAlasan,
+      gateAlasan: alasanGerbangSql,
       jumlahTemuan: sql<number>`(select count(*)::int from ${issues} where ${issues.inspectionId} = ${inspections.id})`,
     })
     .from(inspections)

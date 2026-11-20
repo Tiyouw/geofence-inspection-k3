@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { IlustrasiModul, KosongModul, modulDari } from "@/components/ilustrasi/modul";
 import { db } from "@/db";
-import { assets, assetTypes, inspections, issues } from "@/db/schema";
+import { alasanGerbangSql, assets, assetTypes, inspections, issues } from "@/db/schema";
 import { KARTU } from "@/features/inspeksi/ui/a";
 import { LencanaGerbang, LencanaKesimpulan, LencanaModeDemo, LencanaSeverity } from "@/features/inspeksi/ui/lencana";
 import { requireRole } from "@/lib/auth/guards";
@@ -38,7 +38,7 @@ export default async function RiwayatPage({ searchParams }: PageProps<"/petugas/
         inspectedAt: inspections.inspectedAt,
         kesimpulan: inspections.kesimpulan,
         gateStatus: inspections.gateStatus,
-        gateAlasan: inspections.gateAlasan,
+        gateAlasan: alasanGerbangSql,
         offline: inspections.offline,
         ditinjauPada: inspections.ditinjauPada,
       })

@@ -88,8 +88,14 @@ export const GATE_STATUS_LAMA: Partial<Record<GateStatus, GateAlasan>> = {
 export const GATE_PERLU_TINJAUAN: GateStatus[] = ["perlu_tinjauan", "perlu_review", "jauh", "gps_lemah", "tanpa_gps"];
 
 /** Alasan status `perlu_tinjauan`. */
-/** mode_demo: akun demo di luar galangan, diterima hanya bila AKUN_DEMO_LEWATI_KAWASAN=1 (ADR panduan Faldy). */
-export const GATE_ALASAN = ["di_luar_gedung", "gps_lemah", "mode_demo"] as const;
+/** Nilai enum DB `gate_alasan`. */
+export const GATE_ALASAN_DB = ["di_luar_gedung", "gps_lemah"] as const;
+/**
+ * Alasan di aplikasi. `mode_demo` (akun demo di luar galangan, hanya bila AKUN_DEMO_LEWATI_KAWASAN=1,
+ * ADR-16) tidak ada di enum DB: disimpan sebagai `inspections.mode_demo = true` supaya migrasinya
+ * aditif, dan dibaca kembali lewat `alasanGerbangSql` (schema.ts).
+ */
+export const GATE_ALASAN = [...GATE_ALASAN_DB, "mode_demo"] as const;
 export type GateAlasan = (typeof GATE_ALASAN)[number];
 export const LABEL_GATE_ALASAN: Record<GateAlasan, string> = {
   di_luar_gedung: "Di luar gedung aset",
