@@ -32,6 +32,10 @@
 .pd-badan { flex: 1; display: grid; grid-template-columns: 280px minmax(360px, 440px) 1fr; min-height: 0; }
 .pd-samping { border-right: 1px solid var(--peran-garis); background: var(--peran-permukaan); overflow-y: auto; max-height: calc(100dvh - 68px); position: sticky; top: 68px; padding: 16px 12px 96px; }
 .pd-daftar-bab { margin: 16px 12px 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--peran-redup); }
+.pd-progres-kepala { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 4px 4px; padding: 8px; border: 1px solid var(--peran-garis); border-radius: var(--pd-r-kontrol); font-size: 13px; }
+.pd-progres-hitung { color: var(--peran-redup); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pd-reset-konfirmasi { display: grid; gap: 8px; width: 100%; line-height: 1.4; }
+.pd-btn-kecil { min-height: 36px; padding: 0 12px; font-size: 13px; gap: 6px; }
 .pd-daftar ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .pd-daftar-item { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 12px; border-radius: var(--pd-r-kontrol); font: inherit; font-size: 14px; line-height: 1.4; color: var(--peran-tinta); cursor: pointer; }
 .pd-daftar-item:hover { background: var(--peran-sorot); }
