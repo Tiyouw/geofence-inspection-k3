@@ -13,5 +13,16 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ["/admin", "/pemantau", "/petugas", "/api", "/i/", "/tanya/"],
             },
         };
-    return { rules: { userAgent: "*", disallow: "/" } };
+    return {
+        rules: [
+            // Pratinjau tautan /panduan saat dibagikan lewat WhatsApp/Telegram (bukan pengindeksan;
+            // X-Robots-Tag noindex tetap berlaku).
+            {
+                userAgent: ["facebookexternalhit", "WhatsApp", "TelegramBot", "Twitterbot"],
+                allow: ["/panduan", "/panduan/"],
+                disallow: "/",
+            },
+            { userAgent: "*", disallow: "/" },
+        ],
+    };
 }

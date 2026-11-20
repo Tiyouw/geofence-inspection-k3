@@ -21,7 +21,7 @@ const PUBLIC_PATHS = ["/", "/masuk", "/offline", "/panduan"];
  * /api/* dilewatkan proxy: Route Handler memeriksa sesi sendiri dan membalas 401/403 JSON,
  * bukan pengalihan HTML ke /masuk (antrean luring perlu membedakan "sesi habis").
  */
-const PUBLIC_PREFIXES = ["/api/", "/tanya/", "/_next", "/icons", "/manifest.webmanifest", "/sw.js", "/favicon", "/media/", "/geofencing.svg", "/robots.txt"];
+const PUBLIC_PREFIXES = ["/api/", "/panduan/opengraph-image", "/tanya/", "/_next", "/icons", "/manifest.webmanifest", "/sw.js", "/favicon", "/media/", "/geofencing.svg", "/robots.txt"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
