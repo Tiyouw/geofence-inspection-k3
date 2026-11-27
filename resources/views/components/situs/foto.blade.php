@@ -1,9 +1,9 @@
 {{--
-    Foto media PT PAL dengan srcset. Berkas ada di public/media/pal dengan pola
-    <berkas>-<lebar>.webp (asal-usulnya di public/media/pal/SUMBER.md).
+    Ilustrasi halaman depan dengan srcset. Berkas ada di public/media/situs dengan pola
+    <berkas>-<lebar>.webp (asal-usulnya di public/media/situs/SUMBER.md).
     Ukuran tampil diatur pembungkusnya; foto selalu menutup bidang.
 
-    <x-situs.foto berkas="bengkel-pengelasan" :lebar="[800, 1600]"
+    <x-situs.foto berkas="stiker-qr" :lebar="[800, 1600]"
                   sizes="(min-width: 48rem) 33vw, 100vw" alt="..." />
 --}}
 @props([
@@ -15,7 +15,7 @@
 
 @php
     $daftar = collect($lebar)->sort()->values();
-    $url = fn (int $w): string => asset("media/pal/{$berkas}-{$w}.webp");
+    $url = fn (int $w): string => asset("media/situs/{$berkas}-{$w}.webp");
 @endphp
 
 <img

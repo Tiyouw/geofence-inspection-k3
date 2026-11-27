@@ -1,140 +1,81 @@
-# Inspeksi K3 APAR
+# geofence-inspection-k3
 
-Aplikasi pemeriksaan rutin Alat Pemadam Api Ringan (APAR). Petugas memindai
-stiker QR yang tertempel di tabung, mengisi daftar periksa dari ponsel, lalu
-hasilnya langsung terkumpul jadi laporan bulanan untuk bagian K3.
+[![next (v2)](https://github.com/Tiyouw/geofence-inspection-k3/actions/workflows/next.yml/badge.svg?branch=rewrite%2Fnext)](https://github.com/Tiyouw/geofence-inspection-k3/actions/workflows/next.yml)
 
-**Coba langsung:** [rifaldy.tiyoouw.app](https://rifaldy.tiyoouw.app)
+Sistem inspeksi K3 (keselamatan dan kesehatan kerja) untuk Perusahaan Galangan Kapal. Petugas
+memindai stiker QR di aset (APAR, hydrant, kotak P3K, dan lainnya), mengisi daftar periksa dari
+ponsel, dan memotret bukti dengan kamera terpandu. Lokasi diperiksa terhadap poligon kawasan dan
+gedung. Hasilnya ditinjau Admin K3 dan Pemantau, lalu menjadi laporan.
 
----
+**Demo:** [dev.geofencinspection.tech](https://dev.geofencinspection.tech)
 
-## Untuk apa aplikasi ini
+## Fitur utama
 
-Pemeriksaan APAR biasanya dicatat di kartu kertas yang digantung di tabung.
-Kartu itu gampang hilang, tulisannya sulit dibaca, dan tidak ada cara memastikan
-petugas benar-benar datang ke lokasi. Rekapitulasi bulanan jadi pekerjaan
-menyalin ulang dari puluhan kartu.
+- **Stiker QR per aset.** Formulir inspeksi hanya terbuka setelah stiker aset itu dipindai.
+- **Gerbang lokasi poligon.** Posisi dinilai di peladen terhadap poligon kawasan dan gedung yang
+  disetujui: *sesuai*, *perlu tinjauan* (di luar area aset atau sinyal lemah), atau *ditolak*
+  (di luar galangan). Lokasi wajib aktif.
+- **Kamera terpandu.** Foto bukti per langkah, tertaut ke butir daftar periksa. Area terbatas
+  tanpa foto.
+- **Bekerja luring.** Draf, foto, dan antrean kirim disimpan di perangkat (PWA) dan dikirim
+  saat sinyal kembali.
+- **Tinjauan dan temuan.** Inspeksi yang perlu tinjauan masuk antrean; butir bermasalah menjadi
+  temuan.
+- **Laporan PDF**, jadwal inspeksi, peta aset, dan jejak audit yang hanya bisa ditambah.
 
-Aplikasi ini memindahkan catatan itu ke ponsel dengan tiga pengaman:
+## Peran
 
-- **Stiker QR per tabung.** Tiap tabung punya kode acak sendiri. Formulir
-  pemeriksaan hanya terbuka setelah stiker di tabung itu dipindai, jadi petugas
-  tidak bisa mengisi dari rumah.
-- **Pencocokan lokasi.** Ponsel mengirim titik GPS saat pengisian. Kalau jarak
-  ke tabung melebihi batas wajar, hasilnya ditandai "perlu ditinjau" supaya bisa
-  diperiksa atasan, bukan langsung ditolak.
-- **Foto bukti.** Kondisi tabung difoto langsung dari formulir.
-
-Temuan kerusakan otomatis masuk daftar tindak lanjut sampai dinyatakan selesai.
-
-## Tiga jenis pengguna
-
-| Pengguna | Alat | Yang bisa dilakukan |
+| Peran | Alat | Yang bisa dilakukan |
 | --- | --- | --- |
-| Inspektur | Ponsel | Pindai QR, isi daftar periksa, lihat riwayat pemeriksaannya sendiri |
-| Administrator | Komputer | Kelola data tabung dan petugas, cetak stiker, terbitkan laporan, tinjau hasil |
-| Pemantau | Komputer | Hanya melihat papan pantau dan laporan, tidak bisa mengubah data |
+| Inspektur | Ponsel | Pindai QR, isi daftar periksa, foto bukti, lihat riwayat sendiri |
+| Admin K3 | Komputer | Kelola aset, area, pengguna, stiker, jadwal; meninjau; laporan; jejak audit |
+| Pemantau | Komputer | Papan pantau, tinjauan, dan laporan |
 
-## Alur pemakaian sehari-hari
+## Struktur repositori
 
-1. Administrator memasukkan data tabung APAR, lalu mencetak lembar stiker QR
-   dari menu **Lembar Stiker** dan menempelkannya di tiap tabung.
-2. Petugas membuka aplikasi di ponsel, memindai stiker di tabung, mengisi
-   sepuluh butir pemeriksaan, memotret kondisi tabung, lalu mengirim.
-3. Butir yang bermasalah otomatis menjadi temuan dan masuk daftar tindak lanjut.
-4. Akhir bulan, administrator membuka menu laporan dan mengunduh rekap PDF.
+| Folder | Isi |
+| --- | --- |
+| `next/` | Aplikasi v2 (Next.js 16, Auth.js, Drizzle ORM + Postgres/Neon, Leaflet, Vercel Blob, Ably) |
+| `docs/v2/` | Spesifikasi (`SPEC.md`), arsitektur (`ARCHITECTURE.md`), dan uji penerimaan (`ACCEPTANCE.md`) |
+| akar repo | Aplikasi v1 (Laravel), dipertahankan sampai cut-over |
 
-## Dasar penyusunan daftar periksa
+## Menjalankan v2 secara lokal
 
-Butir pemeriksaan tidak disusun sendiri, tapi mengikuti ketentuan yang berlaku:
-
-- **Permenaker No. 04/MEN/1980** tentang syarat pemasangan dan pemeliharaan APAR
-- **NFPA 10** untuk pemeriksaan berkala tiap 30 hari
-
-Setiap butir menyimpan rujukan dasar hukumnya, sehingga laporan bisa
-dipertanggungjawabkan saat audit.
-
----
-
-## Catatan tentang data contoh
-
-Repositori ini **tidak memuat data asli** siapa pun:
-
-- Nama petugas pada data contoh adalah nama peran ("Inspektur Workshop"),
-  bukan nama pegawai.
-- Titik koordinat pada data contoh berada di wilayah Jember dan dipakai untuk
-  uji coba lapangan. Titik itu bukan tata letak fasilitas industri mana pun.
-- Kode QR dan kata sandi akun NIP **tidak disimpan** di dalam repositori. Keduanya
-  diterbitkan acak saat aplikasi dipasang. Alasannya, kode QR adalah satu-satunya
-  penentu keaslian pemeriksaan; kalau kodenya bisa dibaca dari repositori,
-  pemeriksaan bisa dipalsukan tanpa datang ke lokasi. Akun demonstrasi yang
-  diaktifkan secara terpisah dijelaskan di bawah.
-
----
-
-## Untuk yang ingin menjalankan sendiri
-
-### Demo stakeholder
-
-Aktifkan `DEMO_MODE=true` di `.env`, lalu jalankan
-`php artisan db:seed --class=DemoUserSeeder`. Akun berikut disediakan khusus
-untuk demonstrasi dengan data contoh:
-
-| Username | Kata sandi | Halaman masuk |
-| --- | --- | --- |
-| `admin` | `admin123` | `/admin/login` atau `/masuk` |
-| `pemantau` | `pemantau123` | `/admin/login` atau `/masuk` |
-| `inspektur` | `inspektur123` | `/masuk` |
-
-Sesuai kebutuhan demonstrasi, kata sandi ketiga akun ini disimpan apa adanya
-selama mode demo aktif. Akun bernomor NIP tetap memakai mekanisme sandi normal.
-Halaman masuk menampilkan kredensial demo hanya saat `DEMO_MODE=true`.
-Menonaktifkan mode demo menolak login dengan sandi demo yang belum di-hash.
-Seeder demo dapat dijalankan ulang untuk mengembalikan ketiga akun ke kondisi awal,
-tanpa mengganti akun NIP, data inspeksi, atau token QR yang sudah ada.
-
-### Pemasangan
-
-Butuh PHP 8.3, Composer, dan Node.js.
+Butuh Node.js 22, pnpm, dan Postgres.
 
 ```bash
-git clone https://github.com/Tiyouw/pal-k3.git
-cd pal-k3
-composer install
-npm install && npm run build
+git clone https://github.com/Tiyouw/geofence-inspection-k3.git
+cd geofence-inspection-k3/next
+pnpm install
 
-cp .env.example .env
-php artisan key:generate
-touch database/database.sqlite
-php artisan migrate --seed     # sandi awal tercetak sekali di layar, catat
-php artisan serve
+cp .env.example .env.local      # isi DATABASE_URL, AUTH_SECRET, dan lainnya (lihat komentar)
+pnpm db:migrate
+pnpm db:seed                    # data contoh; sandi awal dari SEED_SANDI_AWAL (kosong = acak)
+pnpm dev
 ```
 
-Buka `http://localhost:8000`. Masuk memakai **NIP**, bukan alamat surel. Data
-contoh menyediakan NIP `1001` (administrator), `2001` (inspektur), dan `3001`
-(pemantau).
+Buka `http://localhost:3000`. Masuk memakai **NIP**. Dengan `DEMO_MODE=true`, akun demo
+`admin`, `pemantau`, dan `inspektur` tersedia (sandinya dari variabel `DEMO_*_PASSWORD`).
 
-Sandi awal ditampilkan sekali oleh perintah `migrate --seed`. Kalau catatannya
-hilang, terbitkan yang baru:
+Pemeriksaan otomatis:
 
 ```bash
-php artisan petugas:sandi 2001      # satu petugas
-php artisan petugas:sandi --semua   # semua petugas, sandi acak per orang
+pnpm lint && pnpm typecheck
+pnpm test          # Vitest (uji *.db.test.ts butuh DATABASE_URL)
+pnpm test:e2e      # Playwright (Chromium)
 ```
 
-Jalankan pemeriksaan otomatis:
+## Deploy
 
-```bash
-php artisan test
-```
+Proyek Vercel terhubung ke repositori ini dengan Root Directory `next`. Cabang produksinya
+`rewrite/next`: setiap merge ke cabang itu ter-deploy ke dev.geofencinspection.tech, dan migrasi
+basis data berjalan saat build. Rincian ada di `docs/v2/ARCHITECTURE.md` §8.
 
-## Bangunan teknis
+## Data contoh
 
-Laravel 13 dengan panel administrasi Filament 3, basis data SQLite, laporan PDF
-memakai dompdf, dan kode QR memakai simple-qrcode. Antarmuka lapangan dibuat
-terpisah dari panel administrasi karena dipakai satu tangan di lapangan, kadang
-memakai sarung tangan kerja.
+Repositori ini tidak memuat data asli. Nama petugas pada data contoh adalah nama peran, sandi
+dan token QR diterbitkan saat pemasangan, dan denah fasilitas tidak disimpan di repositori.
 
 ## Lisensi
 
-MIT. Lihat berkas [LICENSE](LICENSE).
+MIT. Lihat [LICENSE](LICENSE).

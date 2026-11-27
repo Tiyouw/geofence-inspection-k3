@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "sesi_versi" integer DEFAULT 0 NOT NULL;

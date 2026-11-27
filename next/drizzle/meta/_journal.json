@@ -1,0 +1,69 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794867411070,
+      "tag": "0000_awal",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794902259219,
+      "tag": "0001_tanya_klien",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794917999711,
+      "tag": "0002_v2_fondasi",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794967818723,
+      "tag": "0003_jadwal_rencana",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795101146705,
+      "tag": "0004_audit_tambah_saja",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795102390151,
+      "tag": "0005_sesi_versi",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795132452794,
+      "tag": "0006_panduan_masukan",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795132643511,
+      "tag": "0007_awalan_token_gik3",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795151913508,
+      "tag": "0008_onboarding",
+      "breakpoints": true
+    }
+  ]
+}

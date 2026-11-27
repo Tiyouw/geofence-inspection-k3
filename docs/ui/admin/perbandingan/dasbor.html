@@ -279,7 +279,7 @@ const NAV = [
  {g:'KEGIATAN', i:[['Inspeksi','clip'],['Temuan','alert'],['Lembar Stiker QR','qr'],['Laporan Bulanan','file']]},
  {g:'DATA INDUK', adm:true, i:[['Tipe Objek','tag'],['Divisi','bld'],['Aset','box'],['Grup Checklist','list'],['Butir Checklist','ok']]}];
 function gambarSb() {
- let h = `<div class="sb-top"><a class="merek" href="#"><span class="mono">K3<i>/</i></span><span><b>Inspeksi APAR</b><small>PT PAL INDONESIA</small></span></a></div><nav>`;
+ let h = `<div class="sb-top"><a class="merek" href="#"><span class="mono">K3<i>/</i></span><span><b>Inspeksi APAR</b><small>PERUSAHAAN GALANGAN KAPAL</small></span></a></div><nav>`;
  NAV.forEach((n, x) => {
   if (n.adm && RO) return;
   if (n.g) h += `<div class="gs"></div><p class="gr">${n.g}</p>`;

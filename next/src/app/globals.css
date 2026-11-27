@@ -1,0 +1,343 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./tema.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Token gerak bersama: tidak ada yang tersentak. Masuk/keluar 180-320 ms, ease-out tanpa
+ * pantulan. `ease-halus` dan `duration-(--durasi*)` dipakai komponen; transisi tanpa durasi
+ * eksplisit memakai bawaan di bawah. Semua dimatikan saat prefers-reduced-motion.
+ */
+@theme {
+  --ease-halus: cubic-bezier(0.22, 1, 0.36, 1);
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-muncul: muncul-halus 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-hover: var(--brand-hover);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-peran-admin: var(--peran-admin);
+  --color-peran-pemantau: var(--peran-pemantau);
+  --color-peran-inspektur: var(--peran-inspektur);
+  /* Arah A (tema.css): warna modul, permukaan peran, radius */
+  --color-modul-apar: var(--modul-apar);
+  --color-modul-apar-rona: var(--modul-apar-rona);
+  --color-modul-p3k: var(--modul-p3k);
+  --color-modul-p3k-rona: var(--modul-p3k-rona);
+  --color-modul-hydrant: var(--modul-hydrant);
+  --color-modul-hydrant-rona: var(--modul-hydrant-rona);
+  --color-modul-damkar: var(--modul-damkar);
+  --color-modul-damkar-rona: var(--modul-damkar-rona);
+  --color-peran-utama: var(--peran-utama);
+  --color-peran-utama-rona: var(--peran-utama-rona);
+  --color-peran-utama-tua: var(--peran-utama-tua);
+  --color-peran-permukaan-2: var(--peran-permukaan-2);
+  --color-peran-sorot: var(--peran-sorot);
+  --radius-kartu: var(--a-radius-kartu);
+  --radius-kontrol: var(--a-radius-kontrol);
+  --radius-dialog: var(--a-radius-dialog);
+  --font-a: var(--font-a);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Token desain aplikasi. Warna merek dari aplikasi Laravel:
+ *   deep current #031e25 (panel gelap, primer), amber #f5b700 (aksen, tombol utama),
+ *   latar #eef2f3, teks #162b33, garis #cbd7db.
+ * Ubah warna di sini saja; komponen memakai nama semantik (primary, accent, brand, ...).
+ */
+:root {
+  --background: #f4f7f8;
+  --foreground: #162b33;
+  --card: #ffffff;
+  --card-foreground: #162b33;
+  --popover: #ffffff;
+  --popover-foreground: #162b33;
+  --primary: #031e25;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eef0;
+  --secondary-foreground: #1d4855;
+  --muted: #eef2f3;
+  /* #566870: kontras 5,2:1 di atas --muted (audit 19 Nov 2026; sebelumnya #5f727a, 4,46:1). */
+  --muted-foreground: #566870;
+  --accent: #e8eef0;
+  --accent-foreground: #031e25;
+  --destructive: #b32136;
+  --border: #dbe4e7;
+  --input: #cbd7db;
+  --ring: #c38c00;
+  --radius: 0.625rem;
+  --durasi-cepat: 180ms;
+  --durasi: 240ms;
+  --durasi-lambat: 320ms;
+
+  /* Merek dan status domain */
+  --brand: #f5b700;
+  --brand-foreground: #031e25;
+  --brand-hover: #e5ac00;
+  /*
+   * Warna status: TETAP di semua peran dan TIDAK PERNAH amber (amber = merek/aksi utama).
+   *   danger  merah   temuan berat, lewat tenggat, perlu tindakan
+   *   warning oranye  perlu ditinjau
+   *   info    biru    info, antrean
+   *   muted   abu     belum diperiksa
+   *   success hijau   layak, sesuai
+   */
+  --success: #1f7a4d;
+  --success-soft: #eff8f3;
+  /* Status "perlu ditinjau": oranye, bukan amber. Amber hanya untuk aksi utama (keputusan pemilik). */
+  --warning: #c2410c;
+  --warning-soft: #fff1e8;
+  --danger: #b32136;
+  --danger-soft: #fdeef0;
+  --info: #1d5fa8;
+  --info-soft: #e8f0fb;
+
+  --chart-1: #031e25;
+  --chart-2: #f5b700;
+  --chart-3: #2f7f8f;
+  --chart-4: #b32136;
+  --chart-5: #8aa4ab;
+
+  --sidebar: #031e25;
+  --sidebar-foreground: #d8e4e7;
+  --sidebar-primary: #f5b700;
+  --sidebar-primary-foreground: #031e25;
+  --sidebar-accent: #0d2f38;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1b3d46;
+  --sidebar-ring: #f5b700;
+
+  /* Warna per peran (keputusan pemilik): hanya bilah samping/kepala yang berubah. */
+  --peran-admin: #0e4a57;
+  --peran-pemantau: #475569;
+  --peran-inspektur: #f5b700;
+}
+
+.dark {
+  --background: #071419;
+  --foreground: #e3ecee;
+  --card: #0c1f26;
+  --card-foreground: #e3ecee;
+  --popover: #0c1f26;
+  --popover-foreground: #e3ecee;
+  --primary: #f5b700;
+  --primary-foreground: #031e25;
+  --secondary: #143039;
+  --secondary-foreground: #e3ecee;
+  --muted: #11262d;
+  --muted-foreground: #93a9b0;
+  --accent: #143039;
+  --accent-foreground: #ffffff;
+  --destructive: #ef5b6f;
+  --border: #1b3741;
+  --input: #24444f;
+  --ring: #f5b700;
+
+  --brand: #f5b700;
+  --brand-foreground: #031e25;
+  --brand-hover: #ffc626;
+  --success: #4cc68a;
+  --success-soft: #0f2e22;
+  --warning: #fb923c;
+  --warning-soft: #33190a;
+  --danger: #ef5b6f;
+  --danger-soft: #34121a;
+  --info: #7fb2f0;
+  --info-soft: #0f2238;
+
+  --sidebar: #031216;
+  --sidebar-foreground: #d8e4e7;
+  --sidebar-primary: #f5b700;
+  --sidebar-primary-foreground: #031e25;
+  --sidebar-accent: #0d2f38;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1b3d46;
+  --sidebar-ring: #f5b700;
+
+  --peran-admin: #5fb3c4;
+  --peran-pemantau: #94a3b8;
+  --peran-inspektur: #f5b700;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Gerak ---------- */
+@keyframes muncul-halus {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@layer base {
+  /* Pergantian halaman dan kerangka muat yang diganti isi: anak langsung <main id="isi"> muncul halus. */
+  #isi > * {
+    animation: var(--animate-muncul);
+  }
+  /* Baris baru di tabel dan daftar memudar masuk, bukan muncul tiba-tiba. */
+  [data-slot="table-row"],
+  [data-muncul] > li {
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
+@layer utilities {
+  [data-slot="table-row"],
+  [data-muncul] > li {
+    transition-property: opacity, background-color, color;
+    transition-duration: var(--durasi-lambat);
+    transition-timing-function: var(--ease-halus);
+  }
+}
+
+/* Toast (sonner): geser + pudar, bertumpuk halus, sedikit lebih tenang dari bawaan. */
+[data-sonner-toast] {
+  transition-duration: var(--durasi-lambat) !important;
+  transition-timing-function: var(--ease-halus) !important;
+}
+
+/* ---------- Peta area: area terpilih ---------- */
+/* Aksen sorot sengaja kuning tajam (bukan token brand): harus terbaca di atas daratan merah muda dan laut biru OSM. */
+:root {
+  --sorot-peta: #f5b700;
+}
+@keyframes sorot-denyut {
+  40% {
+    stroke-width: 9px;
+    stroke-opacity: 0.55;
+  }
+}
+.sorot-denyut {
+  animation: sorot-denyut 700ms var(--ease-halus) 2;
+}
+.pin-terpilih {
+  background: none;
+  border: 0;
+}
+.pin-terpilih .pin-ikon {
+  position: absolute;
+  left: -15px;
+  top: -32px;
+  width: 30px;
+  height: 32px;
+  color: #1f2937;
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45));
+  animation: muncul-halus var(--durasi-lambat) var(--ease-halus);
+}
+.pin-terpilih .pin-label {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  transform: translateX(-50%);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.95);
+  padding: 1px 6px;
+  font: 600 12px/1.4 var(--font-sans, system-ui), system-ui, sans-serif;
+  color: #111827;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Onboarding varian B (src/features/onboarding): cincin sorot dan kartu naik. */
+.onb-cincin {
+  box-shadow: 0 0 0 3px #f5b700, 0 0 0 9px rgb(245 183 0 / 0.25);
+  transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
+  animation: onb-denyut 1.6s ease-in-out 3;
+}
+@keyframes onb-denyut {
+  50% { box-shadow: 0 0 0 3px #f5b700, 0 0 0 14px rgb(245 183 0 / 0.1); }
+}
+@keyframes onb-naik {
+  from { opacity: 0; transform: translateY(16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onb-cincin { animation: none; transition: none; }
+}

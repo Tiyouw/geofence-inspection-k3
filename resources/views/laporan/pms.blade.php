@@ -73,7 +73,7 @@
     <table class="kop">
         <tr>
             <td style="width:66%">
-                <div class="nama">PT PAL INDONESIA (PERSERO)</div>
+                <div class="nama">PERUSAHAAN GALANGAN KAPAL</div>
                 <div class="sub">Divisi Keselamatan, Kesehatan Kerja dan Lindungan Lingkungan</div>
             </td>
             <td class="lampiran">
@@ -226,7 +226,7 @@
     </table>
 
     <div class="kaki">
-        Dokumen dihasilkan Sistem Inspeksi K3 PT PAL Indonesia.
+        Dokumen dihasilkan Sistem Inspeksi K3 Perusahaan Galangan Kapal.
         Baris berlatar abu menandakan unit yang belum diperiksa pada periode ini.
     </div>
 </body>

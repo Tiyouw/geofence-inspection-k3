@@ -1,0 +1,13 @@
+kode,tipe,gedung,lantai,lokasi_teks,lat,lng
+HB-01,box,Gedung PIP,Lt. 1,Lorong Timur dekat tangga darurat,-8.186185,113.706250
+HB-02,box,Gedung PIP,Lt. 1,Lorong Barat dekat lift,-8.186300,113.706190
+HB-03,box,Gedung PIP,Lt. 2,Lorong Timur dekat tangga darurat,-8.186185,113.706255
+HB-04,box,Gedung PIP,Lt. 2,Lorong Barat dekat lift,-8.186300,113.706195
+HB-05,box,Gedung PIP,Lt. 3,Lorong Timur dekat tangga darurat,-8.186185,113.706260
+HB-06,box,Workshop Fabrikasi,Lt. 1,Bay 2 kolom tengah,-8.185758,113.706240
+HB-07,box,Workshop Fabrikasi,Lt. 1,Bay 5 kolom tengah,-8.185752,113.706300
+HP-01,pilar,Area Terbuka,-,Halaman depan Gedung PIP,-8.186450,113.706250
+HP-02,pilar,Area Terbuka,-,Jalan utama sisi barat,-8.186560,113.705960
+HP-03,pilar,Area Terbuka,-,Dekat Pos 2,-8.186540,113.706300
+HP-04,pilar,Area Terbuka,-,Sisi timur Workshop Fabrikasi,-8.185820,113.706470
+HP-05,pilar,Area Terbuka,-,Lapangan parkir material,-8.186660,113.706120

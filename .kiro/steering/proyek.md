@@ -68,8 +68,8 @@ NIP data contoh: `1001` (administrator), `2001` (inspektur), `3001` (pemantau).
 - `lang/` — berkas bahasa. `database/seeders/` — data awal & daftar periksa.
 - `tests/` — pemeriksaan otomatis. `scripts/` dan `tests/qa-browser/` — smoke HTTP
   dan harness QA peramban.
-- `public/media/pal/` — foto/video milik PT PAL Indonesia (Persero); sumbernya di
-  `SUMBER.md`, **tidak** tercakup lisensi MIT repo.
+- `public/media/situs/` — ilustrasi garis halaman depan milik aplikasi ini (salinan
+  `next/public/media/situs`, lihat `SUMBER.md`). Tidak ada foto atau logo perusahaan.
 - `docs/ui/<halaman>/` — tangkapan layar sebelum/sesudah perubahan UI.
 
 ## Dasar hukum daftar periksa

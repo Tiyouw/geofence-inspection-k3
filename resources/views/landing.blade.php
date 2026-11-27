@@ -5,12 +5,12 @@
     tanpa daftar tabung, koordinat, maupun token QR. Kartu modul berasal dari
     asset_types lewat LandingController.
 
-    Foto dan video milik PT PAL Indonesia (Persero), di-host sendiri di
-    public/media/pal (lihat SUMBER.md di sana).
+    Gambar dan video adalah ilustrasi garis milik aplikasi ini, di public/media/situs
+    (lihat SUMBER.md di sana; salinan next/public/media/situs).
 --}}
 
 @section('judul', 'Geofencing — Sistem Inspeksi K3')
-@section('deskripsi', 'Sistem informasi inspeksi sarana proteksi kebakaran dan pertolongan pertama Divisi K3LH PT PAL Indonesia.')
+@section('deskripsi', 'Sistem informasi inspeksi sarana proteksi kebakaran dan pertolongan pertama Perusahaan Galangan Kapal.')
 
 @php
     $tautan = [
@@ -18,12 +18,11 @@
         '#cara-kerja' => 'Cara kerja',
         '#peran'      => 'Peran',
         '#modul'      => 'Modul',
-        '#tentang'    => 'Tentang PT PAL',
     ];
 @endphp
 
 @push('kepala')
-    <link rel="preload" as="image" type="image/webp" fetchpriority="high" href="{{ asset('media/pal/hero-poster.webp') }}">
+    <link rel="preload" as="image" type="image/webp" fetchpriority="high" href="{{ asset('media/situs/hero-poster.webp') }}">
 @endpush
 
 @section('navigasi')
@@ -110,16 +109,16 @@
                 disablepictureinpicture
                 disableremoteplayback
                 aria-hidden="true"
-                poster="{{ asset('media/pal/hero-poster.webp') }}"
-                data-src-lebar="{{ asset('media/pal/hero-lebar.mp4') }}"
-                data-src-tegak="{{ asset('media/pal/hero-tegak.mp4') }}"
+                poster="{{ asset('media/situs/hero-poster.webp') }}"
+                data-src-lebar="{{ asset('media/situs/hero-lebar.mp4') }}"
+                data-src-tegak="{{ asset('media/situs/hero-tegak.mp4') }}"
                 class="size-full object-cover"
             ></video>
             <div class="selubung-gelap absolute inset-0"></div>
         </div>
 
         <div class="bingkai pt-36 pb-10 md:pb-14">
-            <p data-masuk style="--urutan: 1" class="label-meta text-paper">Divisi K3LH &middot; PT PAL Indonesia</p>
+            <p data-masuk style="--urutan: 1" class="label-meta text-paper">Divisi K3LH &middot; Perusahaan Galangan Kapal</p>
             <h1 id="judul-hero" data-masuk style="--urutan: 2" class="mt-5 max-w-[15ch] text-display font-light">
                 Inspeksi APAR yang terbukti dilakukan di tempatnya.
             </h1>
@@ -176,9 +175,9 @@
                 <li data-muncul style="--urutan: 0">
                     <div class="bingkai-foto aspect-[4/3] bg-paper/5">
                         <x-situs.foto
-                            berkas="bengkel-pemeriksaan"
+                            berkas="foto-bukti"
                             sizes="(min-width: 80rem) 387px, (min-width: 48rem) 31vw, 100vw"
-                            alt="Dua pekerja berhelm keselamatan bekerja di bengkel PT PAL Indonesia."
+                            alt="Ilustrasi bingkai kamera membidik tabung APAR."
                         />
                     </div>
                     <div class="p-5">
@@ -192,9 +191,9 @@
                 <li data-muncul style="--urutan: 1">
                     <div class="bingkai-foto aspect-[4/3] bg-paper/5">
                         <x-situs.foto
-                            berkas="galangan-udara"
+                            berkas="denah-lokasi"
                             sizes="(min-width: 80rem) 387px, (min-width: 48rem) 31vw, 100vw"
-                            alt="Foto udara dermaga galangan PT PAL Indonesia dengan tongkang pembangkit listrik dan kapal tunda."
+                            alt="Ilustrasi poligon gedung yang disorot dengan titik posisi dan lingkar akurasi."
                         />
                     </div>
                     <div class="p-5">
@@ -208,9 +207,9 @@
                 <li data-muncul style="--urutan: 2">
                     <div class="bingkai-foto aspect-[4/3] bg-paper/5">
                         <x-situs.foto
-                            berkas="bengkel-pengelasan"
+                            berkas="stiker-qr"
                             sizes="(min-width: 80rem) 387px, (min-width: 48rem) 31vw, 100vw"
-                            alt="Juru las berhelm keselamatan mengelas konstruksi baja di bengkel PT PAL Indonesia."
+                            alt="Ilustrasi tabung APAR dengan stiker QR."
                         />
                     </div>
                     <div class="p-5">
@@ -261,10 +260,10 @@
             <div data-muncul class="order-last md:order-first md:col-span-5">
                 <div class="bingkai-foto aspect-[4/5] bg-paper">
                     <x-situs.foto
-                        berkas="bengkel-pelat-baja"
+                        berkas="ponsel-periksa"
                         :lebar="[600, 1000]"
                         sizes="(min-width: 80rem) 484px, (min-width: 48rem) 40vw, 100vw"
-                        alt="Pekerja berhelm memandu pelat baja yang diangkat derek di bengkel fabrikasi PT PAL Indonesia."
+                        alt="Ilustrasi ponsel dengan daftar periksa."
                     />
                 </div>
             </div>
@@ -350,70 +349,6 @@
             </ul>
         </div>
     </section>
-
-    {{-- Tentang PT PAL Indonesia: ringkasan dari pal.co.id. --}}
-    <section id="tentang" aria-labelledby="judul-tentang" class="bg-slate-depth text-paper">
-        <div class="relative isolate flex min-h-[70svh] items-end overflow-hidden">
-            <div class="absolute inset-0 -z-10">
-                <x-situs.foto
-                    berkas="kri-semarang-udara"
-                    sizes="100vw"
-                    data-zoom-pelan
-                    alt="KRI Semarang (594), kapal produksi PT PAL Indonesia, melaju di laut lepas dilihat dari udara."
-                />
-                <div class="selubung-gelap absolute inset-0"></div>
-            </div>
-
-            <div class="bingkai pt-40 pb-10 md:pb-14">
-                <p data-muncul class="label-meta text-paper/80">Tentang PT PAL Indonesia</p>
-                <h2 id="judul-tentang" data-muncul class="mt-4 max-w-[16ch] text-heading-lg font-light">
-                    Galangan kapal terbesar di Indonesia.
-                </h2>
-            </div>
-        </div>
-
-        <div class="bingkai py-pita">
-            <div class="grid gap-10 md:grid-cols-12 md:gap-x-5">
-                <div class="space-y-5 text-body text-paper/70 md:col-span-6">
-                    <p data-muncul>
-                        Berkantor di Ujung, Surabaya, PT PAL Indonesia (Persero) membangun kapal perang,
-                        kapal selam, dan kapal niaga; mengerjakan pemeliharaan, perbaikan, dan overhaul
-                        kapal; serta membuat produk rekayasa umum untuk energi dan kelistrikan.
-                    </p>
-                    <p data-muncul>
-                        Cikal bakalnya adalah Marine Establishment yang diresmikan pemerintah Belanda.
-                        Setelah kemerdekaan, galangan ini dinasionalisasi menjadi Penataran Angkatan Laut
-                        (PAL), dan sejak 15 April 1980 berstatus perseroan terbatas.
-                    </p>
-                </div>
-                <div class="md:col-span-5 md:col-start-8">
-                    <p data-muncul class="text-body text-paper/70">
-                        Kesehatan dan keselamatan kerja selalu ditekankan dalam sistem manajemen
-                        perusahaan.
-                    </p>
-                    <a data-muncul href="https://www.pal.co.id/" class="tombol tombol-terang mt-8 px-6 py-[1.125rem]">
-                        Situs resmi PT PAL
-                    </a>
-                </div>
-            </div>
-
-            <dl class="mt-16 grid grid-cols-2 gap-x-5 gap-y-10 md:mt-24 lg:grid-cols-4">
-                @foreach ([
-                    ['329', 'Kapal diproduksi', '1985–2024'],
-                    ['92', 'Di antaranya kapal perang', null],
-                    ['47', 'Kapal diekspor', null],
-                    ['120', 'Hektare area galangan', null],
-                ] as [$angka, $keterangan, $rentang])
-                    <div data-muncul style="--urutan: {{ $loop->index }}" class="flex flex-col-reverse border-t border-paper/15 pt-5">
-                        <dt class="mt-3 text-body-sm text-paper/70">
-                            {{ $keterangan }}@if ($rentang), <span class="whitespace-nowrap">{{ $rentang }}</span>@endif
-                        </dt>
-                        <dd class="text-display font-light proportional-nums">{{ $angka }}</dd>
-                    </div>
-                @endforeach
-            </dl>
-        </div>
-    </section>
 @endsection
 
 @section('kaki')
@@ -423,7 +358,7 @@
                 <div>
                     <x-situs.logo />
                     <p class="mt-4 max-w-[28rem] text-body-sm text-charcoal/70">
-                        Divisi K3LH &mdash; PT PAL Indonesia (Persero), Surabaya.
+                        Divisi K3LH &mdash; Perusahaan Galangan Kapal.
                         Akses terbatas bagi petugas berwenang.
                     </p>
                 </div>
@@ -433,13 +368,12 @@
                         <li><a href="{{ $tujuan }}" class="tautan text-label font-medium uppercase">{{ $masuk ? 'Buka aplikasi' : 'Masuk petugas' }}</a></li>
                         <li><a href="#cara-kerja" class="tautan text-label font-medium uppercase">Cara kerja</a></li>
                         <li><a href="#modul" class="tautan text-label font-medium uppercase">Modul</a></li>
-                        <li><a href="https://www.pal.co.id/" class="tautan text-label font-medium uppercase">pal.co.id</a></li>
                     </ul>
                 </nav>
             </div>
 
             <p class="mt-12 border-t border-bone pt-6 text-body-sm text-charcoal/60">
-                Foto dan video: dokumentasi PT PAL Indonesia (Persero).
+                Gambar dan video: ilustrasi garis milik aplikasi ini.
             </p>
         </div>
     </footer>

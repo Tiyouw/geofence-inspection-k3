@@ -1,0 +1,38 @@
+import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/components/shell/sw-register";
+import "./globals.css";
+
+const sans = Inter({ variable: "--font-sans", subsets: ["latin"] });
+const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"] });
+/** Huruf arah A, dipakai di dalam [data-peran] (tema.css). */
+const arahA = Plus_Jakarta_Sans({ variable: "--font-a", subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: { default: "Geofencing — Inspeksi K3 APAR", template: "%s — Inspeksi K3 APAR" },
+  description: "Inspeksi APAR dan sarana K3 berbasis QR dan lokasi.",
+  applicationName: "Geofencing",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icons/icon.svg", apple: "/icons/icon-192.png" },
+  robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "Geofencing", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#031e25",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="id" className={`${sans.variable} ${mono.variable} ${arahA.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Toaster richColors position="top-center" />
+        <ServiceWorkerRegister />
+      </body>
+    </html>
+  );
+}
