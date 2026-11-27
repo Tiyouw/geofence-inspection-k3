@@ -36,9 +36,24 @@ kalau ingin bersih, hapus `geofencinspection.tech` dan `www` dari project `pal-k
 Kalau data Laravel rusak: hentikan app, salin `database.sqlite` dan isi `storage.tgz` dari backup di
 atas ke `/home/ubuntu/pal-k3/` (cocokkan dulu dengan `sha256sum -c SHA256SUMS`).
 
-## Belum selesai
+## rifaldy.tiyoouw.app (27 Nov 2026)
 
-- `rifaldy.tiyoouw.app` masih menyajikan Laravel lewat tunnel. Redirect 301 ke
-  `https://geofencinspection.tech/` butuh Redirect Rule di zone `tiyoouw.app`, dan token
-  `cloudflare-tiyo` tidak berizin (`request is not authorized`). Rule yang diinginkan:
-  `(http.host eq "rifaldy.tiyoouw.app")` → 301 `https://geofencinspection.tech/`.
+Domain lama dialihkan lewat fitur redirect domain bawaan Vercel, bukan Redirect Rule Cloudflare
+(token `cloudflare-tiyo` tidak berizin Redirect Rules, tapi berizin edit DNS).
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| DNS `rifaldy` (zone `tiyoouw.app`, record `c99523db9572dd9ee6caa6c0c3174ec5`) | CNAME `711eb134-5ef3-4fe7-99cb-9480c14017cb.cfargotunnel.com`, **Proxied** | CNAME `cname.vercel-dns.com`, DNS only |
+| Vercel project `pal-k3` | tidak ada | domain `rifaldy.tiyoouw.app`, redirect **308** ke `geofencinspection.tech` (path ikut) |
+
+Sertifikat Let's Encrypt untuk `rifaldy.tiyoouw.app` terbit (berlaku s.d. 25 Feb 2027). Record lain di
+zone `tiyoouw.app` dibandingkan sebelum/sesudah: tidak ada yang berubah. Ingress tunnel di tc-vps tidak
+disentuh.
+
+Rollback (kembali ke Laravel lewat tunnel):
+
+1. Cloudflare → zone `tiyoouw.app` → DNS: ubah CNAME `rifaldy` kembali ke
+   `711eb134-5ef3-4fe7-99cb-9480c14017cb.cfargotunnel.com`, **Proxied**.
+2. Vercel → project `pal-k3` → Domains: hapus `rifaldy.tiyoouw.app` (opsional, setelah langkah 1 domain
+   itu tidak menerima trafik lagi).
+3. Cek: `curl -sI https://rifaldy.tiyoouw.app/` tidak lagi `server: Vercel` / 308, dan menampilkan Laravel.
