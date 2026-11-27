@@ -57,3 +57,34 @@ Rollback (kembali ke Laravel lewat tunnel):
 2. Vercel → project `pal-k3` → Domains: hapus `rifaldy.tiyoouw.app` (opsional, setelah langkah 1 domain
    itu tidak menerima trafik lagi).
 3. Cek: `curl -sI https://rifaldy.tiyoouw.app/` tidak lagi `server: Vercel` / 308, dan menampilkan Laravel.
+
+## Laravel di tc-vps dimatikan (27 Nov 2026)
+
+Tidak ada domain lagi yang memakai app Laravel lama (apex, www, dev, dan rifaldy sudah ke Vercel), jadi
+service-nya dimatikan untuk membebaskan RAM. Tidak ada yang dihapus.
+
+- `sudo systemctl disable --now pal-k3.service cloudflared-pal-k3.service`
+  - `pal-k3.service`: `php artisan serve` di `127.0.0.1:8011`, user `ubuntu`.
+  - `cloudflared-pal-k3.service`: tunnel `pal-k3` (`711eb134-…`), khusus PAL-K3. Ingress-nya hanya
+    `rifaldy.tiyoouw.app`, `geofencinspection.tech`, `www.geofencinspection.tech` → `127.0.0.1:8011`.
+    Ingress tidak diubah.
+- Tidak ada queue worker, scheduler/cron, atau php-fpm pool khusus PAL-K3 (queue/cache/session memakai
+  database; proses `artisan horizon`/`schedule:work` lain di tc-vps milik app lain dan tidak disentuh).
+- Tetap ada: `/home/ubuntu/pal-k3` (app, `database/database.sqlite`, `storage`, `.env`), unit file di
+  `/etc/systemd/system/`, `/etc/cloudflared/pal-k3.env`.
+- Backup susulan sebelum dimatikan: `~/backups/pal-k3-laravel-2026-11-27/susulan-sebelum-stop/` di
+  homeserver (beda dengan backup pertama hanya tabel `sessions`).
+- RAM tc-vps (`free -m`, used/available, swap used): sebelum 1185/750 MB, swap 1638 MB; sesudah
+  1162/773 MB, swap 1561 MB.
+
+Menyalakan lagi:
+
+```bash
+ssh ubuntu@tc-vps
+sudo systemctl enable --now pal-k3.service cloudflared-pal-k3.service
+systemctl is-active pal-k3 cloudflared-pal-k3      # active, active
+curl -sI http://127.0.0.1:8011/ | head -1          # Laravel menjawab
+```
+
+Setelah itu DNS masih perlu dikembalikan ke tunnel (lihat bagian rollback di atas) supaya domain
+benar-benar menuju Laravel.
